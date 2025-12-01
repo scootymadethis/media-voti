@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+env/
+.venv/
+venv/
+.Python
+
+# Byte-compiled / optimized / DLL files
+*.pyc
+
+# Editor directories
+.vscode/
+.idea/
+
+# Node
+node_modules/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+
+# Mac
+.DS_Store
+
+# local config
+.env
+
+# Uvicorn reload files
+reload/

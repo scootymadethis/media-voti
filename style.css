@@ -1,0 +1,117 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+
+:root {
+  --bg: #121212;
+  --surface: #1e1e1e;
+  --primary: #ededed;
+  --secondary: #a0a0a0;
+  --primary-btn: #ef4444;
+  --primary-hover: #dc2626;
+  --secondary-btn: #f87171;
+  --success: #22c55e;
+  --warning: #facc15;
+  --error: #f43f5e;
+  --info: #3b82f6;
+  --disabled: #5a5a5a;
+  --border: #2a2a2a;
+}
+
+* {
+  font-family: "Inter", sans-serif;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.title {
+  color: var(--primary-hover);
+  font-weight: 900;
+  font-size: 80px;
+  display: inline-block;
+  position: relative;
+  top: -150px;
+}
+
+.title::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  transform: scaleX(0);
+  height: 2px;
+  bottom: 0;
+  left: 0;
+  background-color: var(--primary-hover);
+  transform-origin: bottom right;
+  transition: transform 0.25s ease-out;
+}
+
+.title:hover::after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
+}
+
+.login {
+  width: 400px;
+  height: 400px;
+  border-radius: 20px;
+  background-color: var(--surface);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+  padding: 30px 40px;
+  margin-top: -100px;
+  border: 2px solid var(--border);
+}
+
+.login .login-text {
+  font-size: 35px;
+}
+
+.login .fields {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.login .username,
+.login .password,
+.login .login-btn {
+  width: 280px;
+  height: 40px;
+  padding: 10px;
+  border-radius: 10px;
+  outline: none;
+  border: none;
+}
+
+.login .login-btn {
+  background: black;
+  color: white;
+  cursor: pointer;
+}
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 90px;
+  background-color: var(--surface);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
