@@ -5,9 +5,9 @@
   --surface: #1e1e1e;
   --primary: #ededed;
   --secondary: #a0a0a0;
-  --primary-btn: #ef4444;
-  --primary-hover: #dc2626;
-  --secondary-btn: #f87171;
+  --primary-btn: #dc2626; /* neutral red */
+  --primary-hover: #a41f1f; /* darker red for hover */
+  --secondary-btn: #f87171; /* soft accent */
   --success: #22c55e;
   --warning: #facc15;
   --error: #f43f5e;
@@ -34,7 +34,7 @@ body {
 }
 
 .title {
-  color: var(--primary-hover);
+  color: var(--primary-btn);
   font-weight: 900;
   font-size: 80px;
   display: inline-block;
@@ -50,7 +50,7 @@ body {
   height: 2px;
   bottom: 0;
   left: 0;
-  background-color: var(--primary-hover);
+  background-color: var(--primary-btn);
   transform-origin: bottom right;
   transition: transform 0.25s ease-out;
 }

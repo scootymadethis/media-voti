@@ -4,9 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ClasseFiga - made by scooty</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="dashboard.css" />
   </head>
   <body>
+    <div class="navbar">
+      <h1 class="title">ClasseFiga</h1>
+      <div class="buttons">
+        <button id="votiBtn">Voti</button>
+        <button id="assenzeBtn">Assenze</button>
+        <button id="agenda">Agenda</button>
+        <button id="logoutBtn">Logout</button>
+      </div>
+    </div>
+
+    <div class="main">
+      <h1 class="greeting" id="greeting"></h1>
+      <p class="time" id="time"></p>
+      <p class="date" id="date"></p>
+
+      <!-- Agenda -->
+      <h2 class="agenda-title">Prossimi eventi</h2>
+      <div class="agenda" id="agenda"></div>
+    </div>
+
     <div class="footer">
       <span class="desc"
         >This website is not affiliated in any way with ClasseViva

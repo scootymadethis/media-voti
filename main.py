@@ -1,9 +1,11 @@
-from fastapi import FastAPI, HTTPException, Depends, Response, Cookie, Request
+from fastapi import FastAPI, HTTPException, Depends, Response, Cookie, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from ClasseVivaAPI import Utente, RequestURLs
 import time, secrets
 from typing import Optional
+import traceback
+import requests
 
 app = FastAPI()
 
@@ -22,6 +24,10 @@ app.add_middleware(
 class LoginBody(BaseModel):
     username: str
     password: str
+
+class AgendaBody(BaseModel):
+    start: Optional[str] = None  # YYYYMMDD
+    end: Optional[str] = None    # YYYYMMDD
 
 # ---- session store in memoria ----
 SESSION_TTL = 60 * 30  # 30 minuti
@@ -80,12 +86,78 @@ def assenze(u: Utente = Depends(current_user)):
         raise HTTPException(status_code=401, detail=str(e))
 
 @app.post("/agenda")
-def agenda(u: Utente = Depends(current_user)):
+def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=AgendaBody())):
     try:
-        agenda = u.request(RequestURLs.agenda).json()
-        return {"ok": True, "agenda": agenda}
+        start = body.start or time.strftime("%Y%m%d")
+        end = body.end or start
+
+        user_ident = getattr(u, "ident", None) or getattr(u, "uid", None)
+        if not user_ident:
+            raise HTTPException(status_code=500, detail="Impossibile determinare ident utente")
+
+        # build the formatted URL for debugging
+        try:
+            url_template = RequestURLs.agenda[0]
+            formatted_url = url_template.format(user_ident, start, end)
+            print("Formatted agenda URL:", formatted_url)
+        except Exception as e:
+            print("Error formatting agenda URL:", e)
+            formatted_url = None
+
+        # try the library call first
+        try:
+            resp = u.request(RequestURLs.agenda, user_ident, start, end)
+            if hasattr(resp, "status_code"):
+                print("u.request returned status:", resp.status_code)
+                if resp.status_code >= 400:
+                    print("u.request response text:", getattr(resp, "text", None))
+                    # fall through to manual request to capture full response
+                else:
+                    try:
+                        agenda = resp.json()
+                    except Exception:
+                        agenda = {}
+                    return {"ok": True, "agenda": agenda}
+            else:
+                try:
+                    agenda = resp.json()
+                except Exception:
+                    agenda = resp
+                return {"ok": True, "agenda": agenda}
+        except Exception as lib_exc:
+            print("u.request raised:", repr(lib_exc))
+
+        # fallback: call upstream directly to inspect response
+        if formatted_url:
+            try:
+                headers = {}
+                try:
+                    headers = u.get_headers()
+                except Exception:
+                    pass
+                upstream = requests.get(formatted_url, headers=headers, timeout=20)
+                print("Upstream status:", upstream.status_code)
+                print("Upstream body (truncated):", (upstream.text or '')[:2000])
+                if upstream.status_code >= 400:
+                    raise HTTPException(status_code=502, detail=f"Upstream returned {upstream.status_code}")
+                try:
+                    data = upstream.json()
+                except Exception:
+                    data = {}
+                return {"ok": True, "agenda": data}
+            except HTTPException:
+                raise
+            except Exception as e:
+                print("Direct upstream request failed:", repr(e))
+                raise HTTPException(status_code=502, detail="Upstream unreachable or returned error; see server logs")
+        else:
+            raise HTTPException(status_code=502, detail="Could not format upstream URL for agenda")
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        # qui non è un problema di login ma di chiamata esterna
+        raise HTTPException(status_code=502, detail=str(e))
 
 @app.post("/didattica")
 def didattica(u: Utente = Depends(current_user)):

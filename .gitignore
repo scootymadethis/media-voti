@@ -34,3 +34,5 @@ dist/
 
 # Uvicorn reload files
 reload/
+
+ris.json
