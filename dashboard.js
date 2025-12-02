@@ -19,7 +19,90 @@ document.addEventListener("DOMContentLoaded", async () => {
     }, 1000);
 
     const agendaData = await loadAgendaWeek(0);
-    console.log("Agenda:", agendaData.agenda);
+    // render the agenda into the DOM
+    renderAgenda(agendaData);
+
+    // wire prev/next buttons to navigate weeks and re-render
+    const nextBtn = document.getElementById("nextWeek");
+    const prevBtn = document.getElementById("prevWeek");
+    const track = document.querySelector(".agenda-track");
+    let slidesPerView = getSlidesPerView();
+    let currentSlideIndex = 0; // 0..(numDays - slidesPerView)
+
+    function getSlidesPerView() {
+      const w = window.innerWidth;
+      if (w <= 420) return 1;
+      if (w <= 600) return 2;
+      if (w <= 800) return 3;
+      if (w <= 1000) return 4;
+      return 5;
+    }
+
+    function updateSlidesLayout() {
+      slidesPerView = getSlidesPerView();
+      const giornoEls = Array.from(
+        document.querySelectorAll(".agenda-track .giorno")
+      );
+      giornoEls.forEach((el) => {
+        if (el.style) el.style.flex = `0 0 ${100 / slidesPerView}%`;
+      });
+      // clamp current slide
+      const maxIndex = Math.max(
+        0,
+        Math.max(0, giornoEls.length - slidesPerView)
+      );
+      if (currentSlideIndex > maxIndex) currentSlideIndex = maxIndex;
+      updateTrackPosition();
+    }
+
+    function updateTrackPosition() {
+      if (!track) return;
+      const shift = (currentSlideIndex * 100) / slidesPerView;
+      track.style.transform = `translateX(-${shift}%)`;
+      computeEqualHeights();
+    }
+
+    async function handleNext() {
+      const giornoEls = document.querySelectorAll(".agenda-track .giorno");
+      const maxIndex = Math.max(0, giornoEls.length - slidesPerView);
+      if (slidesPerView < giornoEls.length) {
+        // slide within the week
+        currentSlideIndex = Math.min(maxIndex, currentSlideIndex + 1);
+        updateTrackPosition();
+        return;
+      }
+      // otherwise move to next week
+      const data = await goToNextWeek();
+      renderAgenda(data);
+    }
+
+    async function handlePrev() {
+      const giornoEls = document.querySelectorAll(".agenda-track .giorno");
+      if (slidesPerView < giornoEls.length) {
+        currentSlideIndex = Math.max(0, currentSlideIndex - 1);
+        updateTrackPosition();
+        return;
+      }
+      const data = await goToPrevWeek();
+      renderAgenda(data);
+    }
+
+    if (nextBtn)
+      nextBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        handleNext();
+      });
+    if (prevBtn)
+      prevBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        handlePrev();
+      });
+    // respond to resizes
+    window.addEventListener("resize", () => {
+      updateSlidesLayout();
+    });
+    // initial layout
+    updateSlidesLayout();
   } catch (err) {
     console.error(err);
   }
@@ -82,19 +165,179 @@ async function fetchAgendaInterval(
 }
 
 async function loadAgendaWeek(offsetWeeks) {
-  const start = formatDateYYYYMMDD(startDateForWeekOffset(offsetWeeks));
-  const end = formatDateYYYYMMDD(endDateForWeekOffset(offsetWeeks));
+  // use week-aligned start (Monday) so rendering dates match fetched range
+  const startDate = getWeekStartDate(offsetWeeks);
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 6);
+  const start = formatDateYYYYMMDD(startDate);
+  const end = formatDateYYYYMMDD(endDate);
 
   const data = await fetchAgendaInterval(start, end);
   currentWeekOffset = offsetWeeks;
 
-  // prefetch next week without forcing logout
-  const nextStart = formatDateYYYYMMDD(startDateForWeekOffset(offsetWeeks + 1));
-  const nextEnd = formatDateYYYYMMDD(endDateForWeekOffset(offsetWeeks + 1));
-  fetchAgendaInterval(nextStart, nextEnd, { prefetch: true }).catch(() => {});
+  // prefetch previous and next week without forcing logout so switching is smooth
+  try {
+    const prevStartDate = getWeekStartDate(offsetWeeks - 1);
+    const prevEndDate = new Date(prevStartDate);
+    prevEndDate.setDate(prevStartDate.getDate() + 6);
+    const prevStart = formatDateYYYYMMDD(prevStartDate);
+    const prevEnd = formatDateYYYYMMDD(prevEndDate);
+
+    const nextStartDate = getWeekStartDate(offsetWeeks + 1);
+    const nextEndDate = new Date(nextStartDate);
+    nextEndDate.setDate(nextStartDate.getDate() + 6);
+    const nextStart = formatDateYYYYMMDD(nextStartDate);
+    const nextEnd = formatDateYYYYMMDD(nextEndDate);
+
+    fetchAgendaInterval(prevStart, prevEnd, { prefetch: true }).catch(() => {});
+    fetchAgendaInterval(nextStart, nextEnd, { prefetch: true }).catch(() => {});
+  } catch (e) {
+    // ignore prefetch errors
+  }
 
   return data;
 }
+
+// Helper: compute Monday start for a given week offset (0 = current week)
+function getWeekStartDate(offsetWeeks) {
+  const now = new Date();
+  // compute Monday of current week
+  const day = now.getDay(); // 0 = Sunday, 1 = Monday
+  const diffToMon = (day + 6) % 7; // days since Monday
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - diffToMon + offsetWeeks * 7);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+// Extract events array from different possible API shapes
+function extractEvents(agendaData) {
+  if (!agendaData) return [];
+  if (Array.isArray(agendaData)) return agendaData;
+  if (Array.isArray(agendaData.agenda)) return agendaData.agenda;
+  if (agendaData.agenda && Array.isArray(agendaData.agenda.agenda))
+    return agendaData.agenda.agenda;
+  // fallback: try to find any array field
+  for (const k of Object.keys(agendaData)) {
+    if (Array.isArray(agendaData[k])) return agendaData[k];
+  }
+  return [];
+}
+
+// Render agenda data into the DOM (fills Mon-Fri columns)
+function renderAgenda(agendaData) {
+  const container = document.getElementById("agenda");
+  if (!container) return;
+  const events = extractEvents(agendaData) || [];
+  // compute week start (Monday) using currentWeekOffset
+  const monday = getWeekStartDate(currentWeekOffset);
+  const dayNames = [
+    "Lunedi",
+    "Martedi",
+    "Mercoledi",
+    "Giovedi",
+    "Venerdi",
+    "Sabato",
+    "Domenica",
+  ];
+
+  // prepare a map dateYYYYMMDD => [events]
+  const eventsByDate = {};
+  events.forEach((ev) => {
+    const dt = ev.evtDatetimeBegin || ev.datetime || ev.date || ev.start;
+    if (!dt) return;
+    const d = new Date(dt);
+    const key = formatDateYYYYMMDD(d);
+    if (!eventsByDate[key]) eventsByDate[key] = [];
+    eventsByDate[key].push(ev);
+  });
+
+  // find .giorno elements (assumed 5 for Mon-Fri)
+  const giornoEls = Array.from(container.querySelectorAll(".giorno"));
+  for (let i = 0; i < 5; i++) {
+    const el = giornoEls[i];
+    if (!el) continue;
+    // compute date for this column
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const dayLabel = dayNames[i] || dayNames[0];
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const formatted = `${dayLabel} ${dd}/${mm}`;
+    const nameEl = el.querySelector(".giorno-name");
+    if (nameEl) nameEl.textContent = formatted;
+
+    // clear existing entries (remove everything except giorno-name)
+    Array.from(el.querySelectorAll(".entry, .entries-container")).forEach((n) =>
+      n.remove()
+    );
+
+    // create container for entries
+    const entriesContainer = document.createElement("div");
+    entriesContainer.className = "entries-container";
+
+    // populate events for this date
+    const key = formatDateYYYYMMDD(d);
+    const todays = eventsByDate[key] || [];
+    todays.forEach((ev) => {
+      const subject = ev.subjectDesc || ev.subject || ev.title || "Evento";
+      const teacher =
+        ev.authorName || ev.teacherName || ev.teacher || "Sconosciuto";
+      const text = ev.notes || ev.description || ev.text || "";
+
+      const entry = document.createElement("div");
+      entry.className = "entry";
+      entry.dataset.teacher = teacher;
+
+      const subj = document.createElement("span");
+      subj.className = "subject";
+      subj.textContent = subject;
+
+      const teach = document.createElement("span");
+      teach.className = "teacher";
+      teach.textContent = teacher;
+      teach.style.display = "none";
+
+      const txt = document.createElement("span");
+      txt.className = "text";
+      txt.textContent = text;
+
+      entry.appendChild(subj);
+      entry.appendChild(teach);
+      entry.appendChild(txt);
+      entriesContainer.appendChild(entry);
+    });
+
+    el.appendChild(entriesContainer);
+  }
+
+  // equalize heights after rendering
+  // reset track position (in case we were viewing a slide) and equalize heights
+  const track = document.querySelector(".agenda-track");
+  if (track) track.style.transform = "translateX(0)";
+  setTimeout(() => computeEqualHeights(), 50);
+}
+
+// Make all .giorno columns equal to tallest height
+function computeEqualHeights() {
+  const container = document.getElementById("agenda");
+  if (!container) return;
+  const giornoEls = Array.from(container.querySelectorAll(".giorno"));
+  if (!giornoEls.length) return;
+  // reset heights
+  giornoEls.forEach((el) => (el.style.height = ""));
+  let max = 0;
+  giornoEls.forEach((el) => {
+    const h = el.offsetHeight;
+    if (h > max) max = h;
+  });
+  if (max > 0) giornoEls.forEach((el) => (el.style.height = max + "px"));
+}
+
+// attach resize listener to recompute heights
+window.addEventListener("resize", () => {
+  computeEqualHeights();
+});
 
 async function goToNextWeek() {
   return await loadAgendaWeek(currentWeekOffset + 1);
@@ -129,7 +372,12 @@ function updateTimeAndDate() {
     timeEl.textContent = `Ora: ${hours}:${minutes}`;
   }
   if (dateEl) {
-    const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
+    const options = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
     dateEl.textContent = "Data: " + now.toLocaleDateString("it-IT", options);
   }
 }
@@ -151,3 +399,101 @@ async function handleAuthFail(res) {
   localStorage.removeItem("loggedIn");
   window.location.href = "/index.html";
 }
+
+// --- Entry modal handling: clicking an `.entry` opens a modal with full text ---
+const entryModal = document.getElementById("entryModal");
+const modalTitle = document.getElementById("entryModalTitle");
+const modalSubject = document.getElementById("entryModalSubject");
+const modalTeacher = document.getElementById("entryModalTeacher");
+const modalText = document.getElementById("entryModalText");
+const modalCloseBtn = document.getElementById("entryModalClose");
+
+function openEntryModal(subject, text, teacher) {
+  if (!entryModal) return;
+  // show subject only in the title (avoid duplicate subject lines)
+  modalTitle.textContent = subject || "Dettagli";
+  if (modalSubject) {
+    modalSubject.textContent = "";
+    modalSubject.style.display = "none";
+  }
+  // show teacher (default to 'Malacchini Daniela' if not provided)
+  const teacherToShow =
+    teacher && String(teacher).trim()
+      ? String(teacher).trim()
+      : "Malacchini Daniela";
+  if (modalTeacher) {
+    modalTeacher.textContent = teacherToShow;
+    modalTeacher.style.display = "block";
+  }
+  // normalize text: split lines, trim each, remove empty lines and preserve line breaks
+  let fullText = text || "";
+  try {
+    fullText = String(fullText)
+      .split(/\r?\n/)
+      .map((ln) => ln.trim())
+      .filter((ln) => ln.length > 0)
+      .join("\n");
+  } catch (e) {
+    fullText = String(fullText).trim();
+  }
+  // Render preserved new lines in HTML while escaping to avoid XSS
+  function escapeHTML(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[c];
+    });
+  }
+  if (modalText) {
+    modalText.innerHTML = escapeHTML(fullText).replace(/\n/g, "<br>");
+  }
+  entryModal.classList.add("show");
+  entryModal.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  if (modalCloseBtn) modalCloseBtn.focus();
+}
+
+function closeEntryModal() {
+  if (!entryModal) return;
+  entryModal.classList.remove("show");
+  entryModal.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+}
+
+// Delegated click listener for any .entry element
+document.addEventListener("click", (ev) => {
+  const entry = ev.target.closest && ev.target.closest(".entry");
+  if (!entry) return;
+  // Avoid opening modal when clicking inside the modal itself
+  if (entry.closest(".modal")) return;
+
+  const subjEl = entry.querySelector(".subject");
+  const textEl = entry.querySelector(".text");
+  const teacherEl = entry.querySelector(".teacher");
+  const subject = subjEl ? subjEl.textContent.trim() : "";
+  // prefer innerText to get rendered text and collapse odd HTML whitespace
+  let text = "";
+  if (textEl) text = (textEl.innerText || textEl.textContent || "").trim();
+  else text = (entry.innerText || entry.textContent || "").trim();
+  let teacher = "";
+  if (teacherEl) teacher = teacherEl.textContent.trim();
+  else if (entry.dataset && entry.dataset.teacher)
+    teacher = entry.dataset.teacher;
+  openEntryModal(subject, text, teacher);
+});
+
+// Close handlers
+if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeEntryModal);
+if (entryModal) {
+  entryModal.addEventListener("click", (e) => {
+    if (e.target === entryModal) closeEntryModal();
+  });
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeEntryModal();
+});

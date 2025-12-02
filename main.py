@@ -106,7 +106,7 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
 
         # try the library call first
         try:
-            resp = u.request(RequestURLs.agenda, user_ident, start, end)
+            resp = u.request(RequestURLs.agenda, start, end)
             if hasattr(resp, "status_code"):
                 print("u.request returned status:", resp.status_code)
                 if resp.status_code >= 400:

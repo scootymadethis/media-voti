@@ -12,7 +12,7 @@
       <div class="buttons">
         <button id="votiBtn">Voti</button>
         <button id="assenzeBtn">Assenze</button>
-        <button id="agenda">Agenda</button>
+        <button id="agendaBtn">Agenda</button>
         <button id="logoutBtn">Logout</button>
       </div>
     </div>
@@ -24,7 +24,35 @@
 
       <!-- Agenda -->
       <h2 class="agenda-title">Prossimi eventi</h2>
-      <div class="agenda" id="agenda"></div>
+      <div class="agenda" id="agenda">
+        <div class="agenda-controls">
+          <button id="prevWeek" class="agenda-arrow" aria-label="Indietro">
+            ‹
+          </button>
+          <button id="nextWeek" class="agenda-arrow" aria-label="Avanti">
+            ›
+          </button>
+        </div>
+        <div class="agenda-viewport">
+          <div class="agenda-track">
+            <div class="giorno" data-day-index="0">
+              <span class="giorno-name">Lunedi</span>
+            </div>
+            <div class="giorno" data-day-index="1">
+              <span class="giorno-name">Martedi</span>
+            </div>
+            <div class="giorno" data-day-index="2">
+              <span class="giorno-name">Mercoledi</span>
+            </div>
+            <div class="giorno" data-day-index="3">
+              <span class="giorno-name">Giovedi</span>
+            </div>
+            <div class="giorno" data-day-index="4">
+              <span class="giorno-name">Venerdi</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="footer">
@@ -35,6 +63,28 @@
       <span class="copyright"
         >&#169; Copyright 2025 github.com/scootymadethis</span
       >
+    </div>
+    <!-- Modal for full entry preview -->
+    <div id="entryModal" class="modal" aria-hidden="true">
+      <div
+        class="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="entryModalTitle"
+      >
+        <div class="modal-header">
+          <h3 id="entryModalTitle">Titolo</h3>
+          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <p id="entryModalSubject" class="modal-subject"></p>
+          <p id="entryModalTeacher" class="modal-teacher"></p>
+          <p class="modal-label">Testo:</p>
+          <div id="entryModalText" class="modal-text"></div>
+        </div>
+      </div>
     </div>
 
     <script src="dashboard.js"></script>
