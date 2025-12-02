@@ -12,26 +12,34 @@
       <div class="buttons">
         <button id="votiBtn">Voti</button>
         <button id="assenzeBtn">Assenze</button>
-        <button id="agendaBtn">Agenda</button>
         <button id="logoutBtn">Logout</button>
       </div>
     </div>
 
     <div class="main">
+      <!-- Loading overlay: shown while dashboard fetches initial data -->
+      <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-card">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="loading-text">Caricamento in corso…</div>
+        </div>
+      </div>
       <h1 class="greeting" id="greeting"></h1>
       <p class="time" id="time"></p>
       <p class="date" id="date"></p>
 
       <!-- Agenda -->
-      <h2 class="agenda-title">Prossimi eventi</h2>
       <div class="agenda" id="agenda">
-        <div class="agenda-controls">
-          <button id="prevWeek" class="agenda-arrow" aria-label="Indietro">
-            ‹
-          </button>
-          <button id="nextWeek" class="agenda-arrow" aria-label="Avanti">
-            ›
-          </button>
+        <div class="agenda-header">
+          <h2 class="agenda-title">Prossimi eventi</h2>
+          <div class="agenda-controls">
+            <button id="prevWeek" class="agenda-arrow" aria-label="Indietro">
+              ‹
+            </button>
+            <button id="nextWeek" class="agenda-arrow" aria-label="Avanti">
+              ›
+            </button>
+          </div>
         </div>
         <div class="agenda-viewport">
           <div class="agenda-track">
@@ -53,8 +61,30 @@
           </div>
         </div>
       </div>
-    </div>
 
+      <!-- Side panels: Lezioni e Voti (each half width of agenda) -->
+        <div class="side-row">
+          <div class="lezioni" id="lezioni">
+            <div class="lezioni-header">
+              <h2 class="lezioni-title">Lezioni di oggi</h2>
+            </div>
+            <div class="lezioni-viewport">
+              <div class="lezioni-track">
+              </div>
+            </div>
+          </div>
+
+          <div class="voti" id="voti">
+            <div class="voti-header">
+              <h2 class="voti-title">Voti recenti</h2>
+              <button id="openVotiPage" class="voti-open" aria-label="Apri voti">›</button>
+            </div>
+            <div class="voti-viewport">
+              <div class="voti-track">
+              </div>
+            </div>
+          </div>
+        </div>
     <div class="footer">
       <span class="desc"
         >This website is not affiliated in any way with ClasseViva

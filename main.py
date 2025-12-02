@@ -14,6 +14,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5500",
         "http://127.0.0.1:5500",
+        "http://192.168.1.62:5500",
         "https://classefiga.federicoscutariu.it",
     ],
     allow_credentials=True,

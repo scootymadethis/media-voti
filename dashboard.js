@@ -5,6 +5,9 @@ const agendaCache = new Map();
 let currentWeekOffset = 0;
 
 document.addEventListener("DOMContentLoaded", async () => {
+  // show loading overlay while we fetch initial data
+  const loading = document.getElementById("loading-overlay");
+  if (loading) loading.classList.remove("hidden");
   if (localStorage.getItem("loggedIn") !== "true") {
     window.location.href = "/index.html";
     return;
@@ -21,6 +24,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     const agendaData = await loadAgendaWeek(0);
     // render the agenda into the DOM
     renderAgenda(agendaData);
+
+    // fetch lezioni and voti in parallel and render them
+    try {
+      const [lezioniData, votiData] = await Promise.all([
+        fetchLezioni().catch((e) => {
+          console.error("lezioni fetch failed", e);
+          return null;
+        }),
+        fetchVoti().catch((e) => {
+          console.error("voti fetch failed", e);
+          return null;
+        }),
+      ]);
+      if (lezioniData) renderLezioni(lezioniData);
+      if (votiData) renderVoti(votiData);
+    } catch (e) {
+      console.error(e);
+    }
 
     // wire prev/next buttons to navigate weeks and re-render
     const nextBtn = document.getElementById("nextWeek");
@@ -103,8 +124,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     // initial layout
     updateSlidesLayout();
+
+    // ensure time/date/greeting are updated once before hiding overlay
+    try {
+      updateTimeAndDate();
+      updateGreeting();
+      // wait for next paint to ensure UI shows the updated text
+      await new Promise((res) => requestAnimationFrame(() => res()));
+    } catch (e) {
+      // ignore errors from UI update
+    }
+
+    // hide loading overlay now that initial data and UI updates are rendered
+    if (loading) loading.classList.add("hidden");
   } catch (err) {
     console.error(err);
+    // ensure loading is hidden on error so user can see message or be redirected
+    const loading = document.getElementById("loading-overlay");
+    if (loading) loading.classList.add("hidden");
   }
 });
 
@@ -387,6 +424,196 @@ function toTitleCase(str, locale = "it") {
     .toLocaleLowerCase(locale)
     .replace(/\b\p{L}/gu, (c) => c.toLocaleUpperCase(locale));
 }
+
+// --- Lezioni ---
+async function fetchLezioni() {
+  const res = await fetch("http://localhost:8000/lezioni_oggi", {
+    method: "POST",
+    credentials: "include",
+  });
+  console.debug("fetchLezioni: status", res.status);
+  if (!res.ok) {
+    await handleAuthFail(res);
+    throw new Error("Failed to fetch lezioni");
+  }
+  const json = await res.json();
+  console.debug("fetchLezioni: body", json);
+  return json;
+}
+
+function renderLezioni(data) {
+  const container = document.getElementById("lezioni");
+  if (!container) return;
+  const track = container.querySelector(".lezioni-track");
+  if (!track) return;
+  track.innerHTML = "";
+
+  console.debug("renderLezioni: received", data);
+
+  // try to extract array from many possible shapes
+  let arr = [];
+  if (!data) arr = [];
+  else if (Array.isArray(data)) arr = data;
+  else if (Array.isArray(data.lezioni_oggi)) arr = data.lezioni_oggi;
+  else if (Array.isArray(data.lezioni)) arr = data.lezioni;
+  else {
+    for (const k of Object.keys(data || {}))
+      if (Array.isArray(data[k])) {
+        arr = data[k];
+        break;
+      }
+  }
+
+  // handle nested shapes: { lezioni_oggi: { lessons: [...] } }
+  if (
+    (!arr || arr.length === 0) &&
+    data &&
+    data.lezioni_oggi &&
+    typeof data.lezioni_oggi === "object"
+  ) {
+    for (const k of Object.keys(data.lezioni_oggi)) {
+      if (Array.isArray(data.lezioni_oggi[k])) {
+        arr = data.lezioni_oggi[k];
+        break;
+      }
+    }
+  }
+
+  // create truncated clickable entries; reuse .entry modal behavior by adding class `entry`
+  arr.forEach((l) => {
+    const subject =
+      l.subject || l.subjectDesc || l.materia || l.desc || "Lezione";
+    const txt = l.notes || l.description || l.text || l.info || "";
+    const teacher = l.teacher || l.authorName || l.author || "";
+
+    const div = document.createElement("div");
+    div.className = "lezione-entry entry"; // `entry` so modal opens
+    div.dataset.teacher = teacher || "";
+    div.title = subject + (txt ? " — " + txt : "");
+    div.textContent = `${subject} ${txt ? "— " + txt : ""}`;
+    track.appendChild(div);
+  });
+
+  if (arr.length === 0) {
+    const note = document.createElement("div");
+    note.className = "empty-note";
+    note.textContent = "Nessuna lezione oggi";
+    track.appendChild(note);
+  }
+}
+
+// --- Voti ---
+async function fetchVoti() {
+  const res = await fetch("http://localhost:8000/voti", {
+    method: "POST",
+    credentials: "include",
+  });
+  console.debug("fetchVoti: status", res.status);
+  if (!res.ok) {
+    await handleAuthFail(res);
+    throw new Error("Failed to fetch voti");
+  }
+  const json = await res.json();
+  console.debug("fetchVoti: body", json);
+  return json;
+}
+
+function renderVoti(data) {
+  const container = document.getElementById("voti");
+  if (!container) return;
+  const track = container.querySelector(".voti-track");
+  if (!track) return;
+  track.innerHTML = "";
+  console.debug("renderVoti: received", data);
+
+  // extract votes array from multiple shapes
+  let arr = [];
+  if (!data) arr = [];
+  else if (Array.isArray(data)) arr = data;
+  else if (Array.isArray(data.voti)) arr = data.voti;
+  else if (Array.isArray(data.grades)) arr = data.grades;
+  else
+    for (const k of Object.keys(data || {}))
+      if (Array.isArray(data[k])) {
+        arr = data[k];
+        break;
+      }
+
+  // handle nested shapes: { voti: { grades: [...] } } or { voti: { data: [...] } }
+  if (
+    (!arr || arr.length === 0) &&
+    data &&
+    data.voti &&
+    typeof data.voti === "object"
+  ) {
+    for (const k of Object.keys(data.voti)) {
+      if (Array.isArray(data.voti[k])) {
+        arr = data.voti[k];
+        break;
+      }
+    }
+  }
+
+  // sort by date or keep order; assume server returns most recent first
+  arr.forEach((v) => {
+    const subject =
+      v.subject || v.materia || v.discipline || v.name || "Materia";
+    let val = v.vote || v.grade || v.value || v.voto || null;
+    // normalize numeric
+    let num = null;
+    if (typeof val === "string") {
+      const match = val.replace(",", ".").match(/-?\d+(?:\.\d+)?/);
+      if (match) num = parseFloat(match[0]);
+    } else if (typeof val === "number") num = val;
+
+    const item = document.createElement("div");
+    item.className = "voti-entry";
+
+    const subj = document.createElement("div");
+    subj.className = "voti-subject";
+    subj.textContent = subject;
+
+    const gradeWrap = document.createElement("div");
+    const grade = document.createElement("div");
+    grade.className = "grade-circle";
+    const display =
+      num === null
+        ? val !== null
+          ? String(val)
+          : "?"
+        : Number.isInteger(num)
+        ? String(num)
+        : String(num.toFixed(1)).replace(".0", "");
+    grade.textContent = display;
+    if (num !== null) {
+      if (num >= 6) grade.classList.add("grade-green");
+      else if (num >= 5) grade.classList.add("grade-yellow");
+      else grade.classList.add("grade-red");
+    } else {
+      grade.classList.add("grade-yellow");
+    }
+    gradeWrap.appendChild(grade);
+
+    item.appendChild(subj);
+    item.appendChild(gradeWrap);
+    track.appendChild(item);
+  });
+
+  if (arr.length === 0) {
+    const note = document.createElement("div");
+    note.className = "empty-note";
+    note.textContent = "Nessun voto disponibile";
+    track.appendChild(note);
+  }
+}
+
+// wire voti page button
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest && e.target.closest("#openVotiPage");
+  if (btn) {
+    window.location.href = "/voti.html";
+  }
+});
 
 async function handleAuthFail(res) {
   let body;
