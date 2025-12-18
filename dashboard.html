@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,13 +17,13 @@
     </div>
 
     <div class="main">
-      <!-- Loading overlay: shown while dashboard fetches initial data -->
-      <div id="loading-overlay" class="loading-overlay">
+      <div id="loading-overlay" class="loading-overlay hidden">
         <div class="loading-card">
           <div class="spinner" aria-hidden="true"></div>
           <div class="loading-text">Caricamento in corso…</div>
         </div>
       </div>
+
       <h1 class="greeting" id="greeting"></h1>
       <p class="time" id="time"></p>
       <p class="date" id="date"></p>
@@ -33,14 +33,11 @@
         <div class="agenda-header">
           <h2 class="agenda-title">Prossimi eventi</h2>
           <div class="agenda-controls">
-            <button id="prevWeek" class="agenda-arrow" aria-label="Indietro">
-              ‹
-            </button>
-            <button id="nextWeek" class="agenda-arrow" aria-label="Avanti">
-              ›
-            </button>
+            <button id="prevWeek" class="agenda-arrow" aria-label="Indietro">‹</button>
+            <button id="nextWeek" class="agenda-arrow" aria-label="Avanti">›</button>
           </div>
         </div>
+
         <div class="agenda-viewport">
           <div class="agenda-track">
             <div class="giorno" data-day-index="0">
@@ -62,54 +59,46 @@
         </div>
       </div>
 
-      <!-- Side panels: Lezioni e Voti (each half width of agenda) -->
-        <div class="side-row">
-          <div class="lezioni" id="lezioni">
-            <div class="lezioni-header">
-              <h2 class="lezioni-title">Lezioni di oggi</h2>
-            </div>
-            <div class="lezioni-viewport">
-              <div class="lezioni-track">
-              </div>
-            </div>
+      <!-- Side panels -->
+      <div class="side-row">
+        <div class="lezioni" id="lezioni">
+          <div class="lezioni-header">
+            <h2 class="lezioni-title">Lezioni di oggi</h2>
           </div>
-
-          <div class="voti" id="voti">
-            <div class="voti-header">
-              <h2 class="voti-title">Voti recenti</h2>
-              <button id="openVotiPage" class="voti-open" aria-label="Apri voti">›</button>
-            </div>
-            <div class="voti-viewport">
-              <div class="voti-track">
-              </div>
-            </div>
+          <div class="lezioni-viewport">
+            <div class="lezioni-track"></div>
           </div>
         </div>
-    <div class="footer">
-      <span class="desc"
-        >This website is not affiliated in any way with ClasseViva
-        Spaggiari.</span
-      >
-      <span class="copyright"
-        >&#169; Copyright 2025 github.com/scootymadethis</span
-      >
+
+        <div class="voti" id="voti">
+          <div class="voti-header">
+            <h2 class="voti-title">Voti recenti</h2>
+            <button id="openVotiPage" class="voti-open" aria-label="Apri voti">›</button>
+          </div>
+          <div class="voti-viewport">
+            <div class="voti-track"></div>
+          </div>
+        </div>
+      </div>
     </div>
-    <!-- Modal for full entry preview -->
+
+    <div class="footer">
+      <span class="desc">
+        This website is not affiliated in any way with ClasseViva Spaggiari.
+      </span>
+      <span class="copyright">
+        &#169; Copyright 2025 github.com/scootymadethis
+      </span>
+    </div>
+
+    <!-- Modal -->
     <div id="entryModal" class="modal" aria-hidden="true">
-      <div
-        class="modal-content"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="entryModalTitle"
-      >
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="entryModalTitle">
         <div class="modal-header">
           <h3 id="entryModalTitle">Titolo</h3>
-          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">
-            ✕
-          </button>
+          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">✕</button>
         </div>
         <div class="modal-body">
-          <p id="entryModalSubject" class="modal-subject"></p>
           <p id="entryModalTeacher" class="modal-teacher"></p>
           <p class="modal-label">Testo:</p>
           <div id="entryModalText" class="modal-text"></div>

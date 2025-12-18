@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link rel="stylesheet" href="voti.css" />
+  </head>
+  <body>
+    <div class="navbar">
+      <h1 class="title">ClasseFiga</h1>
+      <div class="buttons">
+        <button id="homeBtn">Home</button>
+        <button id="assenzeBtn">Assenze</button>
+        <button id="logoutBtn">Logout</button>
+      </div>
+    </div>
+
+    <div class="main">
+      <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-card">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="loading-text">Caricamento in corso…</div>
+        </div>
+      </div>
+
+      <div class="voti">
+        <h2 class="voti-title">I tuoi voti</h2>
+        <div class="voti-list" id="votiList">
+            <div class="voti-materie">
+                <!-- Dynamically inserted -->
+            </div>
+            <div class="voti-values">
+              <div class="actual-voti">
+                <!-- Dynamically inserted -->
+              </div>
+              <div class="average">
+                <!-- Dynamically inserted -->
+              </div>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="desc">
+        This website is not affiliated in any way with ClasseViva Spaggiari.
+      </span>
+      <span class="copyright">
+        &#169; Copyright 2025 github.com/scootymadethis
+      </span>
+    </div>
+
+    <script src="voti.js"></script>
+  </body>
+</html>
