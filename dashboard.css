@@ -450,7 +450,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 60%;
+  max-width: 80%;
 }
 .grade-circle {
   /* keep this element a true circle across responsive sizes */
@@ -474,6 +474,9 @@ body {
 }
 .grade-red {
   background: #f43f5e;
+}
+.grade-blue {
+  background: #3b82f6;
 }
 .voti-open {
   background: transparent;

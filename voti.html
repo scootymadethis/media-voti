@@ -27,18 +27,37 @@
       <div class="voti">
         <h2 class="voti-title">I tuoi voti</h2>
         <div class="voti-list" id="votiList">
-            <div class="voti-materie">
-                <!-- Dynamically inserted -->
+          <div class="voti-materie">
+            <!-- Dynamically inserted -->
+          </div>
+          <div class="voti-values">
+            <div class="actual-voti">
+              <!-- Dynamically inserted -->
             </div>
-            <div class="voti-values">
-              <div class="actual-voti">
-                <!-- Dynamically inserted -->
-              </div>
-              <div class="average">
-                <!-- Dynamically inserted -->
-              </div>
+            <div class="average">
+              <!-- Dynamically inserted -->
             </div>
+          </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Modal (dashboard-style) -->
+    <div id="entryModal" class="modal" aria-hidden="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="entryModalTitle" class="modal-subject">Dettagli</h3>
+          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">
+            &times;
+          </button>
+        </div>
+        <div
+          id="entryModalTeacher"
+          class="modal-teacher"
+          aria-hidden="true"
+        ></div>
+        <div class="modal-label">Testo:</div>
+        <div id="entryModalText" class="modal-text"></div>
       </div>
     </div>
 

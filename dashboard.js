@@ -502,9 +502,9 @@ function renderVoti(data) {
     console.log("Voto:", v);
     const subject =
       v.subjectDesc || v.materia || v.discipline || v.name || "Materia";
-    let val = v.decimalValue || v.grade || v.value || v.voto || null;
+    let val = v.displayValue || v.grade || v.value || v.voto || null;
 
-    if(val === null) return;
+    if (val === null) return;
 
     let num = null;
     if (typeof val === "string") {
@@ -513,7 +513,8 @@ function renderVoti(data) {
     } else if (typeof val === "number") num = val;
 
     const item = document.createElement("div");
-    item.className = "voti-entry";
+    // add `entry` class so delegated click listener opens the modal
+    item.className = "voti-entry entry";
 
     const display =
       num === null
@@ -525,19 +526,18 @@ function renderVoti(data) {
         : String(num.toFixed(1)).replace(".0", "");
 
     item.innerHTML = `
-      <div class="voti-subject"></div>
+      <div class="voti-subject subject"></div>
       <div class="grade-circle">${display}</div>
     `;
     item.querySelector(".voti-subject").textContent = subject;
+    // attach teacher if present so modal can show it
+    if (v.authorName || v.teacherName)
+      item.dataset.teacher = v.authorName || v.teacherName;
+
+    if (v.notesForFamily) item.dataset.notes = v.notesForFamily;
 
     const gradeEl = item.querySelector(".grade-circle");
-    if (num !== null) {
-      if (num >= 6) gradeEl.classList.add("grade-green");
-      else if (num >= 5) gradeEl.classList.add("grade-yellow");
-      else gradeEl.classList.add("grade-red");
-    } else {
-      gradeEl.classList.add("grade-yellow");
-    }
+    gradeEl.classList.add(`grade-${v.color}`);
 
     track.appendChild(item);
   });
@@ -625,8 +625,7 @@ document.addEventListener("click", (ev) => {
   if (!entry || entry.closest(".modal")) return;
 
   const subject = entry.querySelector(".subject")?.textContent.trim() || "";
-  const text =
-    entry.querySelector(".text")?.innerText.trim() || entry.innerText.trim();
+  const text = entry.dataset.notes || "";
   const teacher =
     entry.querySelector(".teacher")?.textContent.trim() ||
     entry.dataset.teacher ||
