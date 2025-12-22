@@ -9,8 +9,7 @@ Small FastAPI + frontend project to query ClasseViva-like API and present data.
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt  # if you have one
-pip install uvicorn fastapi
+pip install uvicorn fastapi cvv-api requests pydantic
 ```
 
 2. Start the backend:
