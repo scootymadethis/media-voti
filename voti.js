@@ -50,10 +50,12 @@ async function fetchVoti() {
 
 function renderVoti(materie, voti) {
   const materieDiv = document.querySelector(".voti-materie");
+  const periodDiv = document.querySelector(".voti-periodo");
   const votiDiv = document.querySelector(".actual-voti");
   const averageDiv = document.querySelector(".average");
 
   materieDiv.innerHTML = "";
+  periodDiv.innerHTML = "";
   votiDiv.innerHTML = "";
   averageDiv.innerHTML = "";
 
@@ -62,26 +64,76 @@ function renderVoti(materie, voti) {
     materiaDiv.classList.add("materia");
     materiaDiv.innerHTML = `<span class="materia-text">${materia}</span>`;
     materiaDiv.onclick = () => {
+      periodDiv.innerHTML = "";
       votiDiv.innerHTML = "";
+
+      let hasPrimoPeriodo = false;
+      let hasSecondoPeriodo = false;
+
+      let votiPrimoPeriodo = [];
+      let votiSecondoPeriodo = [];
 
       voti.forEach((voto) => {
         if (voto.subjectDesc !== materia) return;
-        let votoDiv = document.createElement("div");
-        votoDiv.classList.add("voto");
-        votoDiv.innerHTML = `
-        <div class="voto-score grade-${voto.color}">${voto.displayValue}</div>
-        <div class="voto-desc">${voto.notesForFamily}</div>
-      <div class="voto-date">${new Date(voto.evtDate).toLocaleDateString(
-        "it-IT"
-      )}</div>
-      `;
-        votoDiv.onclick = () => {
-          openEntryModal(voto);
-        };
-        votiDiv.appendChild(votoDiv);
+
+        if (voto.periodPos == 1) votiPrimoPeriodo.push(voto);
+        if (voto.periodPos == 3) votiSecondoPeriodo.push(voto);
       });
+
+      if (votiPrimoPeriodo.length > 0) {
+        // render first voti
+        votiDiv.innerHTML = "";
+        renderActualVoti(votiPrimoPeriodo);
+
+        const periodo1Div = document.createElement("div");
+        periodo1Div.classList.add("periodo");
+        periodo1Div.classList.add("selected");
+        periodo1Div.innerHTML = `<span class="periodo-text">Trimestre</span>`;
+        periodo1Div.onclick = () => {
+          votiDiv.innerHTML = "";
+          const selected = document.querySelector(".periodo.selected");
+          if (selected) selected.classList.remove("selected");
+          periodo1Div.classList.add("selected");
+          renderActualVoti(votiPrimoPeriodo);
+        };
+        periodDiv.appendChild(periodo1Div);
+      }
+      if (votiSecondoPeriodo.length > 0) {
+        const periodo2Div = document.createElement("div");
+        periodo2Div.classList.add("periodo");
+        periodo2Div.innerHTML = `<span class="periodo-text">Pentamestre</span>`;
+        periodo2Div.onclick = () => {
+          votiDiv.innerHTML = "";
+          const selected = document.querySelector(".periodo.selected");
+          if (selected) selected.classList.remove("selected");
+          periodo2Div.classList.add("selected");
+          renderActualVoti(votiSecondoPeriodo);
+        };
+        periodDiv.appendChild(periodo2Div);
+      }
     };
     materieDiv.appendChild(materiaDiv);
+  });
+}
+
+function renderActualVoti(voti) {
+  const votiDiv = document.querySelector(".actual-voti");
+  votiDiv.innerHTML = "";
+
+  voti.forEach((voto) => {
+    let votoDiv = document.createElement("div");
+    votoDiv.classList.add("voto");
+    votoDiv.innerHTML = `
+    <div class="voto-score grade-${voto.color}">${voto.displayValue}</div>
+    <div class="voto-desc">${voto.notesForFamily}</div>
+    <div class="voto-date">${new Date(voto.evtDate).toLocaleDateString(
+      "it-IT"
+    )}</div>
+    `;
+    votoDiv.onclick = () => {
+      openEntryModal(voto);
+    };
+    votiDiv.appendChild(votoDiv);
   });
 }
 

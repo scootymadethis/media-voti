@@ -216,6 +216,31 @@ body {
   max-width: 100%;
   word-break: break-word;
 }
+.voti-periodo {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+}
+.periodo {
+  background: var(--surface);
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  width: 100%;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: background 0.3s ease;
+}
+.periodo.selected {
+  background: var(--primary-btn);
+}
+.periodo:hover {
+  background: var(--primary-btn);
+  cursor: pointer;
+}
 .actual-voti {
   display: flex;
   flex-direction: column;
