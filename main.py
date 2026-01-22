@@ -15,7 +15,7 @@ app.add_middleware(
         "http://localhost:5500",
         "http://127.0.0.1:5500",
         "http://192.168.1.62:5500",
-        "https://Spaggiari 2.federicoscutariu.it",
+        "https://spaggiari2.federicoscutariu.it",
     ],
     allow_credentials=True,
     allow_methods=["*"],

@@ -67,9 +67,6 @@ function renderVoti(materie, voti) {
       periodDiv.innerHTML = "";
       votiDiv.innerHTML = "";
 
-      let hasPrimoPeriodo = false;
-      let hasSecondoPeriodo = false;
-
       let votiPrimoPeriodo = [];
       let votiSecondoPeriodo = [];
 
@@ -99,6 +96,7 @@ function renderVoti(materie, voti) {
         periodDiv.appendChild(periodo1Div);
       }
       if (votiSecondoPeriodo.length > 0) {
+        // render second voti
         const periodo2Div = document.createElement("div");
         periodo2Div.classList.add("periodo");
         periodo2Div.innerHTML = `<span class="periodo-text">Pentamestre</span>`;
@@ -120,6 +118,8 @@ function renderActualVoti(voti) {
   const votiDiv = document.querySelector(".actual-voti");
   votiDiv.innerHTML = "";
 
+  let media = 0;
+
   voti.forEach((voto) => {
     let votoDiv = document.createElement("div");
     votoDiv.classList.add("voto");
@@ -134,7 +134,16 @@ function renderActualVoti(voti) {
       openEntryModal(voto);
     };
     votiDiv.appendChild(votoDiv);
+    media += parseFloat(voto.decimalValue) || 0;
   });
+
+  media = media / voti.length;
+  renderMedia(media.toFixed(2));
+}
+
+function renderMedia(media) {
+  const averageDiv = document.querySelector(".average");
+  averageDiv.innerHTML = `Media: <span class="average-score">${media}</span>`;
 }
 
 async function handleAuthFail(res) {

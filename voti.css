@@ -121,8 +121,9 @@ body {
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.55);
-  flex: 0 1 auto;
-  white-space: nowrap; /* keep text inside a pill on one line */
+  z-index: 9998;
+}
+.loading-overlay.hidden {
   display: none;
 }
 .loading-card {
