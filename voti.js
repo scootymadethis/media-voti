@@ -70,6 +70,10 @@ function renderVoti(materie, voti) {
       let votiPrimoPeriodo = [];
       let votiSecondoPeriodo = [];
 
+      const selected = document.querySelector(".materia.selected");
+      if (selected) selected.classList.remove("selected");
+      materiaDiv.classList.add("selected");
+
       voti.forEach((voto) => {
         if (voto.subjectDesc !== materia) return;
 
@@ -119,8 +123,11 @@ function renderActualVoti(voti) {
   votiDiv.innerHTML = "";
 
   let media = 0;
+  let votiLength = voti.length;
 
   voti.forEach((voto) => {
+    if(voto.displayValue == "A") votiLength -= 1;
+
     let votoDiv = document.createElement("div");
     votoDiv.classList.add("voto");
     votoDiv.innerHTML = `
@@ -137,13 +144,34 @@ function renderActualVoti(voti) {
     media += parseFloat(voto.decimalValue) || 0;
   });
 
-  media = media / voti.length;
+  media = media / votiLength;
   renderMedia(media.toFixed(2));
 }
 
 function renderMedia(media) {
   const averageDiv = document.querySelector(".average");
-  averageDiv.innerHTML = `Media: <span class="average-score">${media}</span>`;
+  averageDiv.innerHTML = "";
+
+  const value = Math.max(0, Math.min(10, parseFloat(media) || 0)); // clamp 0..10
+  const percent = (value / 10) * 100;
+
+  let ringColor = "#f43f5e"; // red
+  if (value > 6)
+    ringColor = "#22c55e"; // green
+  else if (value >= 5.75)
+    ringColor = "#facc15"; // yellow
+
+  const container = document.createElement("div");
+  container.classList.add("average-score-container");
+  container.style.setProperty("--p", `${percent}%`);
+  container.style.setProperty("--ring-color", ringColor);
+
+  const label = document.createElement("span");
+  label.classList.add("average-score");
+  label.textContent = value.toFixed(2);
+
+  container.appendChild(label);
+  averageDiv.appendChild(container);
 }
 
 async function handleAuthFail(res) {

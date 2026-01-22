@@ -207,6 +207,9 @@ body {
   background: var(--primary-btn);
   cursor: pointer;
 }
+.materia.selected {
+  background: var(--primary-btn);
+}
 
 .materia-text {
   /* show full text inside the pill; allow wrapping to multiple lines */
@@ -251,6 +254,7 @@ body {
   padding: 0 6px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
+  width: 70%;
 }
 .actual-voti::-webkit-scrollbar {
   width: 10px;
@@ -264,6 +268,48 @@ body {
   width: 0;
   height: 0;
 }
+.average {
+  width: 30%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: clamp(20px, 2.5vw, 28px);
+  font-weight: 700;
+}
+
+.average-score-container {
+  --p: 0%;              /* percent fill (0%..100%) */
+  --ring-color: #22c55e; /* default, overwritten via JS */
+  --track: rgba(255, 255, 255, 0.10);
+
+  width: 110px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+
+  /* conic fill + inner hole (so it's not full background) */
+  background:
+    conic-gradient(var(--ring-color) var(--p), var(--track) 0);
+  position: relative;
+}
+
+.average-score-container::before {
+  content: "";
+  position: absolute;
+  inset: 10px; /* thickness of ring (increase => thinner ring?) */
+  background: var(--surface); /* hole color = card background */
+  border-radius: 50%;
+}
+
+.average-score {
+  position: relative; /* above the ::before */
+  z-index: 1;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
 .voto {
   display: flex;
   align-items: center;
@@ -275,6 +321,9 @@ body {
 }
 .voti-values {
   margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .voti-subject {
   font-weight: 700;
