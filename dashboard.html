@@ -10,9 +10,9 @@
     <div class="navbar">
       <h1 class="title">Spaggiari 2</h1>
       <div class="buttons">
-        <button id="votiBtn">Voti</button>
-        <button id="assenzeBtn">Assenze</button>
-        <button id="logoutBtn">Logout</button>
+        <button id="votiBtn" onclick="goToVoti()">Voti</button>
+        <button id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
+        <button id="logoutBtn" onclick="logout()">Logout</button>
       </div>
     </div>
 
@@ -83,6 +83,42 @@
           </div>
           <div class="voti-viewport">
             <div class="voti-track"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side-row">
+        <div class="media-generale" id="media-generale">
+          <div class="media-generale-header">
+            <h2 class="media-generale-title">Le tue medie</h2>
+            <button
+              id="openVotiPage"
+              class="media-generale-open"
+              aria-label="Apri voti"
+            >
+              ›
+            </button>
+          </div>
+          <div class="media-generale-viewport">
+            <div class="media-generale-value"></div>
+            <div class="media-generale-value-primo"></div>
+            <div class="media-generale-value-secondo"></div>
+          </div>
+        </div>
+
+        <div class="assenze" id="assenze">
+          <div class="assenze-header">
+            <h2 class="assenze-title">Le tue assenze</h2>
+            <button
+              id="openAssenzePage"
+              class="assenze-open"
+              aria-label="Apri assenze"
+            >
+              ›
+            </button>
+          </div>
+          <div class="assenze-viewport">
+            <div class="assenze-value"></div>
           </div>
         </div>
       </div>

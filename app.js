@@ -32,3 +32,9 @@ form.addEventListener("submit", async (e) => {
     msg.textContent = "Errore di rete / backend non raggiungibile";
   }
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (localStorage.getItem("loggedIn") === "true") {
+    window.location.href = "/dashboard.html";
+  }
+});

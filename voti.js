@@ -150,7 +150,7 @@ function renderActualVoti(voti) {
 
 function renderMedia(media) {
   const averageDiv = document.querySelector(".average");
-  averageDiv.innerHTML = "";
+  averageDiv.innerHTML = "<span class=\"average-label\">Media<br>";
 
   const value = Math.max(0, Math.min(10, parseFloat(media) || 0)); // clamp 0..10
   const percent = (value / 10) * 100;
@@ -265,4 +265,18 @@ function openEntryModal(voto) {
   modalCloseBtn?.addEventListener("click", closeModal);
   entryModal.addEventListener("click", onOverlayClick);
   document.addEventListener("keydown", onKey);
+}
+
+function goToHome() {
+  window.location.href = "/dashboard.html";
+}
+
+function goToAssenze() {
+  window.location.href = "/assenze.html";
+}
+
+function logout() {
+  // Clear any authentication tokens or session data here if needed
+  localStorage.removeItem("loggedIn");
+  window.location.href = "/index.html";
 }

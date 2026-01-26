@@ -498,11 +498,20 @@ function renderVoti(data) {
     return dateB.localeCompare(dateA);
   });
 
+  let media = 0;
+  let primaMedia = 0;
+  let secondaMedia = 0;
+
+  let count = 0;
+  let primoCount = 0;
+  let secondoCount = 0;
+
   arr.forEach((v) => {
     console.log("Voto:", v);
     const subject =
       v.subjectDesc || v.materia || v.discipline || v.name || "Materia";
-    let val = v.displayValue || v.grade || v.value || v.voto || null;
+    let displayVal = v.displayValue || v.grade || v.value || v.voto || null;
+    let val = v.decimalValue || null;
 
     if (val === null) return;
 
@@ -516,18 +525,9 @@ function renderVoti(data) {
     // add `entry` class so delegated click listener opens the modal
     item.className = "voti-entry entry";
 
-    const display =
-      num === null
-        ? val !== null
-          ? String(val)
-          : "?"
-        : Number.isInteger(num)
-        ? String(num)
-        : String(num.toFixed(1)).replace(".0", "");
-
     item.innerHTML = `
       <div class="voti-subject subject"></div>
-      <div class="grade-circle">${display}</div>
+      <div class="grade-circle">${displayVal}</div>
     `;
     item.querySelector(".voti-subject").textContent = subject;
     // attach teacher if present so modal can show it
@@ -540,7 +540,28 @@ function renderVoti(data) {
     gradeEl.classList.add(`grade-${v.color}`);
 
     track.appendChild(item);
+
+    if (v.displayValue !== "A") {
+      if (num !== null) {
+        media += num;
+        count += 1;
+
+        if (v.periodPos == 1) {
+          primaMedia += num;
+          primoCount += 1;
+        } else if (v.periodPos == 3) {
+          secondaMedia += num;
+          secondoCount += 1;
+        }
+      }
+    }
   });
+
+  media = count > 0 ? media / count : 0;
+  primaMedia = primoCount > 0 ? primaMedia / primoCount : 0;
+  secondaMedia = secondoCount > 0 ? secondaMedia / secondoCount : 0;
+
+  renderMedia(media, primaMedia, secondaMedia);
 
   if (arr.length === 0) {
     const note = document.createElement("div");
@@ -548,6 +569,52 @@ function renderVoti(data) {
     note.textContent = "Nessun voto disponibile";
     track.appendChild(note);
   }
+}
+
+function renderMedia(media, primaMedia, secondaMedia) {
+  const averageDiv = document.querySelector(".media-generale-value");
+  const firstAverageDiv = document.querySelector(".media-generale-value-primo");
+  const secondAverageDiv = document.querySelector(
+    ".media-generale-value-secondo"
+  );
+  averageDiv.innerHTML = "";
+  firstAverageDiv.innerHTML = "";
+  secondAverageDiv.innerHTML = "";
+
+  averageDiv.appendChild(createMediaContainer(media));
+  firstAverageDiv.appendChild(createMediaContainer(primaMedia));
+  secondAverageDiv.appendChild(createMediaContainer(secondaMedia));
+
+  averageDiv.innerHTML += `<span class="label generale-label">Generale</span>`;
+  firstAverageDiv.innerHTML += `<span class="label primo-periodo-label">Primo Periodo</span>`;
+  secondAverageDiv.innerHTML += `<span class="label secondo-periodo-label">Secondo Periodo</span>`;
+}
+
+function createMediaContainer(media) {
+  // clamp 0..10 and keep as number
+  const value = Math.max(0, Math.min(10, parseFloat(media) || 0));
+  const percent = (value / 10) * 100;
+
+  let ringColor = "#f43f5e"; // red
+  if (value >= 6) ringColor = "#22c55e"; // green
+  else if (value >= 5.75) ringColor = "#facc15"; // yellow
+
+  const container = document.createElement("div");
+  container.classList.add("media-generale-container");
+  container.style.setProperty("--p", `${percent}%`);
+  container.style.setProperty("--ring-color", ringColor);
+
+  const label = document.createElement("span");
+  label.classList.add("actual-media-generale-value");
+  // show up to two decimals but do not round: truncate instead
+  const truncatedVal = Math.trunc(value * 100) / 100;
+  // remove trailing .00 if integer, or show up to 2 decimals
+  label.textContent = Number.isInteger(truncatedVal)
+    ? String(truncatedVal)
+    : String(truncatedVal);
+
+  container.appendChild(label);
+  return container;
 }
 
 document.addEventListener("click", (e) => {
@@ -641,3 +708,17 @@ entryModal?.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeEntryModal();
 });
+
+// --- Navigation buttons ---
+function goToVoti() {
+  window.location.href = "/voti.html";
+}
+
+function goToAssenze() {
+  window.location.href = "/assenze.html";
+}
+
+function logout() {
+  localStorage.removeItem("loggedIn");
+  window.location.href = "/index.html";
+}
