@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderAgenda(agendaData);
 
     // fetch lezioni and voti in parallel and render them
-    const [lezioniData, votiData] = await Promise.all([
+    const [lezioniData, votiData, assenzeData] = await Promise.all([
       fetchLezioni().catch((e) => {
         console.error("lezioni fetch failed", e);
         return null;
@@ -35,9 +35,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.error("voti fetch failed", e);
         return null;
       }),
+      fetchAssenze().catch((e) => {
+        console.error("assenze fetch failed", e);
+        return null;
+      }),
     ]);
     if (lezioniData) renderLezioni(lezioniData);
     if (votiData) renderVoti(votiData);
+    if (assenzeData) renderAssenze(assenzeData);
 
     // wire prev/next buttons
     const nextBtn = document.getElementById("nextWeek");
@@ -58,7 +63,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     function updateSlidesLayout() {
       slidesPerView = getSlidesPerView();
       const giornoEls = Array.from(
-        document.querySelectorAll(".agenda-track .giorno")
+        document.querySelectorAll(".agenda-track .giorno"),
       );
       giornoEls.forEach((el) => {
         el.style.flex = `0 0 ${100 / slidesPerView}%`;
@@ -117,6 +122,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     window.addEventListener("resize", updateSlidesLayout);
+    // also sync media/assenze heights on resize
+    window.addEventListener("resize", syncMediaToAssenze);
     updateSlidesLayout();
 
     // update UI once before hiding overlay
@@ -162,7 +169,7 @@ function getWeekStartDate(offsetWeeks) {
 async function fetchAgendaInterval(
   startYYYYMMDD,
   endYYYYMMDD,
-  { prefetch = false } = {}
+  { prefetch = false } = {},
 ) {
   const cacheKey = `${startYYYYMMDD}-${endYYYYMMDD}`;
   if (agendaCache.has(cacheKey)) return agendaCache.get(cacheKey);
@@ -208,12 +215,12 @@ async function loadAgendaWeek(offsetWeeks) {
     fetchAgendaInterval(
       formatDateYYYYMMDD(prevStartDate),
       formatDateYYYYMMDD(prevEndDate),
-      { prefetch: true }
+      { prefetch: true },
     ).catch(() => {});
     fetchAgendaInterval(
       formatDateYYYYMMDD(nextStartDate),
       formatDateYYYYMMDD(nextEndDate),
-      { prefetch: true }
+      { prefetch: true },
     ).catch(() => {});
   } catch {}
 
@@ -274,7 +281,7 @@ function renderAgenda(agendaData) {
     el.querySelector(".giorno-name").textContent = `${dayLabel} ${dd}/${mm}`;
 
     Array.from(el.querySelectorAll(".entry, .entries-container")).forEach((n) =>
-      n.remove()
+      n.remove(),
     );
 
     const entriesContainer = document.createElement("div");
@@ -322,6 +329,26 @@ function computeEqualHeights() {
   let max = 0;
   giornoEls.forEach((el) => (max = Math.max(max, el.offsetHeight)));
   if (max > 0) giornoEls.forEach((el) => (el.style.height = max + "px"));
+}
+
+// --- Sync heights: make media-generale match assenze height ---
+let __syncMediaTimeout = null;
+function syncMediaToAssenze() {
+  clearTimeout(__syncMediaTimeout);
+  __syncMediaTimeout = setTimeout(() => {
+    const media = document.getElementById("media-generale");
+    const assenze = document.getElementById("assenze");
+    if (!media || !assenze) return;
+
+    // compute target height from assenze (including paddings/borders as offsetHeight)
+    const target = assenze.offsetHeight;
+    if (target && target > 0) {
+      media.style.height = target + "px";
+    } else {
+      // fallback: clear explicit height to allow natural sizing
+      media.style.height = "";
+    }
+  }, 40);
 }
 
 async function goToNextWeek() {
@@ -507,7 +534,6 @@ function renderVoti(data) {
   let secondoCount = 0;
 
   arr.forEach((v) => {
-    console.log("Voto:", v);
     const subject =
       v.subjectDesc || v.materia || v.discipline || v.name || "Materia";
     let displayVal = v.displayValue || v.grade || v.value || v.voto || null;
@@ -575,7 +601,7 @@ function renderMedia(media, primaMedia, secondaMedia) {
   const averageDiv = document.querySelector(".media-generale-value");
   const firstAverageDiv = document.querySelector(".media-generale-value-primo");
   const secondAverageDiv = document.querySelector(
-    ".media-generale-value-secondo"
+    ".media-generale-value-secondo",
   );
   averageDiv.innerHTML = "";
   firstAverageDiv.innerHTML = "";
@@ -588,6 +614,135 @@ function renderMedia(media, primaMedia, secondaMedia) {
   averageDiv.innerHTML += `<span class="label generale-label">Generale</span>`;
   firstAverageDiv.innerHTML += `<span class="label primo-periodo-label">Primo Periodo</span>`;
   secondAverageDiv.innerHTML += `<span class="label secondo-periodo-label">Secondo Periodo</span>`;
+
+  // ensure media panel height stays in sync with assenze panel
+  try {
+    syncMediaToAssenze();
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+// assenze
+async function fetchAssenze() {
+  const res = await fetch("http://localhost:8000/assenze", {
+    method: "POST",
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    await handleAuthFail(res);
+    throw new Error("Failed to fetch assenze");
+  }
+  return await res.json();
+}
+
+function renderAssenze(data) {
+  const container = document.getElementById("assenze");
+  if (!container) return;
+  const track = container.querySelector(".assenze-track");
+  if (!track) return;
+  track.innerHTML = "";
+  let arr = [];
+  arr =
+    data && data.assenze && Array.isArray(data.assenze.events)
+      ? data.assenze.events
+      : Array.isArray(data)
+        ? data
+        : [];
+
+  arr.reverse();
+  console.log(arr);
+
+  arr.forEach((a) => {
+    const date = a.evtDate || a.date || a.data || "Data sconosciuta";
+    const reason =
+      a.justifReasonDesc ||
+      a.motivo ||
+      a.note ||
+      a.reason ||
+      "Motivo sconosciuto";
+
+    // determine badge text and color
+    const code = a.evtCode || a.tipo || "";
+    let badgeText = "?";
+    let gradeClass = "grade-red";
+
+    switch (code) {
+      case "ABU0":
+        badgeText = "U"; // Uscita
+        gradeClass = "grade-orange";
+        break;
+      case "ABA0":
+        badgeText = "A"; // Assenza
+        gradeClass = "grade-red";
+        break;
+      case "ABR0":
+      case "ABR1":
+        badgeText = "R"; // Ritardo
+        gradeClass = "grade-yellow";
+        break;
+      default:
+        // try to infer from other fields
+        if ((a.justifType || "").toLowerCase().includes("usc")) {
+          badgeText = "U";
+          gradeClass = "grade-orange";
+        } else if ((a.justifType || "").toLowerCase().includes("rit")) {
+          badgeText = "R";
+          gradeClass = "grade-yellow";
+        } else if ((a.justifType || "").toLowerCase().includes("ass")) {
+          badgeText = "A";
+          gradeClass = "grade-red";
+        }
+        break;
+    }
+
+    const item = document.createElement("div");
+    // do NOT add the generic `entry` class so clicking doesn't open modal
+    item.className = "assenze-entry";
+
+    // determine if the absence is explicitly marked as justified
+    const justVal = a.isJustified ?? a.justified ?? a.giustificato ?? a.giust;
+    let isExplicitlyUnjustified = false;
+    if (justVal === false || String(justVal).toLowerCase() === "false") {
+      isExplicitlyUnjustified = true;
+    }
+
+    // optional warning triangle (SVG) shown when explicitly not justified
+    const warningHtml = isExplicitlyUnjustified
+      ? `<span class="assenza-warning" title="Non giustificato" aria-label="Non giustificato">
+           <svg viewBox="0 0 24 24" width="18" height="18" role="img" aria-hidden="false"><title>Non giustificato</title><path fill="currentColor" d="M1 21h22L12 2 1 21z"/></svg>
+         </span>`
+      : "";
+
+    item.innerHTML = `
+      <div class="assenza-subject">
+        <div class="assenza-date date">${date}</div>
+        <div class="assenza-reason reason">${reason}</div>
+      </div>
+      <div class="assenza-badge">
+        ${warningHtml}
+        <div class="grade-circle">${badgeText}</div>
+      </div>
+    `;
+
+    const badge = item.querySelector(".grade-circle");
+    if (badge) badge.classList.add(gradeClass.replace(/^grade-/, "grade-"));
+
+    track.appendChild(item);
+  });
+
+  if (arr.length === 0) {
+    const note = document.createElement("div");
+    note.className = "empty-note";
+    note.textContent = "Nessuna assenza registrata";
+    track.appendChild(note);
+  }
+
+  // sync heights (do after DOM changes)
+  try {
+    syncMediaToAssenze();
+  } catch (e) {}
 }
 
 function createMediaContainer(media) {
@@ -596,7 +751,8 @@ function createMediaContainer(media) {
   const percent = (value / 10) * 100;
 
   let ringColor = "#f43f5e"; // red
-  if (value >= 6) ringColor = "#22c55e"; // green
+  if (value >= 6)
+    ringColor = "#22c55e"; // green
   else if (value >= 5.75) ringColor = "#facc15"; // yellow
 
   const container = document.createElement("div");
@@ -669,7 +825,7 @@ function openEntryModal(subject, text, teacher) {
           ">": "&gt;",
           '"': "&quot;",
           "'": "&#39;",
-        }[c])
+        })[c],
     );
 
   modalText.innerHTML = escapeHTML(fullText).replace(/\n/g, "<br>");

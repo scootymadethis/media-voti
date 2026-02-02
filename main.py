@@ -100,7 +100,6 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
         try:
             url_template = RequestURLs.agenda[0]
             formatted_url = url_template.format(user_ident, start, end)
-            print("Formatted agenda URL:", formatted_url)
         except Exception as e:
             print("Error formatting agenda URL:", e)
             formatted_url = None
@@ -109,10 +108,9 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
         try:
             resp = u.request(RequestURLs.agenda, start, end)
             if hasattr(resp, "status_code"):
-                print("u.request returned status:", resp.status_code)
                 if resp.status_code >= 400:
-                    print("u.request response text:", getattr(resp, "text", None))
                     # fall through to manual request to capture full response
+                    print(f"u.request returned status {resp.status_code}, falling back to direct request")
                 else:
                     try:
                         agenda = resp.json()
@@ -137,8 +135,6 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
                 except Exception:
                     pass
                 upstream = requests.get(formatted_url, headers=headers, timeout=20)
-                print("Upstream status:", upstream.status_code)
-                print("Upstream body (truncated):", (upstream.text or '')[:2000])
                 if upstream.status_code >= 400:
                     raise HTTPException(status_code=502, detail=f"Upstream returned {upstream.status_code}")
                 try:
