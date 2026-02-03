@@ -10,7 +10,7 @@ form.addEventListener("submit", async (e) => {
   msg.textContent = "Login in corso...";
 
   try {
-    const res = await fetch("http://localhost:8000/login", {
+    const res = await fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include", // IMPORTANTISSIMO: prende il cookie

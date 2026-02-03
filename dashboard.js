@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function fetchCard() {
-  const res = await fetch("http://localhost:8000/card", {
+  const res = await fetch("/api/card", {
     method: "POST",
     credentials: "include",
   });
@@ -174,7 +174,7 @@ async function fetchAgendaInterval(
   const cacheKey = `${startYYYYMMDD}-${endYYYYMMDD}`;
   if (agendaCache.has(cacheKey)) return agendaCache.get(cacheKey);
 
-  const res = await fetch("http://localhost:8000/agenda", {
+  const res = await fetch("/api/agenda", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -402,7 +402,7 @@ function toTitleCase(str, locale = "it") {
 
 // --- Lezioni ---
 async function fetchLezioni() {
-  const res = await fetch("http://localhost:8000/lezioni_oggi", {
+  const res = await fetch("/api/lezioni_oggi", {
     method: "POST",
     credentials: "include",
   });
@@ -481,7 +481,7 @@ function renderLezioni(data) {
 
 // --- Voti ---
 async function fetchVoti() {
-  const res = await fetch("http://localhost:8000/voti", {
+  const res = await fetch("/api/voti", {
     method: "POST",
     credentials: "include",
   });
@@ -625,7 +625,7 @@ function renderMedia(media, primaMedia, secondaMedia) {
 
 // assenze
 async function fetchAssenze() {
-  const res = await fetch("http://localhost:8000/assenze", {
+  const res = await fetch("/api/assenze", {
     method: "POST",
     credentials: "include",
   });

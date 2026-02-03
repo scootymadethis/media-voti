@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // --- Voti ---
 async function fetchVoti() {
-  const res = await fetch("http://localhost:8000/voti", {
+  const res = await fetch("/api/voti", {
     method: "POST",
     credentials: "include",
   });
@@ -126,7 +126,7 @@ function renderActualVoti(voti) {
   let votiLength = voti.length;
 
   voti.forEach((voto) => {
-    if(voto.displayValue == "A") votiLength -= 1;
+    if (voto.displayValue == "A") votiLength -= 1;
 
     let votoDiv = document.createElement("div");
     votoDiv.classList.add("voto");
@@ -134,7 +134,7 @@ function renderActualVoti(voti) {
     <div class="voto-score grade-${voto.color}">${voto.displayValue}</div>
     <div class="voto-desc">${voto.notesForFamily}</div>
     <div class="voto-date">${new Date(voto.evtDate).toLocaleDateString(
-      "it-IT"
+      "it-IT",
     )}</div>
     `;
     votoDiv.onclick = () => {
@@ -150,7 +150,7 @@ function renderActualVoti(voti) {
 
 function renderMedia(media) {
   const averageDiv = document.querySelector(".average");
-  averageDiv.innerHTML = "<span class=\"average-label\">Media<br>";
+  averageDiv.innerHTML = '<span class="average-label">Media<br>';
 
   const value = Math.max(0, Math.min(10, parseFloat(media) || 0)); // clamp 0..10
   const percent = (value / 10) * 100;
@@ -158,8 +158,7 @@ function renderMedia(media) {
   let ringColor = "#f43f5e"; // red
   if (value > 6)
     ringColor = "#22c55e"; // green
-  else if (value >= 5.75)
-    ringColor = "#facc15"; // yellow
+  else if (value >= 5.75) ringColor = "#facc15"; // yellow
 
   const container = document.createElement("div");
   container.classList.add("average-score-container");
