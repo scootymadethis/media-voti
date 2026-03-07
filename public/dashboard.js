@@ -5,6 +5,7 @@ const agendaCache = new Map();
 let currentWeekOffset = 0;
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initMobileMenu();
   const loading = document.getElementById("loading-overlay");
   if (loading) loading.classList.remove("hidden");
 
@@ -65,8 +66,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       const giornoEls = Array.from(
         document.querySelectorAll(".agenda-track .giorno"),
       );
+      const viewport = document.querySelector(".agenda-viewport");
+      const gap = parseFloat(getComputedStyle(track).gap || "0") || 0;
+      const viewportWidth = viewport?.clientWidth || track?.clientWidth || 0;
+      const cardWidth =
+        slidesPerView > 0
+          ? (viewportWidth - gap * (slidesPerView - 1)) / slidesPerView
+          : viewportWidth;
+
       giornoEls.forEach((el) => {
-        el.style.flex = `0 0 ${100 / slidesPerView}%`;
+        el.style.flex = `0 0 ${Math.max(cardWidth, 0)}px`;
       });
 
       const maxIndex = Math.max(0, giornoEls.length - slidesPerView);
@@ -76,8 +85,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     function updateTrackPosition() {
       if (!track) return;
-      const shift = (currentSlideIndex * 100) / slidesPerView;
-      track.style.transform = `translateX(-${shift}%)`;
+      const firstCard = track.querySelector(".giorno");
+      const gap = parseFloat(getComputedStyle(track).gap || "0") || 0;
+      const cardWidth = firstCard?.getBoundingClientRect().width || 0;
+      const shift = currentSlideIndex * (cardWidth + gap);
+      track.style.transform = `translateX(-${shift}px)`;
       computeEqualHeights();
     }
 
@@ -85,7 +97,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const giornoEls = document.querySelectorAll(".agenda-track .giorno");
       const maxIndex = Math.max(0, giornoEls.length - slidesPerView);
 
-      if (slidesPerView < giornoEls.length) {
+      if (slidesPerView < giornoEls.length && currentSlideIndex < maxIndex) {
         currentSlideIndex = Math.min(maxIndex, currentSlideIndex + 1);
         updateTrackPosition();
         return;
@@ -94,13 +106,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       const data = await goToNextWeek();
       renderAgenda(data);
       currentSlideIndex = 0;
-      updateTrackPosition();
+      updateSlidesLayout();
     }
 
     async function handlePrev() {
       const giornoEls = document.querySelectorAll(".agenda-track .giorno");
+      const maxIndex = Math.max(0, giornoEls.length - slidesPerView);
 
-      if (slidesPerView < giornoEls.length) {
+      if (slidesPerView < giornoEls.length && currentSlideIndex > 0) {
         currentSlideIndex = Math.max(0, currentSlideIndex - 1);
         updateTrackPosition();
         return;
@@ -108,7 +121,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const data = await goToPrevWeek();
       renderAgenda(data);
-      currentSlideIndex = 0;
+      currentSlideIndex = Math.max(0, maxIndex);
+      updateSlidesLayout();
+      const newMaxIndex = Math.max(
+        0,
+        document.querySelectorAll(".agenda-track .giorno").length - slidesPerView,
+      );
+      currentSlideIndex = newMaxIndex;
       updateTrackPosition();
     }
 
@@ -340,6 +359,12 @@ function syncMediaToAssenze() {
     const assenze = document.getElementById("assenze");
     if (!media || !assenze) return;
 
+    // On mobile keep natural height so the averages never get clipped.
+    if (window.innerWidth <= 700) {
+      media.style.height = "";
+      return;
+    }
+
     // compute target height from assenze (including paddings/borders as offsetHeight)
     const target = assenze.offsetHeight;
     if (target && target > 0) {
@@ -567,7 +592,7 @@ function renderVoti(data) {
 
     track.appendChild(item);
 
-    if (v.displayValue !== "A") {
+    if (v.displayValue !== "A" && !subject.includes("RELIGIONE")) {
       if (num !== null) {
         media += num;
         count += 1;
@@ -652,8 +677,6 @@ function renderAssenze(data) {
         : [];
 
   arr.reverse();
-  console.log(arr);
-
   arr.forEach((a) => {
     const date = a.evtDate || a.date || a.data || "Data sconosciuta";
     const reason =
@@ -877,4 +900,37 @@ function goToAssenze() {
 function logout() {
   localStorage.removeItem("loggedIn");
   window.location.href = "/index.html";
+}
+
+
+function initMobileMenu() {
+  const toggle = document.getElementById("navToggle");
+  const drawer = document.getElementById("mobileNavDrawer");
+  const backdrop = document.getElementById("mobileNavBackdrop");
+  const closeBtn = document.getElementById("navDrawerClose");
+  if (!toggle || !drawer || !backdrop) return;
+
+  const openMenu = () => {
+    drawer.classList.add("open");
+    backdrop.classList.add("open");
+    document.body.classList.add("menu-open");
+    toggle.classList.add("is-open");
+    toggle.setAttribute("aria-expanded", "true");
+    drawer.setAttribute("aria-hidden", "false");
+  };
+
+  const closeMenu = () => {
+    drawer.classList.remove("open");
+    backdrop.classList.remove("open");
+    document.body.classList.remove("menu-open");
+    toggle.classList.remove("is-open");
+    toggle.setAttribute("aria-expanded", "false");
+    drawer.setAttribute("aria-hidden", "true");
+  };
+
+  toggle.addEventListener("click", () => drawer.classList.contains("open") ? closeMenu() : openMenu());
+  backdrop.addEventListener("click", closeMenu);
+  closeBtn?.addEventListener("click", closeMenu);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
+  drawer.querySelectorAll("button").forEach((btn) => btn.addEventListener("click", closeMenu));
 }

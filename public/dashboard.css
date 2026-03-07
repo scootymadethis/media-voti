@@ -1,0 +1,641 @@
+.main {
+  position: relative;
+}
+
+.greeting {
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin: 10px 0 0;
+  line-height: 1.15;
+}
+
+.time,
+.date {
+  color: var(--secondary);
+  font-size: clamp(1rem, 2vw, 1.1rem);
+}
+
+.time {
+  margin-top: 8px;
+}
+
+.date {
+  display: block;
+  margin-top: 4px;
+  text-align: left;
+}
+
+.agenda,
+.lezioni,
+.voti,
+.media-generale,
+.assenze {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.agenda {
+  margin-top: 24px;
+  padding: 22px;
+}
+
+.agenda-header,
+.lezioni-header,
+.voti-header,
+.media-generale-header,
+.assenze-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.agenda-title,
+.lezioni-title,
+.voti-title,
+.media-generale-title,
+.assenze-title {
+  font-size: clamp(1.25rem, 3vw, 1.65rem);
+}
+
+.agenda-controls {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.agenda-arrow,
+.voti-open,
+.media-generale-open,
+.assenze-open {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--primary);
+  flex: 0 0 auto;
+}
+
+.agenda-viewport,
+.lezioni-viewport,
+.voti-viewport,
+.media-generale-viewport,
+.assenze-viewport {
+  overflow: hidden;
+}
+
+.agenda-track {
+  display: flex;
+  gap: 14px;
+  transition: transform 320ms ease;
+  align-items: stretch;
+}
+
+.giorno {
+  background: var(--surface-alt);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.giorno-name {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.entries-container,
+.lezioni-track,
+.voti-track,
+.assenze-track {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.entry,
+.assenze-entry {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.entry {
+  cursor: pointer;
+}
+
+.entry:hover {
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.subject,
+.voti-subject,
+.assenza-date {
+  font-weight: 700;
+}
+
+.teacher,
+.text,
+.reason,
+.empty-note,
+.label,
+.date {
+  color: var(--secondary);
+}
+
+.teacher {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.92rem;
+}
+
+.text {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.side-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.lezioni,
+.voti,
+.media-generale,
+.assenze {
+  padding: 20px;
+}
+
+.lezioni-track,
+.voti-track,
+.assenze-track {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.voti-entry,
+.assenze-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.grade-circle {
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #111;
+}
+
+.grade-green { background: var(--success); }
+.grade-yellow { background: var(--warning); }
+.grade-red { background: var(--error); }
+.grade-blue { background: var(--info); }
+.grade-orange { background: #fb923c; }
+
+.media-generale-viewport {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.media-generale-value,
+.media-generale-value-primo,
+.media-generale-value-secondo {
+  min-height: 220px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+}
+
+.media-generale-container {
+  --p: 0%;
+  --ring-color: var(--error);
+  width: min(150px, 100%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle closest-side, var(--surface-alt) 72%, transparent 73%),
+    conic-gradient(var(--ring-color) var(--p), rgba(255,255,255,0.08) 0);
+}
+
+.actual-media-generale-value {
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  font-weight: 800;
+}
+
+.assenza-subject {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.assenza-reason {
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+
+.assenza-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.assenza-warning {
+  color: var(--warning);
+  display: inline-flex;
+}
+
+@media (max-width: 1100px) {
+  .side-row {
+    grid-template-columns: 1fr;
+  }
+
+  .media-generale-viewport {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .agenda,
+  .lezioni,
+  .voti,
+  .media-generale,
+  .assenze {
+    padding: 16px;
+  }
+
+  .media-generale-viewport {
+    grid-template-columns: 1fr;
+  }
+
+  .media-generale-value,
+  .media-generale-value-primo,
+  .media-generale-value-secondo {
+    min-height: 180px;
+  }
+}
+
+@media (max-width: 520px) {
+  .agenda-header,
+  .lezioni-header,
+  .voti-header,
+  .media-generale-header,
+  .assenze-header {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .voti-entry,
+  .assenze-entry {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .agenda-controls,
+  .assenza-badge {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .grade-circle {
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+  }
+}
+
+
+@media (max-width: 1100px) {
+  .media-generale-viewport {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .greeting {
+    font-size: clamp(1.75rem, 7vw, 2.35rem);
+    margin-top: 14px;
+    margin-bottom: 0;
+  }
+
+  .time {
+    margin-top: 12px;
+  }
+
+  .date {
+    margin-top: 6px;
+  }
+
+  .agenda,
+  .lezioni,
+  .voti,
+  .media-generale,
+  .assenze {
+    padding: 16px;
+  }
+
+  .agenda-header,
+  .lezioni-header,
+  .voti-header,
+  .media-generale-header,
+  .assenze-header {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .agenda-title,
+  .lezioni-title,
+  .voti-title,
+  .media-generale-title,
+  .assenze-title {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .giorno {
+    padding: 14px;
+  }
+
+  .entry,
+  .assenze-entry,
+  .voti-entry {
+    padding: 12px;
+  }
+
+  .media-generale-viewport {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'general general'
+      'first second';
+    gap: 10px;
+  }
+
+  .media-generale-value {
+    grid-area: general;
+  }
+
+  .media-generale-value-primo {
+    grid-area: first;
+  }
+
+  .media-generale-value-secondo {
+    grid-area: second;
+  }
+
+  .media-generale-value,
+  .media-generale-value-primo,
+  .media-generale-value-secondo {
+    min-height: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .agenda {
+    padding: 14px;
+  }
+
+  .agenda-title,
+  .lezioni-title,
+  .voti-title,
+  .media-generale-title,
+  .assenze-title {
+    font-size: 1.24rem;
+    line-height: 1.15;
+  }
+
+  .agenda-arrow,
+  .voti-open,
+  .media-generale-open,
+  .assenze-open {
+    width: 38px;
+    height: 38px;
+  }
+
+  .giorno {
+    border-radius: 16px;
+    padding: 12px;
+  }
+
+  .giorno-name {
+    font-size: 0.95rem;
+  }
+
+  .subject,
+  .voti-subject,
+  .assenza-date {
+    font-size: 0.95rem;
+  }
+
+  .teacher,
+  .text,
+  .reason,
+  .empty-note,
+  .label,
+  .date,
+  .assenza-reason {
+    font-size: 0.88rem;
+  }
+
+  .grade-circle {
+    width: 46px;
+    min-width: 46px;
+    height: 46px;
+  }
+
+  .voti-entry,
+  .assenze-entry {
+    align-items: center;
+  }
+
+  .media-generale-viewport {
+    gap: 8px;
+  }
+
+  .media-generale-value,
+  .media-generale-value-primo,
+  .media-generale-value-secondo {
+    min-height: 126px;
+    padding: 10px 8px;
+    gap: 8px;
+  }
+
+  .media-generale-container {
+    width: min(84px, 100%);
+  }
+
+  .actual-media-generale-value {
+    font-size: 1rem;
+  }
+}
+
+
+/* Mobile refinements */
+@media (max-width: 640px) {
+  .agenda-title,
+  .lezioni-title,
+  .voti-title,
+  .media-generale-title,
+  .assenze-title {
+    font-size: 1.32rem;
+  }
+
+  .media-generale-value,
+  .media-generale-value-primo,
+  .media-generale-value-secondo {
+    border-radius: 14px;
+  }
+
+  .label {
+    font-size: 0.8rem;
+    text-align: center;
+  }
+
+  .assenza-date {
+    text-align: left;
+  }
+}
+
+@media (max-width: 420px) {
+  .greeting {
+    font-size: clamp(1.6rem, 8vw, 2.1rem);
+  }
+
+  .time,
+  .date {
+    font-size: 0.96rem;
+  }
+
+  .agenda-title,
+  .lezioni-title,
+  .voti-title,
+  .media-generale-title,
+  .assenze-title {
+    font-size: 1.22rem;
+  }
+
+  .media-generale-viewport {
+    gap: 6px;
+  }
+
+  .media-generale-value,
+  .media-generale-value-primo,
+  .media-generale-value-secondo {
+    min-height: 118px;
+    padding: 8px 6px;
+    gap: 6px;
+  }
+
+  .media-generale-container {
+    width: min(74px, 100%);
+  }
+
+  .actual-media-generale-value {
+    font-size: 0.92rem;
+  }
+
+  .agenda-arrow,
+  .voti-open,
+  .media-generale-open,
+  .assenze-open {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+
+@media (max-width: 700px) {
+  .media-generale {
+    height: auto !important;
+  }
+
+  .media-generale-viewport {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "general general"
+      "first second";
+    gap: 10px;
+    align-items: start;
+  }
+
+  .media-generale-value,
+  .media-generale-value-primo,
+  .media-generale-value-secondo {
+    min-height: 0;
+    padding: 12px 8px;
+    gap: 8px;
+  }
+
+  .media-generale-value {
+    grid-area: general;
+  }
+
+  .media-generale-value-primo {
+    grid-area: first;
+  }
+
+  .media-generale-value-secondo {
+    grid-area: second;
+  }
+
+  .media-generale-container {
+    width: min(116px, 100%);
+  }
+
+  .actual-media-generale-value {
+    font-size: 1.65rem;
+  }
+
+  .label {
+    font-size: 0.88rem;
+    line-height: 1.2;
+  }
+}
+
+@media (max-width: 480px) {
+  .media-generale-viewport {
+    gap: 8px;
+  }
+
+  .media-generale-value,
+  .media-generale-value-primo,
+  .media-generale-value-secondo {
+    padding: 10px 6px;
+    gap: 6px;
+  }
+
+  .media-generale-container {
+    width: min(96px, 100%);
+  }
+
+  .actual-media-generale-value {
+    font-size: 1.35rem;
+  }
+
+  .label {
+    font-size: 0.8rem;
+  }
+}

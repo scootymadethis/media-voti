@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from ClasseVivaAPI import Utente, RequestURLs
 import time, secrets
 from typing import Optional
-import traceback
 import requests
 
 app = FastAPI()
@@ -12,9 +11,6 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5500",
-        "http://127.0.0.1:5500",
-        "http://192.168.1.62:5500",
         "https://spaggiari2.federicoscutariu.it",
     ],
     allow_credentials=True,
@@ -33,7 +29,6 @@ class AgendaBody(BaseModel):
 # ---- session store in memoria ----
 SESSION_TTL = 60 * 30  # 30 minuti
 sessions: dict[str, dict] = {}
-# sessions[session_id] = {"user": Utente, "expires": timestamp}
 
 def create_session(u: Utente) -> str:
     sid = secrets.token_urlsafe(32)
@@ -57,22 +52,31 @@ def current_user(request: Request, session_id: Optional[str] = Cookie(default=No
     return get_session_user(session_id)
 
 # ---- LOGIN UNA VOLTA ----
+def create_session(u: Utente, pwd: str) -> str:
+    sid = secrets.token_urlsafe(32)
+    sessions[sid] = {
+        "user": u, 
+        "password": pwd, # salva password temporaneamente per mantenere la session
+        "expires": time.time() + SESSION_TTL
+    }
+    return sid
+
 @app.post("/login")
 def login(body: LoginBody, response: Response):
     try:
         u = Utente(uid=body.username, pwd=body.password)
         u.login()
 
-        sid = create_session(u)
+        # Passiamo anche la password alla sessione
+        sid = create_session(u, body.password)
 
         response.set_cookie(
             key="session_id",
             value=sid,
             httponly=True,
-            samesite="none",
+            samesite="lax",
             secure=True
         )
-
         return {"ok": True, "user": body.username}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
@@ -96,21 +100,21 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
         if not user_ident:
             raise HTTPException(status_code=500, detail="Impossibile determinare ident utente")
 
-        # build the formatted URL for debugging
+        # formattazione url per debug
         try:
             url_template = RequestURLs.agenda[0]
             formatted_url = url_template.format(user_ident, start, end)
         except Exception as e:
-            print("Error formatting agenda URL:", e)
+            print("Errore nella formattazione url agenda:", e)
             formatted_url = None
 
-        # try the library call first
+        # prova call alla library
         try:
             resp = u.request(RequestURLs.agenda, start, end)
             if hasattr(resp, "status_code"):
                 if resp.status_code >= 400:
-                    # fall through to manual request to capture full response
-                    print(f"u.request returned status {resp.status_code}, falling back to direct request")
+                    # fallback alla richiesta manuale in caso non funzioni la library
+                    print(f"u.request returna status {resp.status_code}, fallback alla richiesta manuale")
                 else:
                     try:
                         agenda = resp.json()
@@ -124,7 +128,7 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
                     agenda = resp
                 return {"ok": True, "agenda": agenda}
         except Exception as lib_exc:
-            print("u.request raised:", repr(lib_exc))
+            print("u.request error:", repr(lib_exc))
 
         # fallback: call upstream directly to inspect response
         if formatted_url:
@@ -136,7 +140,7 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
                     pass
                 upstream = requests.get(formatted_url, headers=headers, timeout=20)
                 if upstream.status_code >= 400:
-                    raise HTTPException(status_code=502, detail=f"Upstream returned {upstream.status_code}")
+                    raise HTTPException(status_code=502, detail=f"Risultato upstream: {upstream.status_code}")
                 try:
                     data = upstream.json()
                 except Exception:
@@ -145,10 +149,10 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
             except HTTPException:
                 raise
             except Exception as e:
-                print("Direct upstream request failed:", repr(e))
-                raise HTTPException(status_code=502, detail="Upstream unreachable or returned error; see server logs")
+                print("Richiesta diretta upstream ha failato:", repr(e))
+                raise HTTPException(status_code=502, detail="Upstream non raggiungibile, fai un check ai log")
         else:
-            raise HTTPException(status_code=502, detail="Could not format upstream URL for agenda")
+            raise HTTPException(status_code=502, detail="Formattazione upstream url agenda fallita")
 
     except HTTPException:
         raise
@@ -180,11 +184,24 @@ def calendario(u: Utente = Depends(current_user)):
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
     
+
+# TODO: rendere funzionante lo store della sessione per mantenere il login fino ad un certo timeout
 @app.post("/card")
-def card(u: Utente = Depends(current_user)):
+def card(request: Request, u: Utente = Depends(current_user)):
     try:
-        card = u.request(RequestURLs.card).json()
-        return {"ok": True, "card": card}
+        card_res = u.request(RequestURLs.card).json()
+        
+        try:
+            sid = request.cookies.get("session_id")
+            if sid in sessions:
+                password = sessions[sid].get("password")
+                
+                if password:
+                    sessions[sid]["password"] = None
+        except Exception as log_err:
+            print(f"Errore durante la ricezione della risposta: {log_err}")
+
+        return {"ok": True, "card": card_res}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
     
