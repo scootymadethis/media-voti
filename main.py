@@ -11,9 +11,6 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5500",
-        "http://127.0.0.1:5500",
-        "http://192.168.1.62:5500",
         "https://spaggiari2.federicoscutariu.it",
     ],
     allow_credentials=True,
@@ -106,7 +103,7 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
             url_template = RequestURLs.agenda[0]
             formatted_url = url_template.format(user_ident, start, end)
         except Exception as e:
-            print("Error formatting agenda URL:", e)
+            print("Errore nella formattazione url agenda:", e)
             formatted_url = None
 
         try:
@@ -127,7 +124,7 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
                     agenda = resp
                 return {"ok": True, "agenda": agenda}
         except Exception as lib_exc:
-            print("u.request raised:", repr(lib_exc))
+            print("u.request error:", repr(lib_exc))
 
         if formatted_url:
             try:
@@ -138,7 +135,7 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
                     pass
                 upstream = requests.get(formatted_url, headers=headers, timeout=20)
                 if upstream.status_code >= 400:
-                    raise HTTPException(status_code=502, detail=f"Upstream returned {upstream.status_code}")
+                    raise HTTPException(status_code=502, detail=f"Risultato upstream: {upstream.status_code}")
                 try:
                     data = upstream.json()
                 except Exception:
@@ -147,10 +144,10 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
             except HTTPException:
                 raise
             except Exception as e:
-                print("Direct upstream request failed:", repr(e))
-                raise HTTPException(status_code=502, detail="Upstream unreachable or returned error; see server logs")
+                print("Richiesta diretta upstream ha failato:", repr(e))
+                raise HTTPException(status_code=502, detail="Upstream non raggiungibile, fai un check ai log")
         else:
-            raise HTTPException(status_code=502, detail="Could not format upstream URL for agenda")
+            raise HTTPException(status_code=502, detail="Formattazione upstream url agenda fallita")
 
     except HTTPException:
         raise
@@ -182,6 +179,8 @@ def calendario(u: Utente = Depends(current_user)):
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
     
+
+# TODO: rendere funzionante lo store della sessione per mantenere il login fino ad un certo timeout
 @app.post("/card")
 def card(request: Request, u: Utente = Depends(current_user)):
     try:
