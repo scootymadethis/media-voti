@@ -1,0 +1,329 @@
+.main {
+  position: relative;
+}
+
+.voti-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 18px;
+  margin-bottom: 18px;
+  align-items: stretch;
+}
+
+.voti-kicker {
+  display: inline-flex;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.12);
+  color: #fca5a5;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.voti-title {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  margin-bottom: 8px;
+}
+
+.voti-subtitle {
+  color: var(--secondary);
+  max-width: 720px;
+}
+
+.voti,
+.actual-voti,
+.average,
+.control-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.voti {
+  padding: 24px;
+}
+
+.voti-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.voti-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 18px;
+}
+
+.control-card {
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent), var(--surface-alt);
+}
+
+.control-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.control-card-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.control-eyebrow {
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--secondary);
+}
+
+.subject-select-wrap {
+  position: relative;
+  display: block;
+}
+
+.subject-select {
+  width: 100%;
+  min-height: 58px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  padding: 0 54px 0 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  color-scheme: dark;
+}
+
+.subject-select:focus,
+.subject-select:hover {
+  border-color: rgba(220, 38, 38, 0.5);
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.subject-select-icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--secondary);
+  font-size: 1.2rem;
+}
+
+.subject-select option {
+  background-color: #1a1a1a; /* O var(--surface-alt) se definita */
+  color: white;
+  padding: 10px;
+}
+
+.voti-periodo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.periodo {
+  min-height: 52px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: background-color 0.2s ease, transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  flex: 1 1 180px;
+}
+
+.periodo:hover,
+.periodo.selected {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  border-color: transparent;
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(220, 38, 38, 0.18);
+}
+
+.periodo-text {
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.voti-values {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.85fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.actual-voti,
+.average {
+  background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent), var(--surface-alt);
+  border-radius: 20px;
+  padding: 16px;
+}
+
+.actual-voti {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 260px;
+  max-height: 62vh;
+  overflow-y: auto;
+}
+
+.voto {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.voto:hover {
+  transform: translateY(-2px);
+  border-color: rgba(220, 38, 38, 0.45);
+  background: rgba(255,255,255,0.045);
+}
+
+.voto-score {
+  min-height: 56px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #111;
+}
+
+.grade-green { background: var(--success); }
+.grade-yellow { background: var(--warning); }
+.grade-red { background: var(--error); }
+.grade-blue { background: var(--info); }
+.grade-orange { background: #fb923c; }
+
+.voto-meta {
+  min-width: 0;
+}
+
+.voto-desc {
+  min-width: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voto-date {
+  color: var(--secondary);
+  font-size: 0.92rem;
+  text-align: right;
+}
+
+.average {
+  position: sticky;
+  top: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 100%;
+}
+
+.average-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--secondary);
+  text-align: center;
+}
+
+.average-score-container {
+  --p: 0%;
+  --ring-color: var(--error);
+  width: min(220px, 100%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle closest-side, var(--surface) 72%, transparent 73%),
+    conic-gradient(var(--ring-color) var(--p), rgba(255,255,255,0.08) 0);
+}
+
+.average-score {
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-weight: 800;
+}
+
+.empty-voti {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px dashed rgba(255,255,255,0.12);
+  color: var(--secondary);
+  text-align: center;
+}
+
+@media (max-width: 1100px) {
+  .voti-hero,
+  .voti-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .voti-values {
+    grid-template-columns: 1fr;
+  }
+
+  .average {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (max-width: 700px) {
+  .voti {
+    padding: 16px;
+  }
+
+  .control-card {
+    padding: 16px;
+  }
+
+  .subject-select {
+    min-height: 54px;
+    font-size: 0.98rem;
+  }
+
+  .voto {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .voto-date {
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .actual-voti {
+    min-height: 220px;
+    max-height: none;
+  }
+}

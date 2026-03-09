@@ -1,0 +1,102 @@
+body {
+  display: grid;
+  place-items: center;
+  padding: 32px 16px 140px;
+}
+
+.auth-page {
+  width: 100%;
+}
+
+.title {
+  font-size: clamp(2.5rem, 8vw, 5.4rem);
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.login {
+  width: min(460px, 100%);
+  margin: 0 auto;
+  padding: 28px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: var(--shadow);
+}
+
+.login-text {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  text-align: center;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.username,
+.password {
+  width: 100%;
+  min-height: 52px;
+  padding: 0.95rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--primary);
+  outline: none;
+}
+
+.username::placeholder,
+.password::placeholder {
+  color: var(--secondary);
+}
+
+.username:focus,
+.password:focus {
+  border-color: rgba(220, 38, 38, 0.65);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18);
+}
+
+.login-btn {
+  width: 100%;
+  min-height: 52px;
+}
+
+#loginMsg {
+  min-height: 1.4em;
+  text-align: center;
+  color: var(--secondary);
+}
+
+@media (max-width: 480px) {
+  body {
+    padding-top: 20px;
+  }
+
+  .title {
+    margin-bottom: 20px;
+  }
+
+  .login {
+    padding: 18px 14px;
+    gap: 16px;
+  }
+
+  .username,
+  .password {
+    min-height: 48px;
+    padding: 0.85rem 0.95rem;
+  }
+
+  .login-btn {
+    width: min(190px, 100%);
+    min-height: 44px;
+    margin: 0 auto;
+    padding: 0.72rem 1rem;
+    font-size: 0.95rem;
+  }
+}

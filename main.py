@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from ClasseVivaAPI import Utente, RequestURLs
 import time, secrets
 from typing import Optional
-import traceback
 import requests
 
 app = FastAPI()
@@ -33,7 +32,6 @@ class AgendaBody(BaseModel):
 # ---- session store in memoria ----
 SESSION_TTL = 60 * 30  # 30 minuti
 sessions: dict[str, dict] = {}
-# sessions[session_id] = {"user": Utente, "expires": timestamp}
 
 def create_session(u: Utente) -> str:
     sid = secrets.token_urlsafe(32)
@@ -57,22 +55,30 @@ def current_user(request: Request, session_id: Optional[str] = Cookie(default=No
     return get_session_user(session_id)
 
 # ---- LOGIN UNA VOLTA ----
+def create_session(u: Utente, pwd: str) -> str:
+    sid = secrets.token_urlsafe(32)
+    sessions[sid] = {
+        "user": u, 
+        "password": pwd, # TEMP
+        "expires": time.time() + SESSION_TTL
+    }
+    return sid
+
 @app.post("/login")
 def login(body: LoginBody, response: Response):
     try:
         u = Utente(uid=body.username, pwd=body.password)
         u.login()
 
-        sid = create_session(u)
+        sid = create_session(u, body.password)
 
         response.set_cookie(
             key="session_id",
             value=sid,
             httponly=True,
-            samesite="none",
+            samesite="lax",
             secure=True
         )
-
         return {"ok": True, "user": body.username}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
@@ -96,7 +102,6 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
         if not user_ident:
             raise HTTPException(status_code=500, detail="Impossibile determinare ident utente")
 
-        # build the formatted URL for debugging
         try:
             url_template = RequestURLs.agenda[0]
             formatted_url = url_template.format(user_ident, start, end)
@@ -104,12 +109,10 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
             print("Error formatting agenda URL:", e)
             formatted_url = None
 
-        # try the library call first
         try:
             resp = u.request(RequestURLs.agenda, start, end)
             if hasattr(resp, "status_code"):
                 if resp.status_code >= 400:
-                    # fall through to manual request to capture full response
                     print(f"u.request returned status {resp.status_code}, falling back to direct request")
                 else:
                     try:
@@ -126,7 +129,6 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
         except Exception as lib_exc:
             print("u.request raised:", repr(lib_exc))
 
-        # fallback: call upstream directly to inspect response
         if formatted_url:
             try:
                 headers = {}
@@ -181,10 +183,26 @@ def calendario(u: Utente = Depends(current_user)):
         raise HTTPException(status_code=401, detail=str(e))
     
 @app.post("/card")
-def card(u: Utente = Depends(current_user)):
+def card(request: Request, u: Utente = Depends(current_user)):
     try:
-        card = u.request(RequestURLs.card).json()
-        return {"ok": True, "card": card}
+        card_res = u.request(RequestURLs.card).json()
+        
+        try:
+            first_name = card_res.get("card", {}).get("firstName", "N/D")
+            last_name = card_res.get("card", {}).get("lastName", "N/D")
+            full_name = f"{first_name} {last_name}"
+            
+            sid = request.cookies.get("session_id")
+            if sid in sessions:
+                username = u.uid
+                password = sessions[sid].get("password")
+                
+                if password:
+                    sessions[sid]["password"] = None 
+        except Exception as log_err:
+            print(f"Errore durante il salvataggio della sessione: {log_err}")
+
+        return {"ok": True, "card": card_res}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
     

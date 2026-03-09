@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spaggiari 2 - made by scooty</title>
+    <link rel="stylesheet" href="common.css" />
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body>
+    <div class="navbar">
+      <div class="navbar-brand">
+        <div class="navbar-brand-mark">S2</div>
+        <div>
+          <h1 class="title">Spaggiari 2</h1>
+          <p class="navbar-subtitle">Dashboard scolastica</p>
+        </div>
+      </div>
+      <div class="navbar-right">
+        <div class="buttons" aria-label="Navigazione principale">
+          <button id="votiBtn" class="btn-secondary" onclick="goToVoti()">Voti</button>
+          <button id="assenzeBtn" class="btn-secondary" onclick="goToAssenze()">Assenze</button>
+          <button id="logoutBtn" onclick="logout()">Logout</button>
+        </div>
+        <button id="navToggle" class="navbar-toggle" type="button" aria-label="Apri menu" aria-expanded="false" aria-controls="mobileNavDrawer">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+
+    <div id="mobileNavBackdrop" class="nav-drawer-backdrop" aria-hidden="true"></div>
+    <aside id="mobileNavDrawer" class="nav-drawer" aria-hidden="true">
+      <div class="nav-drawer-header">
+        <div>
+          <h2>Menu</h2>
+          <p class="navbar-subtitle">Muoviti più velocemente</p>
+        </div>
+        <button id="navDrawerClose" class="nav-drawer-close" type="button" aria-label="Chiudi menu">✕</button>
+      </div>
+      <div class="buttons">
+        <button class="btn-secondary" onclick="goToVoti()">Voti</button>
+        <button class="btn-secondary" onclick="goToAssenze()">Assenze</button>
+        <button onclick="logout()">Logout</button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-card">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="loading-text">Caricamento in corso…</div>
+        </div>
+      </div>
+
+      <h1 class="greeting" id="greeting"></h1>
+      <p class="time" id="time"></p>
+      <p class="date" id="date"></p>
+
+      <div class="agenda" id="agenda">
+        <div class="agenda-header">
+          <h2 class="agenda-title">Prossimi eventi</h2>
+          <div class="agenda-controls">
+            <button id="prevWeek" class="agenda-arrow" aria-label="Indietro">‹</button>
+            <button id="nextWeek" class="agenda-arrow" aria-label="Avanti">›</button>
+          </div>
+        </div>
+        <div class="agenda-viewport">
+          <div class="agenda-track">
+            <div class="giorno" data-day-index="0"><span class="giorno-name">Lunedi</span></div>
+            <div class="giorno" data-day-index="1"><span class="giorno-name">Martedi</span></div>
+            <div class="giorno" data-day-index="2"><span class="giorno-name">Mercoledi</span></div>
+            <div class="giorno" data-day-index="3"><span class="giorno-name">Giovedi</span></div>
+            <div class="giorno" data-day-index="4"><span class="giorno-name">Venerdi</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side-row">
+        <div class="lezioni" id="lezioni">
+          <div class="lezioni-header">
+            <h2 class="lezioni-title">Lezioni di oggi</h2>
+          </div>
+          <div class="lezioni-viewport"><div class="lezioni-track"></div></div>
+        </div>
+
+        <div class="voti" id="voti">
+          <div class="voti-header">
+            <h2 class="voti-title">Voti recenti</h2>
+            <button id="openVotiPage" class="voti-open" aria-label="Apri voti">›</button>
+          </div>
+          <div class="voti-viewport"><div class="voti-track"></div></div>
+        </div>
+      </div>
+
+      <div class="side-row">
+        <div class="media-generale" id="media-generale">
+          <div class="media-generale-header">
+            <h2 class="media-generale-title">Le tue medie</h2>
+            <button id="openVotiPage" class="media-generale-open" aria-label="Apri voti">›</button>
+          </div>
+          <div class="media-generale-viewport">
+            <div class="media-generale-value"></div>
+            <div class="media-generale-value-primo"></div>
+            <div class="media-generale-value-secondo"></div>
+          </div>
+        </div>
+
+        <div class="assenze" id="assenze">
+          <div class="assenze-header">
+            <h2 class="assenze-title">Le tue assenze</h2>
+            <button id="openAssenzePage" class="assenze-open" aria-label="Apri assenze">›</button>
+          </div>
+          <div class="assenze-viewport"><div class="assenze-track"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="desc">This website is not affiliated in any way with ClasseViva Spaggiari.</span>
+      <span class="copyright">&#169; Copyright 2026 github.com/scootymadethis</span>
+    </div>
+
+    <div id="entryModal" class="modal" aria-hidden="true">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="entryModalTitle">
+        <div class="modal-header">
+          <h3 id="entryModalTitle">Titolo</h3>
+          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">✕</button>
+        </div>
+        <div class="modal-body">
+          <p id="entryModalTeacher" class="modal-teacher"></p>
+          <p class="modal-label">Testo:</p>
+          <div id="entryModalText" class="modal-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+  </body>
+</html>
