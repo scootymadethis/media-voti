@@ -1,6 +1,5 @@
 let studentName;
 
-// cache keyed by full interval
 const agendaCache = new Map();
 let currentWeekOffset = 0;
 
@@ -28,7 +27,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // If debug query present, show a small non-intrusive banner with origin/localStorage for remote debugging
   try {
     const params = new URLSearchParams(location.search);
     if (params.has("debug")) {
@@ -53,7 +51,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const agendaData = await loadAgendaWeek(0);
     renderAgenda(agendaData);
 
-    // fetch lezioni and voti in parallel and render them
     const [lezioniData, votiData, assenzeData] = await Promise.all([
       fetchLezioni().catch((e) => {
         console.error("lezioni fetch failed", e);
@@ -72,7 +69,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (votiData) renderVoti(votiData);
     if (assenzeData) renderAssenze(assenzeData);
 
-    // wire prev/next buttons
     const nextBtn = document.getElementById("nextWeek");
     const prevBtn = document.getElementById("prevWeek");
     const track = document.querySelector(".agenda-track");
@@ -168,11 +164,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     window.addEventListener("resize", updateSlidesLayout);
-    // also sync media/assenze heights on resize
     window.addEventListener("resize", syncMediaToAssenze);
     updateSlidesLayout();
 
-    // update UI once before hiding overlay
     updateTimeAndDate();
     updateGreeting();
     await new Promise((res) => requestAnimationFrame(res));
@@ -201,7 +195,6 @@ function formatDateYYYYMMDD(d) {
   return `${yyyy}${mm}${dd}`;
 }
 
-// Helper: compute Monday start for a given week offset (0 = current week)
 function getWeekStartDate(offsetWeeks) {
   const now = new Date();
   const day = now.getDay(); // 0 = Sunday, 1 = Monday
@@ -248,7 +241,6 @@ async function loadAgendaWeek(offsetWeeks) {
   const data = await fetchAgendaInterval(start, end);
   currentWeekOffset = offsetWeeks;
 
-  // prefetch prev/next
   try {
     const prevStartDate = getWeekStartDate(offsetWeeks - 1);
     const prevEndDate = new Date(prevStartDate);
@@ -273,7 +265,6 @@ async function loadAgendaWeek(offsetWeeks) {
   return data;
 }
 
-// Extract events array from different possible API shapes
 function extractEvents(agendaData) {
   if (!agendaData) return [];
   if (Array.isArray(agendaData)) return agendaData;
@@ -287,7 +278,6 @@ function extractEvents(agendaData) {
   return [];
 }
 
-// Render agenda data into the DOM (fills Mon-Fri columns)
 function renderAgenda(agendaData) {
   const container = document.getElementById("agenda");
   if (!container) return;
@@ -377,7 +367,6 @@ function computeEqualHeights() {
   if (max > 0) giornoEls.forEach((el) => (el.style.height = max + "px"));
 }
 
-// --- Sync heights: make media-generale match assenze height ---
 let __syncMediaTimeout = null;
 function syncMediaToAssenze() {
   clearTimeout(__syncMediaTimeout);
@@ -386,18 +375,15 @@ function syncMediaToAssenze() {
     const assenze = document.getElementById("assenze");
     if (!media || !assenze) return;
 
-    // On mobile keep natural height so the averages never get clipped.
     if (window.innerWidth <= 700) {
       media.style.height = "";
       return;
     }
 
-    // compute target height from assenze (including paddings/borders as offsetHeight)
     const target = assenze.offsetHeight;
     if (target && target > 0) {
       media.style.height = target + "px";
     } else {
-      // fallback: clear explicit height to allow natural sizing
       media.style.height = "";
     }
   }, 40);
@@ -600,7 +586,6 @@ function renderVoti(data) {
     } else if (typeof val === "number") num = val;
 
     const item = document.createElement("div");
-    // add `entry` class so delegated click listener opens the modal
     item.className = "voti-entry entry";
 
     item.innerHTML = `
@@ -608,7 +593,6 @@ function renderVoti(data) {
       <div class="grade-circle">${displayVal}</div>
     `;
     item.querySelector(".voti-subject").textContent = subject;
-    // attach teacher if present so modal can show it
     if (v.authorName || v.teacherName)
       item.dataset.teacher = v.authorName || v.teacherName;
 
@@ -619,7 +603,7 @@ function renderVoti(data) {
 
     track.appendChild(item);
 
-    if (v.displayValue !== "A" && !subject.includes("RELIGIONE")) {
+    if (v.displayValue !== "A" && !subject.includes("RELIGIONE") && v.color != "blue") {
       if (num !== null) {
         media += num;
         count += 1;
@@ -667,7 +651,6 @@ function renderMedia(media, primaMedia, secondaMedia) {
   firstAverageDiv.innerHTML += `<span class="label primo-periodo-label">Primo Periodo</span>`;
   secondAverageDiv.innerHTML += `<span class="label secondo-periodo-label">Secondo Periodo</span>`;
 
-  // ensure media panel height stays in sync with assenze panel
   try {
     syncMediaToAssenze();
   } catch (e) {
@@ -713,7 +696,6 @@ function renderAssenze(data) {
       a.reason ||
       "Motivo sconosciuto";
 
-    // determine badge text and color
     const code = a.evtCode || a.tipo || "";
     let badgeText = "?";
     let gradeClass = "grade-red";
@@ -733,7 +715,6 @@ function renderAssenze(data) {
         gradeClass = "grade-yellow";
         break;
       default:
-        // try to infer from other fields
         if ((a.justifType || "").toLowerCase().includes("usc")) {
           badgeText = "U";
           gradeClass = "grade-orange";
@@ -748,17 +729,14 @@ function renderAssenze(data) {
     }
 
     const item = document.createElement("div");
-    // do NOT add the generic `entry` class so clicking doesn't open modal
     item.className = "assenze-entry";
 
-    // determine if the absence is explicitly marked as justified
     const justVal = a.isJustified ?? a.justified ?? a.giustificato ?? a.giust;
     let isExplicitlyUnjustified = false;
     if (justVal === false || String(justVal).toLowerCase() === "false") {
       isExplicitlyUnjustified = true;
     }
 
-    // optional warning triangle (SVG) shown when explicitly not justified
     const warningHtml = isExplicitlyUnjustified
       ? `<span class="assenza-warning" title="Non giustificato" aria-label="Non giustificato">
            <svg viewBox="0 0 24 24" width="18" height="18" role="img" aria-hidden="false"><title>Non giustificato</title><path fill="currentColor" d="M1 21h22L12 2 1 21z"/></svg>
@@ -789,14 +767,12 @@ function renderAssenze(data) {
     track.appendChild(note);
   }
 
-  // sync heights (do after DOM changes)
   try {
     syncMediaToAssenze();
   } catch (e) {}
 }
 
 function createMediaContainer(media) {
-  // clamp 0..10 and keep as number
   const value = Math.max(0, Math.min(10, parseFloat(media) || 0));
   const percent = (value / 10) * 100;
 
@@ -812,9 +788,7 @@ function createMediaContainer(media) {
 
   const label = document.createElement("span");
   label.classList.add("actual-media-generale-value");
-  // show up to two decimals but do not round: truncate instead
   const truncatedVal = Math.trunc(value * 100) / 100;
-  // remove trailing .00 if integer, or show up to 2 decimals
   label.textContent = Number.isInteger(truncatedVal)
     ? String(truncatedVal)
     : String(truncatedVal);
@@ -840,7 +814,7 @@ async function handleAuthFail(res) {
   window.location.href = "/index.html";
 }
 
-// --- Entry modal handling ---
+// --- Entry modal ---
 const entryModal = document.getElementById("entryModal");
 const modalTitle = document.getElementById("entryModalTitle");
 const modalTeacher = document.getElementById("entryModalTeacher");
