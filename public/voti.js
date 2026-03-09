@@ -1,3 +1,6 @@
+// VARIABILI GLOBALI
+let selectedPeriod = "";
+
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
 
@@ -105,6 +108,7 @@ function handleMateriaChange(materia, voti) {
 
   const choosePeriod = (label, items, node) => {
     votiDiv.innerHTML = "";
+    selectedPeriod = label;
     document.querySelector(".periodo.selected")?.classList.remove("selected");
     node.classList.add("selected");
     renderActualVoti(items, label, materia);
@@ -113,8 +117,8 @@ function handleMateriaChange(materia, voti) {
   if (votiPrimoPeriodo.length > 0) {
     const periodo1Div = document.createElement("button");
     periodo1Div.type = "button";
-    periodo1Div.classList.add("periodo", "selected");
     periodo1Div.innerHTML = '<span class="periodo-text">Trimestre</span>';
+    periodo1Div.classList.add("periodo", "trimestre", "selected");
     periodo1Div.onclick = () =>
       choosePeriod("Trimestre", votiPrimoPeriodo, periodo1Div);
     periodDiv.appendChild(periodo1Div);
@@ -123,19 +127,31 @@ function handleMateriaChange(materia, voti) {
   if (votiSecondoPeriodo.length > 0) {
     const periodo2Div = document.createElement("button");
     periodo2Div.type = "button";
-    periodo2Div.classList.add("periodo");
     periodo2Div.innerHTML = '<span class="periodo-text">Pentamestre</span>';
+    periodo2Div.classList.add("periodo", "pentamestre");
     periodo2Div.onclick = () =>
       choosePeriod("Pentamestre", votiSecondoPeriodo, periodo2Div);
     periodDiv.appendChild(periodo2Div);
   }
 
-  if (votiPrimoPeriodo.length > 0) {
-    renderActualVoti(votiPrimoPeriodo, "Trimestre", materia);
-  } else if (votiSecondoPeriodo.length > 0) {
-    periodDiv.firstElementChild?.classList.add("selected");
-    renderActualVoti(votiSecondoPeriodo, "Pentamestre", materia);
+  if (selectedPeriod == "") {
+    if (votiPrimoPeriodo.length > 0) {
+      renderActualVoti(votiPrimoPeriodo, "Trimestre", materia);
+    } else if (votiSecondoPeriodo.length > 0) {
+      periodDiv.firstElementChild?.classList.add("selected");
+      renderActualVoti(votiSecondoPeriodo, "Pentamestre", materia);
+    }
   } else {
+    if (selectedPeriod === "Trimestre") {
+      const periodo1Div = periodDiv.querySelector(".trimestre");
+      choosePeriod("Trimestre", votiPrimoPeriodo, periodo1Div);
+    } else if (selectedPeriod === "Pentamestre") {
+      const periodo2Div = periodDiv.querySelector(".pentamestre");
+      choosePeriod("Pentamestre", votiSecondoPeriodo, periodo2Div);
+    }
+  }
+
+  if (votiPrimoPeriodo.length === 0 && votiSecondoPeriodo.length === 0) {
     votiDiv.innerHTML =
       '<div class="empty-voti">Nessun voto disponibile per questa materia.</div>';
     renderMedia(0, `${materia} • Nessun periodo`);
@@ -150,8 +166,7 @@ function renderActualVoti(voti, periodoLabel = "Periodo", materia = "") {
   let votiLength = voti.length;
 
   voti.forEach((voto) => {
-    if (voto.displayValue == "A") votiLength -= 1;
-    if(voto.color == "blue") votiLength -= 1;
+    if (voto.color == "blue") votiLength -= 1;
 
     const votoDiv = document.createElement("div");
     votoDiv.classList.add("voto");
