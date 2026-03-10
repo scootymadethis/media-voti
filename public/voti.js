@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (calcolatorBtn) {
       calcolatorBtn.onclick = () => {
-        const voti = document.querySelectorAll(".voto");
+        const voti = document.querySelectorAll(".voto-score");
         let numVoti = 0;
         for (let i = 0; i < voti.length; i++) {
           const voto = voti[i];
@@ -218,7 +218,7 @@ function renderMedia(media, label = "Media attuale") {
   const percent = (value / 10) * 100;
 
   let ringColor = "#f43f5e";
-  if (value > 6) ringColor = "#22c55e";
+  if (value >= 6) ringColor = "#22c55e";
   else if (value >= 5.75) ringColor = "#facc15";
 
   const container = document.createElement("div");
@@ -299,7 +299,7 @@ function calculateNeededGrades(mediaAttuale, numVoti) {
     votoDiv.classList.add("voto-circle");
 
     let color = "#f43f5e";
-    if (roundedGrade > 6) color = "#22c55e";
+    if (roundedGrade >= 6) color = "#22c55e";
     else if (roundedGrade >= 5.75) color = "#facc15";
 
     votoDiv.style.backgroundColor = color;
