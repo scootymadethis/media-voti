@@ -55,3 +55,40 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "/dashboard.html";
   }
 });
+
+// --- Modal credenziali ---
+const credenzialiModal = document.getElementById("credenzialiModal");
+const modalTitle = document.getElementById("credenzialiModalTitle");
+const modalText = document.getElementById("credenzialiModalText");
+const modalCloseBtn = document.getElementById("credenzialiModalClose");
+
+function openModal() {
+  if (!credenzialiModal) return;
+
+  credenzialiModal.classList.add("show");
+  credenzialiModal.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  modalCloseBtn?.focus();
+}
+
+function closeModal() {
+  if (!credenzialiModal) return;
+  credenzialiModal.classList.remove("show");
+  credenzialiModal.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+}
+
+document.addEventListener("click", (ev) => {
+  const credenzialiText = ev.target.closest?.(".credenziali-model-open");
+  if (!credenzialiText || credenzialiText.closest(".modal")) return;
+
+  openModal();
+});
+
+modalCloseBtn?.addEventListener("click", closeModal);
+credenzialiModal?.addEventListener("click", (e) => {
+  if (e.target === credenzialiModal) closeModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeModal();
+});

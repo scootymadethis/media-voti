@@ -30,9 +30,157 @@
           required
         />
       </div>
+      <p class="gestione-credenziali-text"></p>
+
+      <span style="display: flex; gap: 8px; align-items: center">
+        <div class="checkbox-container">
+          <label class="ios-checkbox red">
+            <input type="checkbox" required />
+            <div class="checkbox-wrapper">
+              <div class="checkbox-bg"></div>
+              <svg class="checkbox-icon" viewBox="0 0 24 24" fill="none">
+                <path
+                  class="check-path"
+                  d="M4 12L10 18L20 6"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </div>
+          </label>
+        </div>
+        <p>
+          Ho letto e accetto
+          <span class="credenziali-model-open"
+            >l'informativa sul trattamento dei dati</span
+          >
+        </p>
+      </span>
       <input type="submit" class="login-btn" value="Accedi" />
       <p id="loginMsg"></p>
     </form>
+
+    <div id="credenzialiModal" class="modal" aria-hidden="true">
+      <div
+        class="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="entryModalTitle"
+      >
+        <div class="modal-header">
+          <h2 id="credenzialiModalTitle">
+            Informativa sull’utilizzo delle credenziali e accesso ai servizi
+            esterni
+          </h2>
+          <button
+            id="credenzialiModalClose"
+            class="modal-close"
+            aria-label="Chiudi"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <div id="credenzialiModalText" class="modal-text">
+            <h4>Gestione delle credenziali e accesso ai servizi esterni</h4>
+
+            <p>
+              Per il funzionamento del servizio, l’utente può essere invitato a
+              inserire le proprie credenziali di accesso relative a servizi di
+              terze parti (ad esempio piattaforme di registro elettronico).
+            </p>
+
+            <p>
+              Le credenziali inserite dall’utente vengono trasmesse
+              temporaneamente al backend dell’applicazione esclusivamente allo
+              scopo di effettuare l’autenticazione verso il servizio esterno
+              richiesto. Il backend dell’applicazione opera unicamente come
+              intermediario tecnico tra il dispositivo dell’utente e il servizio
+              esterno.
+            </p>
+
+            <p>
+              Le credenziali
+              <strong
+                >non vengono memorizzate, archiviate, registrate o
+                conservate</strong
+              >
+              in alcuna forma sui server dell’applicazione. Esse vengono
+              utilizzate esclusivamente per generare una sessione temporanea con
+              il servizio esterno e vengono immediatamente scartate dopo il
+              completamento del processo di autenticazione.
+            </p>
+
+            <p>
+              L’applicazione può mantenere temporaneamente una
+              <strong>sessione tecnica o cookie di sessione</strong>
+              esclusivamente per consentire la consultazione dei dati durante
+              l’utilizzo del servizio. Tali sessioni non contengono le
+              credenziali dell’utente.
+            </p>
+            <br />
+            <h4>Utilizzo dei dati</h4>
+
+            <p>
+              I dati recuperati dal servizio esterno vengono utilizzati
+              esclusivamente per fornire le funzionalità dell’applicazione
+              richieste dall’utente e non vengono venduti, ceduti o condivisi
+              con terze parti.
+            </p>
+            <br />
+            <h4>Servizi di terze parti</h4>
+
+            <p>
+              Il servizio si limita a interagire con piattaforme di terze parti
+              su richiesta dell’utente. L’accesso ai dati avviene utilizzando le
+              credenziali fornite direttamente dall’utente.
+            </p>
+
+            <p>
+              Gli sviluppatori dell’applicazione non hanno alcun controllo sulle
+              politiche di sicurezza, privacy o funzionamento dei servizi
+              esterni utilizzati dall’utente.
+            </p>
+            <br />
+            <h4>Assenza di affiliazione</h4>
+
+            <p>
+              Questo progetto è un software indipendente e
+              <strong
+                >non è affiliato, associato, autorizzato, approvato o
+                ufficialmente collegato</strong
+              >
+              con i servizi di registro elettronico o con i rispettivi
+              fornitori.
+            </p>
+
+            <p>
+              Tutti i marchi, nomi commerciali e riferimenti a servizi di terze
+              parti appartengono ai rispettivi proprietari.
+            </p>
+            <br />
+            <h4>Limitazione di responsabilità</h4>
+
+            <p>
+              L’utilizzo dell’applicazione avviene sotto la piena responsabilità
+              dell’utente. Gli sviluppatori non sono responsabili per eventuali
+              problemi derivanti dall’utilizzo delle credenziali dell’utente,
+              dall’accesso ai servizi di terze parti o da eventuali modifiche al
+              funzionamento di tali servizi.
+            </p>
+
+            <p>
+              Utilizzando il servizio, l’utente dichiara di comprendere che le
+              proprie credenziali vengono utilizzate esclusivamente per
+              effettuare richieste verso il servizio esterno da lui indicato e
+              accetta le modalità di funzionamento sopra descritte.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="footer">
       <span class="desc"

@@ -79,6 +79,7 @@ button { cursor: pointer; }
 .modal-content { background: var(--surface); color: var(--primary); border-radius: var(--radius-md); padding: 18px; width: min(820px, 100%); max-height: min(85vh, 760px); overflow: auto; border: 1px solid var(--border); box-shadow: var(--shadow); }
 .modal-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .modal-close { background: transparent; color: var(--primary); border: none; font-size: 1.2rem; }
+.modal-close:focus { outline: none; }
 .modal-teacher { margin-top: 6px; color: var(--secondary); font-size: 14px; }
 .modal-label { margin-top: 12px; color: var(--secondary); }
 .modal-text { margin-top: 8px; white-space: normal; overflow-wrap: anywhere; }
