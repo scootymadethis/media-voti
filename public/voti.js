@@ -1,5 +1,6 @@
 // VARIABILI GLOBALI
 let selectedPeriod = "";
+const calcolatorBtn = document.getElementById("calculate-grade");
 
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
@@ -39,6 +40,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     loading?.classList.add("hidden");
+
+    if (calcolatorBtn) {
+      calcolatorBtn.onclick = () => {
+        const votiContainer = document.querySelector(".actual-voti");
+        const currentVoti = votiContainer?.childElementCount;
+        const averageScore = document.querySelector(".average-score");
+        const mediaAttuale = parseFloat(averageScore?.textContent || "0");
+        calculateNeededGrades(mediaAttuale, currentVoti);
+      };
+    }
   } catch (err) {
     console.error(err);
     document.getElementById("loading-overlay")?.classList.add("hidden");
@@ -216,6 +227,82 @@ function renderMedia(media, label = "Media attuale") {
 
   container.appendChild(labelNode);
   averageDiv.appendChild(container);
+}
+
+function calculateNeededGrades(mediaAttuale, numVoti) {
+  const mediaInput = document.getElementById("wanted-average");
+  const numVotiInput = document.getElementById("grades-number");
+  const errorP = document.getElementById("error");
+  const resultP = document.getElementById("result");
+
+  if (!mediaInput || !numVotiInput || !errorP || !resultP) return;
+
+  const target = parseFloat(mediaInput.value);
+  const num = parseInt(numVotiInput.value);
+
+  if (isNaN(target) || target < 0 || target > 10) {
+    errorP.textContent = "Inserisci una media desiderata valida (0-10).";
+    resultP.textContent = "";
+    return;
+  }
+
+  if (isNaN(num) || num <= 0) {
+    errorP.textContent = "Inserisci un numero di voti valido (>0).";
+    resultP.textContent = "";
+    return;
+  }
+
+  const totalNeeded = target * (numVoti + num) - mediaAttuale * numVoti;
+  const neededGrade = totalNeeded / num;
+
+  if (neededGrade > 10) {
+    errorP.textContent = `Non è possibile raggiungere una media di ${target} con ${num} voti.`;
+    resultP.textContent = "";
+    return;
+  }
+
+  if (neededGrade < 0) {
+    errorP.textContent = `Hai già raggiunto una media di ${target} o superiore.`;
+    resultP.textContent = "";
+    return;
+  }
+
+  errorP.textContent = "";
+  resultP.innerHTML = "<p class='result-text'>Voti necessari:</p><br>";
+
+  const roundedGrade = Math.round(neededGrade * 4) / 4;
+
+  function formatGrade(grade) {
+    const integerPart = Math.floor(grade);
+    const decimalPart = grade - integerPart;
+
+    if (grade >= 10) return "10";
+    if (decimalPart === 0) return `${integerPart}`;
+    if (decimalPart === 0.25) return `${integerPart}+`;
+    if (decimalPart === 0.5) return `${integerPart}.5`;
+    if (decimalPart === 0.75) return `${integerPart + 1}-`;
+
+    return grade.toFixed(2);
+  }
+
+  const gradesRow = document.createElement("div");
+  gradesRow.classList.add("result-grades-row");
+  const formattedGrade = formatGrade(roundedGrade);
+
+  for (let i = 0; i < num; i++) {
+    const votoDiv = document.createElement("div");
+    votoDiv.classList.add("voto-circle");
+
+    let color = "#f43f5e";
+    if (roundedGrade > 6) color = "#22c55e";
+    else if (roundedGrade >= 5.75) color = "#facc15";
+
+    votoDiv.style.backgroundColor = color;
+    votoDiv.textContent = formattedGrade;
+    gradesRow.appendChild(votoDiv);
+  }
+
+  resultP.appendChild(gradesRow);
 }
 
 async function handleAuthFail(res) {

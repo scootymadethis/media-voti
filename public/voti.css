@@ -34,6 +34,7 @@
 .voti,
 .actual-voti,
 .average,
+.needed-grade-calculator,
 .control-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -59,7 +60,9 @@
 
 .control-card {
   padding: 18px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent), var(--surface-alt);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent),
+    var(--surface-alt);
 }
 
 .control-card-header {
@@ -99,7 +102,10 @@
   outline: none;
   appearance: none;
   -webkit-appearance: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
   color-scheme: dark;
 }
 
@@ -137,12 +143,16 @@
   padding: 12px 16px;
   border-radius: 16px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  transition: background-color 0.2s ease, transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
   flex: 1 1 180px;
 }
 
@@ -167,8 +177,11 @@
 }
 
 .actual-voti,
-.average {
-  background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent), var(--surface-alt);
+.average,
+.needed-grade-calculator {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent),
+    var(--surface-alt);
   border-radius: 20px;
   padding: 16px;
 }
@@ -192,13 +205,16 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
   cursor: pointer;
-  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 .voto:hover {
   transform: translateY(-2px);
   border-color: rgba(220, 38, 38, 0.45);
-  background: rgba(255,255,255,0.045);
+  background: rgba(255, 255, 255, 0.045);
 }
 
 .voto-score {
@@ -211,11 +227,32 @@
   color: #111;
 }
 
-.grade-green { background: var(--success); }
-.grade-yellow { background: var(--warning); }
-.grade-red { background: var(--error); }
-.grade-blue { background: var(--info); }
-.grade-orange { background: #fb923c; }
+.voto-circle {
+  min-height: 56px;
+  width: 100%;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #111;
+}
+
+.grade-green {
+  background: var(--success);
+}
+.grade-yellow {
+  background: var(--warning);
+}
+.grade-red {
+  background: var(--error);
+}
+.grade-blue {
+  background: var(--info);
+}
+.grade-orange {
+  background: #fb923c;
+}
 
 .voto-meta {
   min-width: 0;
@@ -236,7 +273,14 @@
   text-align: right;
 }
 
-.average {
+.side-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.average,
+.needed-grade-calculator {
   position: sticky;
   top: 104px;
   display: flex;
@@ -247,7 +291,8 @@
   min-height: 100%;
 }
 
-.average-label {
+.average-label,
+.needed-grade-calculator-label {
   font-size: 1rem;
   font-weight: 700;
   color: var(--secondary);
@@ -264,7 +309,7 @@
   place-items: center;
   background:
     radial-gradient(circle closest-side, var(--surface) 72%, transparent 73%),
-    conic-gradient(var(--ring-color) var(--p), rgba(255,255,255,0.08) 0);
+    conic-gradient(var(--ring-color) var(--p), rgba(255, 255, 255, 0.08) 0);
 }
 
 .average-score {
@@ -275,9 +320,182 @@
 .empty-voti {
   padding: 18px;
   border-radius: 18px;
-  border: 1px dashed rgba(255,255,255,0.12);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
   color: var(--secondary);
   text-align: center;
+}
+
+.needed-grade-calculator {
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.needed-grade-calculator label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin: 0 0 2px;
+}
+
+.needed-grade-calculator input[type="number"] {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  outline: none;
+  appearance: textfield;
+  -moz-appearance: textfield;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.needed-grade-calculator input[type="number"]::placeholder {
+  color: var(--secondary);
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.needed-grade-calculator input[type="number"]:hover,
+.needed-grade-calculator input[type="number"]:focus {
+  border-color: rgba(220, 38, 38, 0.5);
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.needed-grade-calculator input[type="number"]:focus {
+  transform: translateY(-1px);
+}
+
+.needed-grade-calculator input[type="number"]::-webkit-outer-spin-button,
+.needed-grade-calculator input[type="number"]::-webkit-inner-spin-button {
+  margin: 0;
+}
+
+.needed-grade-calculator-label {
+  margin-bottom: 4px;
+}
+
+.calculate-grade {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 14px 28px rgba(220, 38, 38, 0.18);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.calculate-grade:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px rgba(220, 38, 38, 0.24);
+  filter: brightness(1.03);
+}
+
+.calculate-grade:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 4px rgba(220, 38, 38, 0.12),
+    0 14px 28px rgba(220, 38, 38, 0.18);
+}
+
+.calculate-grade:active {
+  transform: translateY(0);
+  box-shadow: 0 8px 18px rgba(220, 38, 38, 0.16);
+}
+
+.calculate-grade:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  filter: grayscale(0.1);
+  box-shadow: none;
+}
+
+.error {
+  color: var(--error);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 4px;
+  line-height: 1.3;
+  min-height: 1em;
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+}
+
+.result .result-grades-row {
+  display: flex;
+  gap: 10px;
+}
+
+.result-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin: 0 0 2px;
+}
+
+/* Mobile */
+@media (max-width: 900px) {
+  .needed-grade-calculator {
+    position: static;
+    min-height: auto;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 700px) {
+  .needed-grade-calculator {
+    gap: 10px;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .needed-grade-calculator label,
+  .result-text {
+    font-size: 0.92rem;
+  }
+
+  .needed-grade-calculator input[type="number"] {
+    min-height: 52px;
+    font-size: 0.98rem;
+    padding: 0 14px;
+    border-radius: 14px;
+  }
+
+  .calculate-grade {
+    min-height: 52px;
+    padding: 0 16px;
+    font-size: 0.98rem;
+    border-radius: 14px;
+  }
+
+  .error {
+    font-size: 0.8rem;
+  }
 }
 
 @media (max-width: 1100px) {

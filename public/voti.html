@@ -18,24 +18,46 @@
       </div>
       <div class="navbar-right">
         <div class="buttons" aria-label="Navigazione principale">
-          <button id="homeBtn" class="btn-secondary" onclick="goToHome()">Home</button>
-          <button id="assenzeBtn" class="btn-secondary" onclick="goToAssenze()">Assenze</button>
+          <button id="homeBtn" class="btn-secondary" onclick="goToHome()">
+            Home
+          </button>
+          <button id="assenzeBtn" class="btn-secondary" onclick="goToAssenze()">
+            Assenze
+          </button>
           <button id="logoutBtn" onclick="logout()">Logout</button>
         </div>
-        <button id="navToggle" class="navbar-toggle" type="button" aria-label="Apri menu" aria-expanded="false" aria-controls="mobileNavDrawer">
+        <button
+          id="navToggle"
+          class="navbar-toggle"
+          type="button"
+          aria-label="Apri menu"
+          aria-expanded="false"
+          aria-controls="mobileNavDrawer"
+        >
           <span></span><span></span><span></span>
         </button>
       </div>
     </div>
 
-    <div id="mobileNavBackdrop" class="nav-drawer-backdrop" aria-hidden="true"></div>
+    <div
+      id="mobileNavBackdrop"
+      class="nav-drawer-backdrop"
+      aria-hidden="true"
+    ></div>
     <aside id="mobileNavDrawer" class="nav-drawer" aria-hidden="true">
       <div class="nav-drawer-header">
         <div>
           <h2>Menu</h2>
           <p class="navbar-subtitle">Navigazione rapida</p>
         </div>
-        <button id="navDrawerClose" class="nav-drawer-close" type="button" aria-label="Chiudi menu">✕</button>
+        <button
+          id="navDrawerClose"
+          class="nav-drawer-close"
+          type="button"
+          aria-label="Chiudi menu"
+        >
+          ✕
+        </button>
       </div>
       <div class="buttons">
         <button class="btn-secondary" onclick="goToHome()">Home</button>
@@ -69,7 +91,11 @@
                 <h3>Scegli dal menu</h3>
               </div>
               <label class="subject-select-wrap" for="materiaSelect">
-                <select id="materiaSelect" class="subject-select" aria-label="Seleziona materia">
+                <select
+                  id="materiaSelect"
+                  class="subject-select"
+                  aria-label="Seleziona materia"
+                >
                   <option value="">Seleziona una materia</option>
                 </select>
                 <span class="subject-select-icon" aria-hidden="true">⌄</span>
@@ -81,13 +107,55 @@
                 <span class="control-eyebrow">Periodo</span>
                 <h3>Filtro disponibile</h3>
               </div>
-              <div class="voti-periodo" role="tablist" aria-label="Selezione periodo"></div>
+              <div
+                class="voti-periodo"
+                role="tablist"
+                aria-label="Selezione periodo"
+              ></div>
             </div>
           </section>
 
           <div class="voti-values">
             <div class="actual-voti"></div>
-            <div class="average"></div>
+            <div class="side-section">
+              <div class="average"></div>
+              <div class="needed-grade-calculator">
+                <span class="needed-grade-calculator-label"
+                  >Calcolatore Media</span
+                >
+                <label for="wanted-average">Media desiderata:</label>
+                <input
+                  type="number"
+                  name="wanted-average"
+                  class="wanted-average"
+                  id="wanted-average"
+                  placeholder="Media desiderata"
+                  aria-label="Media desiderata"
+                  min="1"
+                  max="10"
+                  step="0.01"
+                  value="6"
+                />
+
+                <label for="grades-number">Numero di voti:</label>
+                <input
+                  type="number"
+                  name="grades-number"
+                  id="grades-number"
+                  class="grades-number"
+                  placeholder="Numero di voti"
+                  aria-label="Numero di voti"
+                  min="1"
+                  max="5"
+                  step="1"
+                  value="1"
+                />
+
+                <button class="calculate-grade" id="calculate-grade">Calcola</button>
+                <p class="error" id="error"></p>
+                <div class="result" id="result"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -97,17 +165,28 @@
       <div class="modal-content">
         <div class="modal-header">
           <h3 id="entryModalTitle" class="modal-subject">Dettagli</h3>
-          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">&times;</button>
+          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">
+            &times;
+          </button>
         </div>
-        <div id="entryModalTeacher" class="modal-teacher" aria-hidden="true"></div>
+        <div
+          id="entryModalTeacher"
+          class="modal-teacher"
+          aria-hidden="true"
+        ></div>
         <div class="modal-label">Testo:</div>
         <div id="entryModalText" class="modal-text"></div>
       </div>
     </div>
 
     <div class="footer">
-      <span class="desc">This website is not affiliated in any way with ClasseViva Spaggiari.</span>
-      <span class="copyright">&#169; Copyright 2026 github.com/scootymadethis</span>
+      <span class="desc"
+        >This website is not affiliated in any way with ClasseViva
+        Spaggiari.</span
+      >
+      <span class="copyright"
+        >&#169; Copyright 2026 github.com/scootymadethis</span
+      >
     </div>
 
     <script src="voti.js"></script>
