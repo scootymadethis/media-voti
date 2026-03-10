@@ -43,11 +43,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (calcolatorBtn) {
       calcolatorBtn.onclick = () => {
-        const votiContainer = document.querySelector(".actual-voti");
-        const currentVoti = votiContainer?.childElementCount;
+        const voti = document.querySelectorAll(".voto");
+        let numVoti = 0;
+        for (let i = 0; i < voti.length; i++) {
+          const voto = voti[i];
+          if (!voto.classList.contains("grade-blue")) numVoti++;
+        }
+
         const averageScore = document.querySelector(".average-score");
         const mediaAttuale = parseFloat(averageScore?.textContent || "0");
-        calculateNeededGrades(mediaAttuale, currentVoti);
+        calculateNeededGrades(mediaAttuale, numVoti);
       };
     }
   } catch (err) {
