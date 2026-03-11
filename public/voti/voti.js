@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (loading) loading.classList.remove("hidden");
 
   if (localStorage.getItem("loggedIn") !== "true") {
-    window.location.href = "/index.html";
+    window.location.href = "/";
     return;
   }
 
@@ -319,7 +319,7 @@ async function handleAuthFail(res) {
   }
   console.log("Auth fail:", res.status, body);
   localStorage.removeItem("loggedIn");
-  window.location.href = "/index.html";
+  window.location.href = "/";
 }
 
 function openEntryModal(voto) {
@@ -439,12 +439,12 @@ function initMobileMenu() {
 }
 
 function goToHome() {
-  window.location.href = "/dashboard.html";
+  window.location.href = "/dashboard/";
 }
 function goToAssenze() {
-  window.location.href = "/assenze.html";
+  window.location.href = "/assenze/";
 }
 function logout() {
   localStorage.removeItem("loggedIn");
-  window.location.href = "/index.html";
+  window.location.href = "/";
 }

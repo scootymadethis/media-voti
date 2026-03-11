@@ -43,7 +43,7 @@ form.addEventListener("submit", async (e) => {
     );
 
     msg.textContent = "Login OK!";
-    window.location.href = "/dashboard.html";
+    window.location.href = "/dashboard/";
   } catch (err) {
     console.error(err);
     msg.textContent = "Errore di rete / backend non raggiungibile";
@@ -52,7 +52,7 @@ form.addEventListener("submit", async (e) => {
 
 document.addEventListener("DOMContentLoaded", () => {
   if (localStorage.getItem("loggedIn") === "true") {
-    window.location.href = "/dashboard.html";
+    window.location.href = "/dashboard/";
   }
 });
 

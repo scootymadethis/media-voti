@@ -16,14 +16,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (localStorage.getItem("loggedIn") !== "true") {
     console.warn(
-      "[dashboard] not logged in according to localStorage - redirecting to /index.html",
+      "[dashboard] not logged in according to localStorage - redirecting to login",
       {
         origin: location.origin,
         loggedIn: localStorage.getItem("loggedIn"),
         referrer: document.referrer,
       },
     );
-    window.location.href = "/index.html";
+    window.location.href = "/";
     return;
   }
 
@@ -799,7 +799,7 @@ function createMediaContainer(media) {
 
 document.addEventListener("click", (e) => {
   const btn = e.target.closest?.("#openVotiPage");
-  if (btn) window.location.href = "/voti.html";
+  if (btn) window.location.href = "/voti/";
 });
 
 async function handleAuthFail(res) {
@@ -811,7 +811,7 @@ async function handleAuthFail(res) {
   }
   console.log("Auth fail:", res.status, body);
   localStorage.removeItem("loggedIn");
-  window.location.href = "/index.html";
+  window.location.href = "/";
 }
 
 // --- Entry modal ---
@@ -891,16 +891,16 @@ document.addEventListener("keydown", (e) => {
 
 // --- Navigation buttons ---
 function goToVoti() {
-  window.location.href = "/voti.html";
+  window.location.href = "/voti/";
 }
 
 function goToAssenze() {
-  window.location.href = "/assenze.html";
+  window.location.href = "/assenze/";
 }
 
 function logout() {
   localStorage.removeItem("loggedIn");
-  window.location.href = "/index.html";
+  window.location.href = "/";
 }
 
 
