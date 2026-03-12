@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spaggiari 2 - Voti</title>
+    <link rel="stylesheet" href="/common.css?v=2" />
+    <link rel="stylesheet" href="assenze.css?v=2" />
+  </head>
+  <body>
+    <div class="navbar">
+      <div class="navbar-brand">
+        <div class="navbar-brand-mark">S2</div>
+        <div>
+          <h1 class="title">Spaggiari 2</h1>
+          <p class="navbar-subtitle">Area voti</p>
+        </div>
+      </div>
+      <div class="navbar-right">
+        <div class="buttons" aria-label="Navigazione principale">
+          <button id="homeBtn" class="btn-secondary" onclick="goToHome()">
+            Home
+          </button>
+          <button id="assenzeBtn" class="btn-secondary" onclick="goToAssenze()">
+            Assenze
+          </button>
+          <button id="logoutBtn" onclick="logout()">Logout</button>
+        </div>
+        <button
+          id="navToggle"
+          class="navbar-toggle"
+          type="button"
+          aria-label="Apri menu"
+          aria-expanded="false"
+          aria-controls="mobileNavDrawer"
+        >
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+
+    <div
+      id="mobileNavBackdrop"
+      class="nav-drawer-backdrop"
+      aria-hidden="true"
+    ></div>
+    <aside id="mobileNavDrawer" class="nav-drawer" aria-hidden="true">
+      <div class="nav-drawer-header">
+        <div>
+          <h2>Menu</h2>
+          <p class="navbar-subtitle">Navigazione rapida</p>
+        </div>
+        <button
+          id="navDrawerClose"
+          class="nav-drawer-close"
+          type="button"
+          aria-label="Chiudi menu"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="buttons">
+        <button class="btn-secondary" onclick="goToHome()">Home</button>
+        <button class="btn-secondary" onclick="goToVoti()">Voti</button>
+        <button onclick="logout()">Logout</button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-card">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="loading-text">Caricamento in corso…</div>
+        </div>
+      </div>
+
+      <section class="leaderboard-shell panel">
+        <div class="leaderboard-header">
+          <div>
+            <h2 class="leaderboard-title">Classifica ore di assenza</h2>
+            <p class="leaderboard-subtitle">
+              Ordinata dalle ore maggiori alle minori
+            </p>
+          </div>
+          <div class="leaderboard-badge" id="myHoursBadge">-- ore</div>
+        </div>
+
+        <div class="leaderboard-warning">
+          Attenzione: le ore potrebbero non essere precise al 100%, perché
+          alcuni eventi del registro possono essere interpretati in modo diverso
+          o non contenere tutte le informazioni necessarie.
+        </div>
+
+        <div class="leaderboard-tabs" aria-label="Tipo classifica">
+          <button id="tabClassBtn" class="leaderboard-tab active" type="button">
+            La mia classe
+          </button>
+          <button id="tabGlobalBtn" class="leaderboard-tab" type="button">
+            Globale
+          </button>
+        </div>
+
+        <div id="leaderboardMeta" class="leaderboard-meta"></div>
+
+        <div id="leaderboardList" class="leaderboard-list"></div>
+
+        <div class="leaderboard-pagination">
+          <button id="prevPageBtn" class="btn-secondary" type="button">
+            ← Precedente
+          </button>
+          <span id="pageIndicator" class="page-indicator">Pagina 1</span>
+          <button id="nextPageBtn" class="btn-secondary" type="button">
+            Successiva →
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div id="entryModal" class="modal" aria-hidden="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="entryModalTitle" class="modal-subject">Dettagli</h3>
+          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">
+            &times;
+          </button>
+        </div>
+        <div
+          id="entryModalTeacher"
+          class="modal-teacher"
+          aria-hidden="true"
+        ></div>
+        <div class="modal-label">Testo:</div>
+        <div id="entryModalText" class="modal-text"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="desc"
+        >This website is not affiliated in any way with ClasseViva
+        Spaggiari.</span
+      >
+      <span class="copyright"
+        >&#169; Copyright 2026 github.com/scootymadethis</span
+      >
+    </div>
+
+    <script src="assenze.js?v=2"></script>
+  </body>
+</html>

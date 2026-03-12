@@ -1,0 +1,237 @@
+.leaderboard-shell {
+  padding: 22px;
+  margin-top: 8px;
+  background:
+    linear-gradient(180deg, rgba(220, 38, 38, 0.08), transparent 22%),
+    var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.leaderboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.leaderboard-title {
+  font-size: clamp(1.3rem, 2vw, 1.8rem);
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.leaderboard-subtitle {
+  margin-top: 4px;
+  color: var(--secondary);
+  font-size: 0.95rem;
+}
+
+.leaderboard-badge {
+  background: rgba(220, 38, 38, 0.12);
+  color: #fff;
+  border: 1px solid rgba(220, 38, 38, 0.32);
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.leaderboard-warning {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(250, 204, 21, 0.08);
+  border: 1px solid rgba(250, 204, 21, 0.16);
+  color: #f6e7a3;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.leaderboard-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.leaderboard-tab {
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--primary);
+  border-radius: 999px;
+  padding: 0.72rem 1rem;
+  font-weight: 700;
+  transition: 0.2s ease;
+}
+
+.leaderboard-tab:hover {
+  background: #242424;
+  transform: translateY(-1px);
+}
+
+.leaderboard-tab.active {
+  background: var(--primary-btn);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(220, 38, 38, 0.18);
+}
+
+.leaderboard-meta {
+  margin-bottom: 14px;
+  color: var(--secondary);
+  font-size: 0.92rem;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.leaderboard-row:hover {
+  transform: translateY(-1px);
+  background: #202020;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.leaderboard-row.is-me {
+  background:
+    linear-gradient(90deg, rgba(220, 38, 38, 0.14), transparent 70%),
+    var(--surface-alt);
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.rank-pill {
+  width: 56px;
+  min-width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--primary);
+  border: 1px solid var(--border);
+}
+
+.rank-pill.rank-1 {
+  background: linear-gradient(135deg, #facc15, #ca8a04);
+  color: #171717;
+  border-color: transparent;
+}
+
+.rank-pill.rank-2 {
+  background: linear-gradient(135deg, #d1d5db, #9ca3af);
+  color: #171717;
+  border-color: transparent;
+}
+
+.rank-pill.rank-3 {
+  background: linear-gradient(135deg, #d97706, #92400e);
+  color: #fff;
+  border-color: transparent;
+}
+
+.leaderboard-user {
+  min-width: 0;
+}
+
+.leaderboard-user-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.leaderboard-username {
+  font-weight: 800;
+  color: var(--primary);
+  overflow-wrap: anywhere;
+}
+
+.leaderboard-you {
+  font-size: 0.8rem;
+  color: #fff;
+  background: rgba(59, 130, 246, 0.16);
+  border: 1px solid rgba(59, 130, 246, 0.24);
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+}
+
+.leaderboard-class {
+  margin-top: 4px;
+  color: var(--secondary);
+  font-size: 0.9rem;
+}
+
+.leaderboard-hours {
+  font-weight: 900;
+  font-size: 1.05rem;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.leaderboard-empty {
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px dashed var(--border);
+  background: var(--surface-alt);
+  color: var(--secondary);
+  text-align: center;
+}
+
+.leaderboard-pagination {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.page-indicator {
+  color: var(--secondary);
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .leaderboard-shell {
+    padding: 16px;
+  }
+
+  .leaderboard-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .leaderboard-badge {
+    width: fit-content;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: 56px 1fr;
+  }
+
+  .leaderboard-hours {
+    grid-column: 1 / -1;
+    padding-left: 70px;
+  }
+}

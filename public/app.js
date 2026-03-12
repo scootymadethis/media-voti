@@ -37,6 +37,7 @@ form.addEventListener("submit", async (e) => {
     }
 
     localStorage.setItem("loggedIn", "true");
+    localStorage.setItem("username", username);
     console.log(
       "[login] set localStorage.loggedIn = true; origin:",
       location.origin,

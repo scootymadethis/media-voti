@@ -1,10 +1,12 @@
-from fastapi import FastAPI, HTTPException, Depends, Response, Cookie, Request, Body
+from fastapi import FastAPI, HTTPException, Depends, Response, Cookie, Request, Body, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from ClasseVivaAPI import Utente, RequestURLs
 import time, secrets
 from typing import Optional
 import requests
+from math import ceil
+from threading import Lock
 
 app = FastAPI()
 
@@ -26,14 +28,17 @@ class AgendaBody(BaseModel):
     start: Optional[str] = None  # YYYYMMDD
     end: Optional[str] = None    # YYYYMMDD
 
+class LeaderboardUpdateBody(BaseModel):
+    class_code: Optional[str] = None
+    full_name: Optional[str] = None
+    hours: float
+
 # ---- session store in memoria ----
 SESSION_TTL = 60 * 30  # 30 minuti
 sessions: dict[str, dict] = {}
 
-def create_session(u: Utente) -> str:
-    sid = secrets.token_urlsafe(32)
-    sessions[sid] = {"user": u, "expires": time.time() + SESSION_TTL}
-    return sid
+absence_hours_map: dict[str, dict] = {}
+absence_hours_lock = Lock()
 
 def get_session_user(session_id: Optional[str]) -> Utente:
     if not session_id or session_id not in sessions:
@@ -268,3 +273,127 @@ def documenti(u: Utente = Depends(current_user)):
         return {"ok": True, "documenti": documenti}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
+
+@app.post("/leaderboard/update")
+def update_leaderboard(
+    body: LeaderboardUpdateBody,
+    u: Utente = Depends(current_user)
+):
+    try:
+        session_username = getattr(u, "uid", None)
+        if not session_username:
+            raise HTTPException(status_code=400, detail="Username sessione non disponibile")
+
+        normalized_username = session_username.strip()
+        normalized_class = (body.class_code or "").strip().upper() or None
+        normalized_full_name = (body.full_name or "").strip() or normalized_username
+        normalized_hours = float(body.hours)
+
+        with absence_hours_lock:
+            absence_hours_map[normalized_username] = {
+                "username": normalized_username,
+                "full_name": normalized_full_name,
+                "class_code": normalized_class,
+                "hours": normalized_hours,
+                "updated_at": time.time(),
+            }
+
+        return {
+            "ok": True,
+            "saved": absence_hours_map[normalized_username]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    try:
+        session_username = getattr(u, "uid", None)
+
+        # opzionale ma consigliato: impedisce di scrivere per altri username
+        if session_username and body.username != session_username:
+            raise HTTPException(status_code=403, detail="Username non valido per questa sessione")
+
+        normalized_username = body.username.strip()
+        normalized_class = (body.class_code or "").strip().upper() or None
+        normalized_hours = float(body.hours)
+
+        with absence_hours_lock:
+            absence_hours_map[normalized_username] = {
+                "username": normalized_username,
+                "class_code": normalized_class,
+                "hours": normalized_hours,
+                "updated_at": time.time(),
+            }
+
+        return {
+            "ok": True,
+            "saved": absence_hours_map[normalized_username]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/leaderboard")
+def get_leaderboard(
+    type: str = Query(default="global"),
+    class_code: Optional[str] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
+    u: Utente = Depends(current_user),
+):
+    try:
+        with absence_hours_lock:
+            entries = list(absence_hours_map.values())
+
+        if type not in {"global", "class"}:
+            raise HTTPException(status_code=400, detail="type deve essere 'global' o 'class'")
+
+        normalized_class = class_code.strip().upper() if class_code else None
+
+        if type == "class":
+            if not normalized_class:
+                raise HTTPException(status_code=400, detail="class_code richiesto per la classifica di classe")
+            entries = [
+                entry for entry in entries
+                if (entry.get("class_code") or "").upper() == normalized_class
+            ]
+
+        # ordinamento: ore discendente, poi username crescente
+        entries.sort(key=lambda x: (-float(x.get("hours", 0)), x.get("username", "").lower()))
+
+        total_items = len(entries)
+        total_pages = max(1, ceil(total_items / page_size))
+
+        if page > total_pages and total_items > 0:
+            page = total_pages
+
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        page_items = entries[start_idx:end_idx]
+
+        enriched_items = []
+        for idx, item in enumerate(page_items, start=start_idx + 1):
+            enriched_items.append({
+                "rank": idx,
+                "username": item.get("username"),
+                "full_name": item.get("full_name") or item.get("username"),
+                "class_code": item.get("class_code"),
+                "hours": item.get("hours", 0),
+                "updated_at": item.get("updated_at"),
+            })
+
+        return {
+            "ok": True,
+            "scope": type,
+            "class_code": normalized_class if type == "class" else None,
+            "page": page,
+            "page_size": page_size,
+            "total_items": total_items,
+            "total_pages": total_pages,
+            "items": enriched_items,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

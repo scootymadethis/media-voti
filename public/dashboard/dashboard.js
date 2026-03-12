@@ -42,6 +42,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     const cardData = await fetchCard();
     studentName = cardData.card.card.firstName;
+    localStorage.setItem("fullName", studentName);
 
     setInterval(() => {
       updateTimeAndDate();
@@ -49,6 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }, 1000);
 
     const agendaData = await loadAgendaWeek(0);
+    console.log("Fetched agenda data:", agendaData);
     renderAgenda(agendaData);
 
     const [lezioniData, votiData, assenzeData] = await Promise.all([
@@ -68,6 +70,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (lezioniData) renderLezioni(lezioniData);
     if (votiData) renderVoti(votiData);
     if (assenzeData) renderAssenze(assenzeData);
+
+    console.log("Assenze data: " + JSON.stringify(assenzeData));
 
     const nextBtn = document.getElementById("nextWeek");
     const prevBtn = document.getElementById("prevWeek");
