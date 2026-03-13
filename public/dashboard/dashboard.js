@@ -42,7 +42,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     const cardData = await fetchCard();
     studentName = cardData.card.card.firstName;
-    localStorage.setItem("fullName", studentName);
+    let fullName = studentName + " " + cardData.card.card.lastName;
+    localStorage.setItem("fullName", fullName);
 
     setInterval(() => {
       updateTimeAndDate();
