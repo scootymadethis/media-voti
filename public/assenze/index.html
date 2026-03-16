@@ -88,7 +88,22 @@
         <div class="leaderboard-warning">
           Attenzione: le ore potrebbero non essere precise al 100%, perché
           alcuni eventi del registro possono essere interpretati in modo diverso
-          o non contenere tutte le informazioni necessarie.
+          o non contenere tutte le informazioni necessarie. Alla prima apertura
+          della pagina ti verrà chiesto se vuoi comparire in classifica: questa
+          impostazione può essere cambiata in qualsiasi momento e, cambiandola,
+          la tua entry comparirà o scomparirà dalla classifica.
+        </div>
+
+        <div class="leaderboard-preferences panel-subsection">
+          <div>
+            <div class="leaderboard-preferences-title">Visibilità in classifica</div>
+            <div id="leaderboardVisibilityText" class="leaderboard-preferences-text">
+              Caricamento preferenza...
+            </div>
+          </div>
+          <button id="toggleLeaderboardVisibilityBtn" class="btn-secondary" type="button">
+            Cambia impostazione
+          </button>
         </div>
 
         <div class="leaderboard-tabs" aria-label="Tipo classifica">
@@ -145,5 +160,23 @@
     </div>
 
     <script src="assenze.js?v=2"></script>
-  </body>
+      <div id="leaderboardPreferenceModal" class="modal" aria-hidden="true">
+      <div class="modal-content leaderboard-modal-content">
+        <div class="modal-header">
+          <h3 class="modal-subject">Comparire in classifica?</h3>
+        </div>
+        <div class="modal-text">
+          La prima volta che entri nella pagina Assenze puoi scegliere se vuoi
+          comparire nella classifica delle ore di assenza. Questa scelta può
+          essere modificata in qualsiasi momento dal pulsante presente nella
+          pagina.
+        </div>
+        <div class="leaderboard-modal-actions">
+          <button id="leaderboardOptInBtn" class="btn-secondary" type="button">Sì, compari</button>
+          <button id="leaderboardOptOutBtn" type="button">No, nascondimi</button>
+        </div>
+      </div>
+    </div>
+
+</body>
 </html>

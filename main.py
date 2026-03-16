@@ -32,6 +32,7 @@ class LeaderboardUpdateBody(BaseModel):
     class_code: Optional[str] = None
     full_name: Optional[str] = None
     hours: float
+    visible_in_leaderboard: bool = True
 
 # ---- session store in memoria ----
 SESSION_TTL = 60 * 30  # 30 minuti
@@ -288,6 +289,7 @@ def update_leaderboard(
         normalized_class = (body.class_code or "").strip().upper() or None
         normalized_full_name = (body.full_name or "").strip() or normalized_username
         normalized_hours = float(body.hours)
+        visible_in_leaderboard = bool(body.visible_in_leaderboard)
 
         with absence_hours_lock:
             absence_hours_map[normalized_username] = {
@@ -295,6 +297,7 @@ def update_leaderboard(
                 "full_name": normalized_full_name,
                 "class_code": normalized_class,
                 "hours": normalized_hours,
+                "visible_in_leaderboard": visible_in_leaderboard,
                 "updated_at": time.time(),
             }
 
@@ -334,6 +337,28 @@ def update_leaderboard(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
+@app.delete("/leaderboard/me")
+def delete_my_leaderboard_entry(u: Utente = Depends(current_user)):
+    try:
+        session_username = getattr(u, "uid", None)
+        if not session_username:
+            raise HTTPException(status_code=400, detail="Username sessione non disponibile")
+
+        normalized_username = session_username.strip()
+
+        with absence_hours_lock:
+            removed = absence_hours_map.pop(normalized_username, None)
+
+        return {
+            "ok": True,
+            "removed": removed is not None,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @app.get("/leaderboard")
 def get_leaderboard(
     type: str = Query(default="global"),
@@ -350,6 +375,11 @@ def get_leaderboard(
             raise HTTPException(status_code=400, detail="type deve essere 'global' o 'class'")
 
         normalized_class = class_code.strip().upper() if class_code else None
+
+        entries = [
+            entry for entry in entries
+            if entry.get("visible_in_leaderboard", True)
+        ]
 
         if type == "class":
             if not normalized_class:
@@ -380,6 +410,7 @@ def get_leaderboard(
                 "full_name": item.get("full_name") or item.get("username"),
                 "class_code": item.get("class_code"),
                 "hours": item.get("hours", 0),
+                "visible_in_leaderboard": item.get("visible_in_leaderboard", True),
                 "updated_at": item.get("updated_at"),
             })
 

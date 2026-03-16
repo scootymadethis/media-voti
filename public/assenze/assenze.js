@@ -1,4 +1,5 @@
 const agendaCache = new Map();
+const LEADERBOARD_PREFERENCE_KEY = "leaderboardVisibilityPreference";
 
 let currentLeaderboardType = "class";
 let currentLeaderboardPage = 1;
@@ -7,10 +8,13 @@ const leaderboardPageSize = 10;
 let myClassCode = null;
 let myUsername = null;
 let myFullName = null;
+let myLeaderboardHours = 0;
+let leaderboardVisible = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
   initLeaderboardTabs();
+  initLeaderboardPreferenceControls();
 
   console.log("[assenze] origin:", location.origin);
   console.log(
@@ -53,21 +57,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.error("Errore durante il recupero delle assenze:", err);
     }
 
-    const oreAssenza = calculateAbsenceHours(assenzeData);
-    console.log("Ore di assenza totali:", oreAssenza);
+    myLeaderboardHours = calculateAbsenceHours(assenzeData);
+    console.log("Ore di assenza totali:", myLeaderboardHours);
 
     const badge = document.getElementById("myHoursBadge");
-    if (badge) badge.textContent = `${oreAssenza} ore`;
+    if (badge) badge.textContent = `${myLeaderboardHours} ore`;
 
-    try {
-      await saveMyAbsenceHours({
-        classCode: myClassCode,
-        hours: oreAssenza,
-        fullName: myFullName,
-      });
-    } catch (err) {
-      console.error("Errore durante il salvataggio delle ore:", err);
-    }
+    leaderboardVisible = await ensureLeaderboardPreference();
+    await syncLeaderboardPreference();
 
     try {
       await loadAndRenderLeaderboard();
@@ -83,6 +80,127 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
+function getStoredLeaderboardPreference() {
+  const raw = localStorage.getItem(LEADERBOARD_PREFERENCE_KEY);
+  if (raw === "visible") return true;
+  if (raw === "hidden") return false;
+  return null;
+}
+
+function storeLeaderboardPreference(value) {
+  leaderboardVisible = Boolean(value);
+  localStorage.setItem(
+    LEADERBOARD_PREFERENCE_KEY,
+    leaderboardVisible ? "visible" : "hidden",
+  );
+  updateLeaderboardPreferenceUI();
+}
+
+async function ensureLeaderboardPreference() {
+  const stored = getStoredLeaderboardPreference();
+  if (stored !== null) {
+    updateLeaderboardPreferenceUI();
+    return stored;
+  }
+
+  const chosen = await openLeaderboardPreferenceModal();
+  storeLeaderboardPreference(chosen);
+  return chosen;
+}
+
+function openLeaderboardPreferenceModal() {
+  const modal = document.getElementById("leaderboardPreferenceModal");
+  const optInBtn = document.getElementById("leaderboardOptInBtn");
+  const optOutBtn = document.getElementById("leaderboardOptOutBtn");
+
+  if (!modal || !optInBtn || !optOutBtn) {
+    return Promise.resolve(true);
+  }
+
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      modal.classList.remove("show");
+      modal.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      optInBtn.removeEventListener("click", onOptIn);
+      optOutBtn.removeEventListener("click", onOptOut);
+    };
+
+    const onOptIn = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    const onOptOut = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    optInBtn.addEventListener("click", onOptIn);
+    optOutBtn.addEventListener("click", onOptOut);
+  });
+}
+
+function updateLeaderboardPreferenceUI() {
+  const text = document.getElementById("leaderboardVisibilityText");
+  const button = document.getElementById("toggleLeaderboardVisibilityBtn");
+
+  if (text) {
+    if (leaderboardVisible === true) {
+      text.textContent =
+        "Al momento compari in classifica. Se disattivi questa opzione, la tua entry scomparirà subito dalla classifica.";
+    } else if (leaderboardVisible === false) {
+      text.textContent =
+        "Al momento non compari in classifica. Se attivi questa opzione, la tua entry verrà aggiunta di nuovo usando le ore attuali.";
+    } else {
+      text.textContent = "Scegli se comparire o no nella classifica delle assenze.";
+    }
+  }
+
+  if (button) {
+    button.textContent =
+      leaderboardVisible === true ? "Nascondimi dalla classifica" : "Fammi comparire in classifica";
+  }
+}
+
+async function syncLeaderboardPreference() {
+  updateLeaderboardPreferenceUI();
+  try {
+    await saveMyAbsenceHours({
+      classCode: myClassCode,
+      hours: myLeaderboardHours,
+      fullName: myFullName,
+      visibleInLeaderboard: Boolean(leaderboardVisible),
+    });
+  } catch (err) {
+    console.error("Errore durante il salvataggio delle ore:", err);
+  }
+}
+
+function initLeaderboardPreferenceControls() {
+  const button = document.getElementById("toggleLeaderboardVisibilityBtn");
+  button?.addEventListener("click", async () => {
+    leaderboardVisible = !Boolean(leaderboardVisible);
+    storeLeaderboardPreference(leaderboardVisible);
+    showLoading(true);
+    try {
+      await syncLeaderboardPreference();
+      currentLeaderboardPage = 1;
+      await loadAndRenderLeaderboard();
+    } catch (err) {
+      console.error("Errore aggiornando la preferenza classifica:", err);
+    } finally {
+      showLoading(false);
+    }
+  });
+
+  updateLeaderboardPreferenceUI();
+}
+
 function calculateAbsenceHours(assenzeData) {
   let oreAssenza = 0;
 
@@ -91,12 +209,12 @@ function calculateAbsenceHours(assenzeData) {
     let ore = 0;
 
     switch (codiceAssenza) {
-      case "ABA0": // Assenza intera
+      case "ABA0":
         ore = 6;
         break;
-      case "ABU0": // Uscita anticipata
-      case "ABR0": // Ritardo
-      case "ABR1": // Ritardo
+      case "ABU0":
+      case "ABR0":
+      case "ABR1":
         ore = assenza?.evtValue != null ? Number(assenza.evtValue) || 0 : 0;
         break;
       default:
@@ -113,24 +231,9 @@ function calculateAbsenceHours(assenzeData) {
 
 function calcolaRiduzioneProporzionale(oreAssenza) {
   if (oreAssenza <= 0) return 0;
-
-  // 102, 146 e 263 sono punti di riferimento presi dalle ore di 3 studenti
-  // Punto 1: 102 -> 4
-  if (oreAssenza <= 102) {
-    return (oreAssenza / 102) * 4;
-  }
-
-  // Tra 102 e 136: da 4 a 15
-  if (oreAssenza <= 136) {
-    return 4 + ((oreAssenza - 102) / (136 - 102)) * (15 - 4);
-  }
-
-  // Tra 136 e 263: da 15 a 33
-  if (oreAssenza <= 263) {
-    return 15 + ((oreAssenza - 136) / (263 - 136)) * (33 - 15);
-  }
-
-  // Oltre 263 continuo con la stessa proporzione dell'ultimo tratto
+  if (oreAssenza <= 102) return (oreAssenza / 102) * 4;
+  if (oreAssenza <= 136) return 4 + ((oreAssenza - 102) / (136 - 102)) * (15 - 4);
+  if (oreAssenza <= 263) return 15 + ((oreAssenza - 136) / (263 - 136)) * (33 - 15);
   return 33 + ((oreAssenza - 263) / (263 - 136)) * (33 - 15);
 }
 
@@ -157,11 +260,7 @@ function getWeekStartDate(offsetWeeks) {
   return monday;
 }
 
-async function fetchAgendaInterval(
-  startYYYYMMDD,
-  endYYYYMMDD,
-  { prefetch = false } = {},
-) {
+async function fetchAgendaInterval(startYYYYMMDD, endYYYYMMDD, { prefetch = false } = {}) {
   const cacheKey = `${startYYYYMMDD}-${endYYYYMMDD}`;
   if (agendaCache.has(cacheKey)) return agendaCache.get(cacheKey);
 
@@ -186,10 +285,8 @@ async function loadAgendaWeek(offsetWeeks) {
   const startDate = getWeekStartDate(offsetWeeks);
   const endDate = new Date(startDate);
   endDate.setDate(startDate.getDate() + 6);
-
   const start = formatDateYYYYMMDD(startDate);
   const end = formatDateYYYYMMDD(endDate);
-
   return await fetchAgendaInterval(start, end);
 }
 
@@ -197,40 +294,26 @@ function extractEvents(agendaData) {
   if (!agendaData) return [];
   if (Array.isArray(agendaData)) return agendaData;
   if (Array.isArray(agendaData.agenda)) return agendaData.agenda;
-  if (agendaData.agenda && Array.isArray(agendaData.agenda.agenda)) {
-    return agendaData.agenda.agenda;
-  }
-
+  if (agendaData.agenda && Array.isArray(agendaData.agenda.agenda)) return agendaData.agenda.agenda;
   for (const k of Object.keys(agendaData)) {
     if (Array.isArray(agendaData[k])) return agendaData[k];
   }
-
   return [];
 }
 
-async function logClasseFromFirstLesson({
-  maxWeeksToCheck = 52,
-  startOffset = 0,
-} = {}) {
-  for (
-    let offset = startOffset;
-    offset < startOffset + maxWeeksToCheck;
-    offset++
-  ) {
+async function logClasseFromFirstLesson({ maxWeeksToCheck = 52, startOffset = 0 } = {}) {
+  for (let offset = startOffset; offset < startOffset + maxWeeksToCheck; offset++) {
     try {
       const agendaData = await loadAgendaWeek(offset);
       const events = extractEvents(agendaData);
-
       const firstLesson = events.find((ev) => {
         const classDesc = ev?.classDesc;
         return typeof classDesc === "string" && classDesc.trim().length > 0;
       });
-
       if (firstLesson) {
         const classDesc = firstLesson.classDesc.trim();
         const firstChunk = classDesc.split(" ")[0]?.trim() || classDesc;
         const classCode = firstChunk.toUpperCase();
-
         console.log("Classe:", classCode);
         return classCode;
       }
@@ -257,8 +340,8 @@ async function fetchAssenze() {
   return await res.json();
 }
 
-async function saveMyAbsenceHours({ classCode, hours, fullName }) {
-  console.log("[leaderboard] saving", { classCode, hours, fullName });
+async function saveMyAbsenceHours({ classCode, hours, fullName, visibleInLeaderboard }) {
+  console.log("[leaderboard] saving", { classCode, hours, fullName, visibleInLeaderboard });
 
   const res = await fetch("/api/leaderboard/update", {
     method: "POST",
@@ -268,13 +351,11 @@ async function saveMyAbsenceHours({ classCode, hours, fullName }) {
       class_code: classCode,
       hours,
       full_name: fullName,
+      visible_in_leaderboard: visibleInLeaderboard,
     }),
   });
 
   const rawText = await res.text();
-  console.log("[leaderboard] save status:", res.status);
-  console.log("[leaderboard] save raw response:", rawText);
-
   let data = null;
   try {
     data = rawText ? JSON.parse(rawText) : null;
@@ -282,14 +363,8 @@ async function saveMyAbsenceHours({ classCode, hours, fullName }) {
     console.warn("[leaderboard] risposta non json", e);
   }
 
-  if (!res.ok) {
-    throw new Error("Errore nel salvataggio delle ore");
-  }
-
-  if (data?.saved?.username) {
-    myUsername = data.saved.username;
-  }
-
+  if (!res.ok) throw new Error("Errore nel salvataggio delle ore");
+  if (data?.saved?.username) myUsername = data.saved.username;
   return data;
 }
 
@@ -300,9 +375,7 @@ async function loadAndRenderLeaderboard() {
     page_size: String(leaderboardPageSize),
   });
 
-  if (currentLeaderboardType === "class" && myClassCode) {
-    params.set("class_code", myClassCode);
-  }
+  if (currentLeaderboardType === "class" && myClassCode) params.set("class_code", myClassCode);
 
   const res = await fetch(`/api/leaderboard?${params.toString()}`, {
     method: "GET",
@@ -386,7 +459,6 @@ function initLeaderboardTabs() {
 function setActiveLeaderboardTab() {
   const tabClassBtn = document.getElementById("tabClassBtn");
   const tabGlobalBtn = document.getElementById("tabGlobalBtn");
-
   tabClassBtn?.classList.toggle("active", currentLeaderboardType === "class");
   tabGlobalBtn?.classList.toggle("active", currentLeaderboardType === "global");
 }
@@ -397,7 +469,6 @@ function renderLeaderboard(data) {
   const pageIndicator = document.getElementById("pageIndicator");
   const prevPageBtn = document.getElementById("prevPageBtn");
   const nextPageBtn = document.getElementById("nextPageBtn");
-
   if (!list) return;
 
   const items = data?.items ?? [];
@@ -414,10 +485,7 @@ function renderLeaderboard(data) {
         : `Classifica globale · ${totalItems} studenti`;
   }
 
-  if (pageIndicator) {
-    pageIndicator.textContent = `Pagina ${page} di ${totalPages}`;
-  }
-
+  if (pageIndicator) pageIndicator.textContent = `Pagina ${page} di ${totalPages}`;
   if (prevPageBtn) prevPageBtn.disabled = page <= 1;
   if (nextPageBtn) nextPageBtn.disabled = page >= totalPages;
 
@@ -426,40 +494,22 @@ function renderLeaderboard(data) {
     return;
   }
 
-  list.innerHTML = items
-    .map((item) => {
-      const rankClass =
-        item.rank === 1
-          ? "rank-1"
-          : item.rank === 2
-            ? "rank-2"
-            : item.rank === 3
-              ? "rank-3"
-              : "";
-
-      const isMe = myUsername && item.username === myUsername;
-
-      return `
+  list.innerHTML = items.map((item) => {
+    const rankClass = item.rank === 1 ? "rank-1" : item.rank === 2 ? "rank-2" : item.rank === 3 ? "rank-3" : "";
+    const isMe = myUsername && item.username === myUsername;
+    return `
   <div class="leaderboard-row ${isMe ? "is-me" : ""}">
     <div class="rank-pill ${rankClass}">#${item.rank}</div>
-
     <div class="leaderboard-user">
       <div class="leaderboard-user-main">
-        <div class="leaderboard-username">
-          ${escapeHtml(item.full_name || item.username)}
-        </div>
+        <div class="leaderboard-username">${escapeHtml(item.full_name || item.username)}</div>
         ${isMe ? `<span class="leaderboard-you">Tu</span>` : ""}
       </div>
-      <div class="leaderboard-class">
-        Classe: ${escapeHtml(item.class_code || "N/D")}
-      </div>
+      <div class="leaderboard-class">Classe: ${escapeHtml(item.class_code || "N/D")}</div>
     </div>
-
     <div class="leaderboard-hours">${formatHours(item.hours)} ore</div>
-  </div>
-`;
-    })
-    .join("");
+  </div>`;
+  }).join("");
 }
 
 function renderLeaderboardEmpty(message) {
@@ -467,15 +517,8 @@ function renderLeaderboardEmpty(message) {
   const pageIndicator = document.getElementById("pageIndicator");
   const prevPageBtn = document.getElementById("prevPageBtn");
   const nextPageBtn = document.getElementById("nextPageBtn");
-
-  if (list) {
-    list.innerHTML = `<div class="leaderboard-empty">${escapeHtml(message)}</div>`;
-  }
-
-  if (pageIndicator) {
-    pageIndicator.textContent = "Pagina 1";
-  }
-
+  if (list) list.innerHTML = `<div class="leaderboard-empty">${escapeHtml(message)}</div>`;
+  if (pageIndicator) pageIndicator.textContent = "Pagina 1";
   if (prevPageBtn) prevPageBtn.disabled = true;
   if (nextPageBtn) nextPageBtn.disabled = true;
 }
@@ -517,7 +560,6 @@ function initMobileMenu() {
   const drawer = document.getElementById("mobileNavDrawer");
   const backdrop = document.getElementById("mobileNavBackdrop");
   const closeBtn = document.getElementById("navDrawerClose");
-
   if (!toggle || !drawer || !backdrop) return;
 
   const openMenu = () => {
@@ -538,20 +580,13 @@ function initMobileMenu() {
     drawer.setAttribute("aria-hidden", "true");
   };
 
-  toggle.addEventListener("click", () =>
-    drawer.classList.contains("open") ? closeMenu() : openMenu(),
-  );
-
+  toggle.addEventListener("click", () => drawer.classList.contains("open") ? closeMenu() : openMenu());
   backdrop.addEventListener("click", closeMenu);
   closeBtn?.addEventListener("click", closeMenu);
-
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeMenu();
   });
-
-  drawer
-    .querySelectorAll("button")
-    .forEach((btn) => btn.addEventListener("click", closeMenu));
+  drawer.querySelectorAll("button").forEach((btn) => btn.addEventListener("click", closeMenu));
 }
 
 function goToHome() {
