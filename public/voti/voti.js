@@ -129,6 +129,9 @@ function handleMateriaChange(materia, voti) {
   });
 
   const choosePeriod = (label, items, node) => {
+    resultDiv.innerHTML = "";
+    wantedAverageInput.value = 6;
+    numVotiInput.value = 1;
     votiDiv.innerHTML = "";
     selectedPeriod = label;
     document.querySelector(".periodo.selected")?.classList.remove("selected");
