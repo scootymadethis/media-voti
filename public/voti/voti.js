@@ -101,10 +101,16 @@ function renderVoti(materie, voti) {
 function handleMateriaChange(materia, voti) {
   const periodDiv = document.querySelector(".voti-periodo");
   const votiDiv = document.querySelector(".actual-voti");
-  if (!periodDiv || !votiDiv) return;
+  const resultDiv = document.querySelector(".result");
+  const wantedAverageInput = document.getElementById("wanted-average");
+  const numVotiInput = document.getElementById("grades-number");
+  if (!periodDiv || !votiDiv || !resultDiv) return;
 
   periodDiv.innerHTML = "";
   votiDiv.innerHTML = "";
+  resultDiv.innerHTML = "";
+  wantedAverageInput.value = 6;
+  numVotiInput.value = 1;
 
   if (!materia) {
     votiDiv.innerHTML =
