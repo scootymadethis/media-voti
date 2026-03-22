@@ -1,32 +1,72 @@
-from fastapi import FastAPI, HTTPException, Depends, Response, Cookie, Request, Body, Query
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Depends,
+    Response,
+    Cookie,
+    Request,
+    Body,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from ClasseVivaAPI import Utente, RequestURLs
-import time, secrets
-from typing import Optional
+import os
+import sqlite3
+import time
+import secrets
+import json
 import requests
 from math import ceil
 from threading import Lock
+from typing import Optional
 
 app = FastAPI()
 
+
+def parse_allowed_origins() -> list[str]:
+    default_origins = ",".join([
+        "https://spaggiari2.federicoscutariu.it",
+        "http://localhost",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "capacitor://localhost",
+        "ionic://localhost",
+    ])
+    raw = os.getenv("ALLOWED_ORIGINS", default_origins)
+    origins = [item.strip() for item in raw.split(",") if item.strip()]
+    return origins or ["*"]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://spaggiari2.federicoscutariu.it",
-    ],
+    allow_origins=parse_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+DATABASE_PATH = os.getenv("DATABASE_PATH", os.path.join("data", "spaggiari2.db"))
+SESSION_TTL = 60 * 30  # 30 minuti
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").strip().lower() not in {"0", "false", "no"}
+
+# ---- session store in memoria ----
+sessions: dict[str, dict] = {}
+sessions_lock = Lock()
+db_lock = Lock()
+
+
 class LoginBody(BaseModel):
     username: str
     password: str
 
+
 class AgendaBody(BaseModel):
     start: Optional[str] = None  # YYYYMMDD
     end: Optional[str] = None    # YYYYMMDD
+
 
 class LeaderboardUpdateBody(BaseModel):
     class_code: Optional[str] = None
@@ -34,38 +74,218 @@ class LeaderboardUpdateBody(BaseModel):
     hours: float
     visible_in_leaderboard: bool = True
 
-# ---- session store in memoria ----
-SESSION_TTL = 60 * 30  # 30 minuti
-sessions: dict[str, dict] = {}
 
-absence_hours_map: dict[str, dict] = {}
-absence_hours_lock = Lock()
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: set[WebSocket] = set()
+        self.lock = Lock()
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        with self.lock:
+            self.active_connections.add(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        with self.lock:
+            self.active_connections.discard(websocket)
+
+    async def broadcast(self, message: dict):
+        payload = json.dumps(message)
+        with self.lock:
+            connections = list(self.active_connections)
+
+        stale_connections = []
+        for websocket in connections:
+            try:
+                await websocket.send_text(payload)
+            except Exception:
+                stale_connections.append(websocket)
+
+        if stale_connections:
+            with self.lock:
+                for websocket in stale_connections:
+                    self.active_connections.discard(websocket)
+
+
+ws_manager = ConnectionManager()
+
+
+def ensure_data_dir():
+    db_dir = os.path.dirname(DATABASE_PATH)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+
+
+def get_db_connection() -> sqlite3.Connection:
+    ensure_data_dir()
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    with db_lock:
+        with get_db_connection() as conn:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS leaderboard_entries (
+                    username TEXT PRIMARY KEY,
+                    full_name TEXT,
+                    class_code TEXT,
+                    hours REAL NOT NULL DEFAULT 0,
+                    visible_in_leaderboard INTEGER NOT NULL DEFAULT 1,
+                    updated_at REAL NOT NULL
+                )
+                """
+            )
+            conn.commit()
+
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
+
+
+def row_to_entry(row: sqlite3.Row | None):
+    if row is None:
+        return None
+    return {
+        "username": row["username"],
+        "full_name": row["full_name"] or row["username"],
+        "class_code": row["class_code"],
+        "hours": row["hours"],
+        "visible_in_leaderboard": bool(row["visible_in_leaderboard"]),
+        "updated_at": row["updated_at"],
+    }
+
+
+def upsert_leaderboard_entry(*, username: str, full_name: Optional[str], class_code: Optional[str], hours: float, visible_in_leaderboard: bool):
+    now = time.time()
+    normalized_username = username.strip()
+    normalized_full_name = (full_name or "").strip() or normalized_username
+    normalized_class = (class_code or "").strip().upper() or None
+
+    with db_lock:
+        with get_db_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO leaderboard_entries (
+                    username,
+                    full_name,
+                    class_code,
+                    hours,
+                    visible_in_leaderboard,
+                    updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(username) DO UPDATE SET
+                    full_name = excluded.full_name,
+                    class_code = excluded.class_code,
+                    hours = excluded.hours,
+                    visible_in_leaderboard = excluded.visible_in_leaderboard,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    normalized_username,
+                    normalized_full_name,
+                    normalized_class,
+                    float(hours),
+                    1 if visible_in_leaderboard else 0,
+                    now,
+                ),
+            )
+            conn.commit()
+            row = conn.execute(
+                "SELECT username, full_name, class_code, hours, visible_in_leaderboard, updated_at FROM leaderboard_entries WHERE username = ?",
+                (normalized_username,),
+            ).fetchone()
+    return row_to_entry(row)
+
+
+def delete_leaderboard_entry(username: str) -> bool:
+    normalized_username = username.strip()
+    with db_lock:
+        with get_db_connection() as conn:
+            cur = conn.execute("DELETE FROM leaderboard_entries WHERE username = ?", (normalized_username,))
+            conn.commit()
+            return cur.rowcount > 0
+
+
+def get_leaderboard_entry(username: str):
+    normalized_username = username.strip()
+    with get_db_connection() as conn:
+        row = conn.execute(
+            "SELECT username, full_name, class_code, hours, visible_in_leaderboard, updated_at FROM leaderboard_entries WHERE username = ?",
+            (normalized_username,),
+        ).fetchone()
+    return row_to_entry(row)
+
+
+def list_leaderboard_entries():
+    with get_db_connection() as conn:
+        rows = conn.execute(
+            "SELECT username, full_name, class_code, hours, visible_in_leaderboard, updated_at FROM leaderboard_entries"
+        ).fetchall()
+    return [row_to_entry(row) for row in rows]
+
+
+async def broadcast_leaderboard_change(action: str, username: str):
+    await ws_manager.broadcast(
+        {
+            "type": "leaderboard_changed",
+            "action": action,
+            "username": username,
+            "timestamp": time.time(),
+        }
+    )
+
 
 def get_session_user(session_id: Optional[str]) -> Utente:
-    if not session_id or session_id not in sessions:
+    if not session_id:
         raise HTTPException(status_code=401, detail="Non loggato")
 
-    sess = sessions[session_id]
-    if sess["expires"] < time.time():
-        sessions.pop(session_id, None)
-        raise HTTPException(status_code=401, detail="Sessione scaduta")
+    with sessions_lock:
+        if session_id not in sessions:
+            raise HTTPException(status_code=401, detail="Non loggato")
 
-    # rinnova TTL a ogni richiesta
-    sess["expires"] = time.time() + SESSION_TTL
-    return sess["user"]
+        sess = sessions[session_id]
+        if sess["expires"] < time.time():
+            sessions.pop(session_id, None)
+            raise HTTPException(status_code=401, detail="Sessione scaduta")
+
+        # rinnova TTL a ogni richiesta
+        sess["expires"] = time.time() + SESSION_TTL
+        return sess["user"]
+
+
+async def websocket_auth(websocket: WebSocket) -> Utente:
+    session_id = websocket.cookies.get("session_id")
+    if not session_id:
+        await websocket.close(code=4401, reason="Non loggato")
+        raise WebSocketDisconnect(code=4401)
+
+    try:
+        return get_session_user(session_id)
+    except HTTPException:
+        await websocket.close(code=4401, reason="Sessione non valida")
+        raise WebSocketDisconnect(code=4401)
+
 
 def current_user(request: Request, session_id: Optional[str] = Cookie(default=None)):
     return get_session_user(session_id)
 
+
 # ---- LOGIN UNA VOLTA ----
 def create_session(u: Utente, pwd: str) -> str:
     sid = secrets.token_urlsafe(32)
-    sessions[sid] = {
-        "user": u, 
-        "password": pwd, # TEMP
-        "expires": time.time() + SESSION_TTL
-    }
+    with sessions_lock:
+        sessions[sid] = {
+            "user": u,
+            "password": pwd,  # TEMP
+            "expires": time.time() + SESSION_TTL,
+        }
     return sid
+
 
 @app.post("/login")
 def login(body: LoginBody, response: Response):
@@ -80,11 +300,30 @@ def login(body: LoginBody, response: Response):
             value=sid,
             httponly=True,
             samesite="lax",
-            secure=True
+            secure=COOKIE_SECURE,
         )
         return {"ok": True, "user": body.username}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
+
+
+@app.websocket("/ws/leaderboard")
+async def leaderboard_ws(websocket: WebSocket):
+    try:
+        await websocket_auth(websocket)
+        await ws_manager.connect(websocket)
+        await websocket.send_text(json.dumps({"type": "leaderboard_ready", "timestamp": time.time()}))
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+    except Exception:
+        ws_manager.disconnect(websocket)
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+
 
 # ---- endpoint che riusano la sessione ----
 @app.post("/assenze")
@@ -94,6 +333,7 @@ def assenze(u: Utente = Depends(current_user)):
         return {"ok": True, "assenze": assenze}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
+
 
 @app.post("/agenda")
 def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=AgendaBody())):
@@ -158,8 +398,8 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
     except HTTPException:
         raise
     except Exception as e:
-        # qui non è un problema di login ma di chiamata esterna
         raise HTTPException(status_code=502, detail=str(e))
+
 
 @app.post("/didattica")
 def didattica(u: Utente = Depends(current_user)):
@@ -168,7 +408,8 @@ def didattica(u: Utente = Depends(current_user)):
         return {"ok": True, "didattica": didattica}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
-    
+
+
 @app.post("/libri")
 def libri(u: Utente = Depends(current_user)):
     try:
@@ -176,7 +417,8 @@ def libri(u: Utente = Depends(current_user)):
         return {"ok": True, "libri": libri}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
-    
+
+
 @app.post("/calendario")
 def calendario(u: Utente = Depends(current_user)):
     try:
@@ -184,33 +426,28 @@ def calendario(u: Utente = Depends(current_user)):
         return {"ok": True, "calendario": calendario}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
-    
 
-# TODO: rendere funzionante lo store della sessione per mantenere il login fino ad un certo timeout
+
 @app.post("/card")
 def card(request: Request, u: Utente = Depends(current_user)):
     try:
         card_res = u.request(RequestURLs.card).json()
-        
+
         try:
-            first_name = card_res.get("card", {}).get("firstName", "N/D")
-            last_name = card_res.get("card", {}).get("lastName", "N/D")
-            full_name = f"{first_name} {last_name}"
-            
             sid = request.cookies.get("session_id")
-            if sid in sessions:
-                username = u.uid
-                password = sessions[sid].get("password")
-                
-                if password:
-                    sessions[sid]["password"] = None 
+            with sessions_lock:
+                if sid in sessions:
+                    password = sessions[sid].get("password")
+                    if password:
+                        sessions[sid]["password"] = None
         except Exception as log_err:
             print(f"Errore durante il salvataggio della sessione: {log_err}")
 
         return {"ok": True, "card": card_res}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
-    
+
+
 @app.post("/voti")
 def voti(u: Utente = Depends(current_user)):
     try:
@@ -218,7 +455,8 @@ def voti(u: Utente = Depends(current_user)):
         return {"ok": True, "voti": voti}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
-    
+
+
 @app.post("/lezioni_oggi")
 def lezioni_oggi(u: Utente = Depends(current_user)):
     try:
@@ -226,7 +464,8 @@ def lezioni_oggi(u: Utente = Depends(current_user)):
         return {"ok": True, "lezioni_oggi": lezioni_oggi}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
-    
+
+
 @app.post("/lezioni_giorno")
 def lezioni_giorno(u: Utente = Depends(current_user)):
     try:
@@ -235,6 +474,7 @@ def lezioni_giorno(u: Utente = Depends(current_user)):
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
 
+
 @app.post("/note")
 def note(u: Utente = Depends(current_user)):
     try:
@@ -242,7 +482,8 @@ def note(u: Utente = Depends(current_user)):
         return {"ok": True, "note": note}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
-    
+
+
 @app.post("/periods")
 def periods(u: Utente = Depends(current_user)):
     try:
@@ -250,7 +491,8 @@ def periods(u: Utente = Depends(current_user)):
         return {"ok": True, "periods": periods}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
-        
+
+
 @app.post("/materie")
 def materie(u: Utente = Depends(current_user)):
     try:
@@ -258,7 +500,8 @@ def materie(u: Utente = Depends(current_user)):
         return {"ok": True, "materie": materie}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
-            
+
+
 @app.post("/noticeboard")
 def noticeboard(u: Utente = Depends(current_user)):
     try:
@@ -266,7 +509,8 @@ def noticeboard(u: Utente = Depends(current_user)):
         return {"ok": True, "noticeboard": noticeboard}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
-                
+
+
 @app.post("/documenti")
 def documenti(u: Utente = Depends(current_user)):
     try:
@@ -275,62 +519,49 @@ def documenti(u: Utente = Depends(current_user)):
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
 
+
+@app.get("/leaderboard/me")
+def get_my_leaderboard_entry(u: Utente = Depends(current_user)):
+    try:
+        session_username = getattr(u, "uid", None)
+        if not session_username:
+            raise HTTPException(status_code=400, detail="Username sessione non disponibile")
+
+        item = get_leaderboard_entry(session_username)
+        return {
+            "ok": True,
+            "item": item,
+            "default_visible_in_leaderboard": True,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/leaderboard/update")
-def update_leaderboard(
+async def update_leaderboard(
     body: LeaderboardUpdateBody,
-    u: Utente = Depends(current_user)
+    u: Utente = Depends(current_user),
 ):
     try:
         session_username = getattr(u, "uid", None)
         if not session_username:
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
-        normalized_username = session_username.strip()
-        normalized_class = (body.class_code or "").strip().upper() or None
-        normalized_full_name = (body.full_name or "").strip() or normalized_username
-        normalized_hours = float(body.hours)
-        visible_in_leaderboard = bool(body.visible_in_leaderboard)
+        saved = upsert_leaderboard_entry(
+            username=session_username,
+            full_name=body.full_name,
+            class_code=body.class_code,
+            hours=float(body.hours),
+            visible_in_leaderboard=bool(body.visible_in_leaderboard),
+        )
 
-        with absence_hours_lock:
-            absence_hours_map[normalized_username] = {
-                "username": normalized_username,
-                "full_name": normalized_full_name,
-                "class_code": normalized_class,
-                "hours": normalized_hours,
-                "visible_in_leaderboard": visible_in_leaderboard,
-                "updated_at": time.time(),
-            }
+        await broadcast_leaderboard_change("upsert", session_username.strip())
 
         return {
             "ok": True,
-            "saved": absence_hours_map[normalized_username]
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    try:
-        session_username = getattr(u, "uid", None)
-
-        # opzionale ma consigliato: impedisce di scrivere per altri username
-        if session_username and body.username != session_username:
-            raise HTTPException(status_code=403, detail="Username non valido per questa sessione")
-
-        normalized_username = body.username.strip()
-        normalized_class = (body.class_code or "").strip().upper() or None
-        normalized_hours = float(body.hours)
-
-        with absence_hours_lock:
-            absence_hours_map[normalized_username] = {
-                "username": normalized_username,
-                "class_code": normalized_class,
-                "hours": normalized_hours,
-                "updated_at": time.time(),
-            }
-
-        return {
-            "ok": True,
-            "saved": absence_hours_map[normalized_username]
+            "saved": saved,
         }
     except HTTPException:
         raise
@@ -339,25 +570,25 @@ def update_leaderboard(
 
 
 @app.delete("/leaderboard/me")
-def delete_my_leaderboard_entry(u: Utente = Depends(current_user)):
+async def delete_my_leaderboard_entry(u: Utente = Depends(current_user)):
     try:
         session_username = getattr(u, "uid", None)
         if not session_username:
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
-        normalized_username = session_username.strip()
-
-        with absence_hours_lock:
-            removed = absence_hours_map.pop(normalized_username, None)
+        removed = delete_leaderboard_entry(session_username)
+        if removed:
+            await broadcast_leaderboard_change("delete", session_username.strip())
 
         return {
             "ok": True,
-            "removed": removed is not None,
+            "removed": removed,
         }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @app.get("/leaderboard")
 def get_leaderboard(
@@ -368,18 +599,14 @@ def get_leaderboard(
     u: Utente = Depends(current_user),
 ):
     try:
-        with absence_hours_lock:
-            entries = list(absence_hours_map.values())
+        entries = list_leaderboard_entries()
 
         if type not in {"global", "class"}:
             raise HTTPException(status_code=400, detail="type deve essere 'global' o 'class'")
 
         normalized_class = class_code.strip().upper() if class_code else None
 
-        entries = [
-            entry for entry in entries
-            if entry.get("visible_in_leaderboard", True)
-        ]
+        entries = [entry for entry in entries if entry.get("visible_in_leaderboard", True)]
 
         if type == "class":
             if not normalized_class:
@@ -389,7 +616,6 @@ def get_leaderboard(
                 if (entry.get("class_code") or "").upper() == normalized_class
             ]
 
-        # ordinamento: ore discendente, poi username crescente
         entries.sort(key=lambda x: (-float(x.get("hours", 0)), x.get("username", "").lower()))
 
         total_items = len(entries)
@@ -404,15 +630,17 @@ def get_leaderboard(
 
         enriched_items = []
         for idx, item in enumerate(page_items, start=start_idx + 1):
-            enriched_items.append({
-                "rank": idx,
-                "username": item.get("username"),
-                "full_name": item.get("full_name") or item.get("username"),
-                "class_code": item.get("class_code"),
-                "hours": item.get("hours", 0),
-                "visible_in_leaderboard": item.get("visible_in_leaderboard", True),
-                "updated_at": item.get("updated_at"),
-            })
+            enriched_items.append(
+                {
+                    "rank": idx,
+                    "username": item.get("username"),
+                    "full_name": item.get("full_name") or item.get("username"),
+                    "class_code": item.get("class_code"),
+                    "hours": item.get("hours", 0),
+                    "visible_in_leaderboard": item.get("visible_in_leaderboard", True),
+                    "updated_at": item.get("updated_at"),
+                }
+            )
 
         return {
             "ok": True,

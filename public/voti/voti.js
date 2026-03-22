@@ -1,4 +1,5 @@
 // VARIABILI GLOBALI
+const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
 let selectedPeriod = "";
 const calcolatorBtn = document.getElementById("calculate-grade");
 
@@ -62,7 +63,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function fetchVoti() {
-  const res = await fetch("/api/voti", {
+  const res = await fetch(apiUrl("/api/voti"), {
     method: "POST",
     credentials: "include",
   });

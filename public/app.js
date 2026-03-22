@@ -1,5 +1,6 @@
 const form = document.getElementById("loginForm");
 const msg = document.getElementById("loginMsg");
+const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -15,7 +16,7 @@ form.addEventListener("submit", async (e) => {
       "[login] before submit, localStorage.loggedIn:",
       localStorage.getItem("loggedIn"),
     );
-    const res = await fetch("/api/login", {
+    const res = await fetch(apiUrl("/api/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include", // IMPORTANTISSIMO: prende il cookie

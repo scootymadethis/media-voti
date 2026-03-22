@@ -1,4 +1,5 @@
 let studentName;
+const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
 
 const agendaCache = new Map();
 let currentWeekOffset = 0;
@@ -184,7 +185,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function fetchCard() {
-  const res = await fetch("/api/card", {
+  const res = await fetch(apiUrl("/api/card"), {
     method: "POST",
     credentials: "include",
   });
@@ -218,7 +219,7 @@ async function fetchAgendaInterval(
   const cacheKey = `${startYYYYMMDD}-${endYYYYMMDD}`;
   if (agendaCache.has(cacheKey)) return agendaCache.get(cacheKey);
 
-  const res = await fetch("/api/agenda", {
+  const res = await fetch(apiUrl("/api/agenda"), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -445,7 +446,7 @@ function toTitleCase(str, locale = "it") {
 
 // --- Lezioni ---
 async function fetchLezioni() {
-  const res = await fetch("/api/lezioni_oggi", {
+  const res = await fetch(apiUrl("/api/lezioni_oggi"), {
     method: "POST",
     credentials: "include",
   });
@@ -524,7 +525,7 @@ function renderLezioni(data) {
 
 // --- Voti ---
 async function fetchVoti() {
-  const res = await fetch("/api/voti", {
+  const res = await fetch(apiUrl("/api/voti"), {
     method: "POST",
     credentials: "include",
   });
@@ -665,7 +666,7 @@ function renderMedia(media, primaMedia, secondaMedia) {
 
 // assenze
 async function fetchAssenze() {
-  const res = await fetch("/api/assenze", {
+  const res = await fetch(apiUrl("/api/assenze"), {
     method: "POST",
     credentials: "include",
   });

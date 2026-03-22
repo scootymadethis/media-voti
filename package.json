@@ -1,0 +1,19 @@
+{
+  "name": "spaggiari2-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Build Android per Spaggiari 2 con Capacitor",
+  "scripts": {
+    "cap:init:android": "npx cap add android",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/core": "^7.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

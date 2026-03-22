@@ -1,5 +1,6 @@
 const agendaCache = new Map();
-const LEADERBOARD_PREFERENCE_KEY = "leaderboardVisibilityPreference";
+const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
+const wsUrl = (path) => window.APP_CONFIG?.wsUrl?.(path) ?? path;
 
 let currentLeaderboardType = "class";
 let currentLeaderboardPage = 1;
@@ -9,7 +10,13 @@ let myClassCode = null;
 let myUsername = null;
 let myFullName = null;
 let myLeaderboardHours = 0;
-let leaderboardVisible = null;
+let leaderboardVisible = true;
+let leaderboardSocket = null;
+let leaderboardReconnectTimer = null;
+
+function getLeaderboardWsUrl() {
+  return wsUrl("/api/ws/leaderboard");
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
@@ -63,8 +70,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const badge = document.getElementById("myHoursBadge");
     if (badge) badge.textContent = `${myLeaderboardHours} ore`;
 
-    leaderboardVisible = await ensureLeaderboardPreference();
+    leaderboardVisible = await loadLeaderboardPreference();
+    updateLeaderboardPreferenceUI();
     await syncLeaderboardPreference();
+    connectLeaderboardRealtime();
 
     try {
       await loadAndRenderLeaderboard();
@@ -80,69 +89,33 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-function getStoredLeaderboardPreference() {
-  const raw = localStorage.getItem(LEADERBOARD_PREFERENCE_KEY);
-  if (raw === "visible") return true;
-  if (raw === "hidden") return false;
-  return null;
-}
+window.addEventListener("beforeunload", () => {
+  if (leaderboardReconnectTimer) clearTimeout(leaderboardReconnectTimer);
+  if (leaderboardSocket) leaderboardSocket.close();
+});
 
-function storeLeaderboardPreference(value) {
-  leaderboardVisible = Boolean(value);
-  localStorage.setItem(
-    LEADERBOARD_PREFERENCE_KEY,
-    leaderboardVisible ? "visible" : "hidden",
-  );
-  updateLeaderboardPreferenceUI();
-}
+async function loadLeaderboardPreference() {
+  try {
+    const res = await fetch(apiUrl("/api/leaderboard/me"), {
+      method: "GET",
+      credentials: "include",
+    });
 
-async function ensureLeaderboardPreference() {
-  const stored = getStoredLeaderboardPreference();
-  if (stored !== null) {
-    updateLeaderboardPreferenceUI();
-    return stored;
+    if (!res.ok) {
+      await handleAuthFail(res);
+      return true;
+    }
+
+    const data = await res.json();
+    if (data?.item && typeof data.item.visible_in_leaderboard === "boolean") {
+      return data.item.visible_in_leaderboard;
+    }
+
+    return Boolean(data?.default_visible_in_leaderboard ?? true);
+  } catch (err) {
+    console.error("Errore durante il caricamento della preferenza classifica:", err);
+    return true;
   }
-
-  const chosen = await openLeaderboardPreferenceModal();
-  storeLeaderboardPreference(chosen);
-  return chosen;
-}
-
-function openLeaderboardPreferenceModal() {
-  const modal = document.getElementById("leaderboardPreferenceModal");
-  const optInBtn = document.getElementById("leaderboardOptInBtn");
-  const optOutBtn = document.getElementById("leaderboardOptOutBtn");
-
-  if (!modal || !optInBtn || !optOutBtn) {
-    return Promise.resolve(true);
-  }
-
-  modal.classList.add("show");
-  modal.setAttribute("aria-hidden", "false");
-  document.body.style.overflow = "hidden";
-
-  return new Promise((resolve) => {
-    const cleanup = () => {
-      modal.classList.remove("show");
-      modal.setAttribute("aria-hidden", "true");
-      document.body.style.overflow = "";
-      optInBtn.removeEventListener("click", onOptIn);
-      optOutBtn.removeEventListener("click", onOptOut);
-    };
-
-    const onOptIn = () => {
-      cleanup();
-      resolve(true);
-    };
-
-    const onOptOut = () => {
-      cleanup();
-      resolve(false);
-    };
-
-    optInBtn.addEventListener("click", onOptIn);
-    optOutBtn.addEventListener("click", onOptOut);
-  });
 }
 
 function updateLeaderboardPreferenceUI() {
@@ -152,12 +125,10 @@ function updateLeaderboardPreferenceUI() {
   if (text) {
     if (leaderboardVisible === true) {
       text.textContent =
-        "Al momento compari in classifica. Se disattivi questa opzione, la tua entry scomparirà subito dalla classifica.";
-    } else if (leaderboardVisible === false) {
-      text.textContent =
-        "Al momento non compari in classifica. Se attivi questa opzione, la tua entry verrà aggiunta di nuovo usando le ore attuali.";
+        "Al momento compari in classifica. Se disattivi questa opzione, la tua entry scomparirà subito dalla classifica per tutti in tempo reale.";
     } else {
-      text.textContent = "Scegli se comparire o no nella classifica delle assenze.";
+      text.textContent =
+        "Al momento non compari in classifica. Se attivi questa opzione, la tua entry verrà aggiunta di nuovo usando le ore attuali e apparirà subito a tutti.";
     }
   }
 
@@ -181,11 +152,64 @@ async function syncLeaderboardPreference() {
   }
 }
 
+function connectLeaderboardRealtime() {
+  if (leaderboardSocket && (leaderboardSocket.readyState === WebSocket.OPEN || leaderboardSocket.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+
+  try {
+    leaderboardSocket = new WebSocket(getLeaderboardWsUrl());
+  } catch (err) {
+    console.error("Errore apertura websocket leaderboard:", err);
+    scheduleLeaderboardReconnect();
+    return;
+  }
+
+  leaderboardSocket.addEventListener("open", () => {
+    console.log("[leaderboard] realtime connected");
+    if (leaderboardReconnectTimer) {
+      clearTimeout(leaderboardReconnectTimer);
+      leaderboardReconnectTimer = null;
+    }
+  });
+
+  leaderboardSocket.addEventListener("message", async (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      if (payload?.type === "leaderboard_changed") {
+        await loadAndRenderLeaderboard();
+      }
+    } catch (err) {
+      console.error("Errore messaggio realtime classifica:", err);
+    }
+  });
+
+  leaderboardSocket.addEventListener("close", () => {
+    console.warn("[leaderboard] realtime disconnected");
+    scheduleLeaderboardReconnect();
+  });
+
+  leaderboardSocket.addEventListener("error", (err) => {
+    console.error("[leaderboard] websocket error", err);
+    try {
+      leaderboardSocket?.close();
+    } catch (_) {}
+  });
+}
+
+function scheduleLeaderboardReconnect() {
+  if (leaderboardReconnectTimer) return;
+  leaderboardReconnectTimer = setTimeout(() => {
+    leaderboardReconnectTimer = null;
+    connectLeaderboardRealtime();
+  }, 2500);
+}
+
 function initLeaderboardPreferenceControls() {
   const button = document.getElementById("toggleLeaderboardVisibilityBtn");
   button?.addEventListener("click", async () => {
     leaderboardVisible = !Boolean(leaderboardVisible);
-    storeLeaderboardPreference(leaderboardVisible);
+    updateLeaderboardPreferenceUI();
     showLoading(true);
     try {
       await syncLeaderboardPreference();
@@ -264,7 +288,7 @@ async function fetchAgendaInterval(startYYYYMMDD, endYYYYMMDD, { prefetch = fals
   const cacheKey = `${startYYYYMMDD}-${endYYYYMMDD}`;
   if (agendaCache.has(cacheKey)) return agendaCache.get(cacheKey);
 
-  const res = await fetch("/api/agenda", {
+  const res = await fetch(apiUrl("/api/agenda"), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -327,7 +351,7 @@ async function logClasseFromFirstLesson({ maxWeeksToCheck = 52, startOffset = 0 
 }
 
 async function fetchAssenze() {
-  const res = await fetch("/api/assenze", {
+  const res = await fetch(apiUrl("/api/assenze"), {
     method: "POST",
     credentials: "include",
   });
@@ -343,7 +367,7 @@ async function fetchAssenze() {
 async function saveMyAbsenceHours({ classCode, hours, fullName, visibleInLeaderboard }) {
   console.log("[leaderboard] saving", { classCode, hours, fullName, visibleInLeaderboard });
 
-  const res = await fetch("/api/leaderboard/update", {
+  const res = await fetch(apiUrl("/api/leaderboard/update"), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -377,7 +401,7 @@ async function loadAndRenderLeaderboard() {
 
   if (currentLeaderboardType === "class" && myClassCode) params.set("class_code", myClassCode);
 
-  const res = await fetch(`/api/leaderboard?${params.toString()}`, {
+  const res = await fetch(apiUrl(`/api/leaderboard?${params.toString()}`), {
     method: "GET",
     credentials: "include",
   });
@@ -591,6 +615,10 @@ function initMobileMenu() {
 
 function goToHome() {
   window.location.href = "/dashboard";
+}
+
+function goToAssenze() {
+  window.location.href = "/assenze";
 }
 
 function goToVoti() {
