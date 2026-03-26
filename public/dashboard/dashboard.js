@@ -52,7 +52,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }, 1000);
 
     const agendaData = await loadAgendaWeek(0);
-    console.log("Fetched agenda data:", agendaData);
     renderAgenda(agendaData);
 
     const [lezioniData, votiData, assenzeData] = await Promise.all([
@@ -72,8 +71,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (lezioniData) renderLezioni(lezioniData);
     if (votiData) renderVoti(votiData);
     if (assenzeData) renderAssenze(assenzeData);
-
-    console.log("Assenze data: " + JSON.stringify(assenzeData));
 
     const nextBtn = document.getElementById("nextWeek");
     const prevBtn = document.getElementById("prevWeek");
@@ -154,7 +151,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       updateSlidesLayout();
       const newMaxIndex = Math.max(
         0,
-        document.querySelectorAll(".agenda-track .giorno").length - slidesPerView,
+        document.querySelectorAll(".agenda-track .giorno").length -
+          slidesPerView,
       );
       currentSlideIndex = newMaxIndex;
       updateTrackPosition();
@@ -342,7 +340,7 @@ function renderAgenda(agendaData) {
 
       entry.innerHTML = `
         <span class="subject"></span>
-        <span class="teacher" style="display:none"></span>
+        <span class="teacher"></span>
         <span class="text"></span>
       `;
       entry.querySelector(".subject").textContent = subject;
@@ -609,7 +607,11 @@ function renderVoti(data) {
 
     track.appendChild(item);
 
-    if (v.displayValue !== "A" && !subject.includes("RELIGIONE") && v.color != "blue") {
+    if (
+      v.displayValue !== "A" &&
+      !subject.includes("RELIGIONE") &&
+      v.color != "blue"
+    ) {
       if (num !== null) {
         media += num;
         count += 1;
@@ -878,7 +880,7 @@ document.addEventListener("click", (ev) => {
   if (!entry || entry.closest(".modal")) return;
 
   const subject = entry.querySelector(".subject")?.textContent.trim() || "";
-  const text = entry.dataset.notes || "";
+  const text = entry.querySelector(".text").innerHTML || "";
   const teacher =
     entry.querySelector(".teacher")?.textContent.trim() ||
     entry.dataset.teacher ||
@@ -909,7 +911,6 @@ function logout() {
   window.location.href = "/";
 }
 
-
 function initMobileMenu() {
   const toggle = document.getElementById("navToggle");
   const drawer = document.getElementById("mobileNavDrawer");
@@ -935,9 +936,15 @@ function initMobileMenu() {
     drawer.setAttribute("aria-hidden", "true");
   };
 
-  toggle.addEventListener("click", () => drawer.classList.contains("open") ? closeMenu() : openMenu());
+  toggle.addEventListener("click", () =>
+    drawer.classList.contains("open") ? closeMenu() : openMenu(),
+  );
   backdrop.addEventListener("click", closeMenu);
   closeBtn?.addEventListener("click", closeMenu);
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
-  drawer.querySelectorAll("button").forEach((btn) => btn.addEventListener("click", closeMenu));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMenu();
+  });
+  drawer
+    .querySelectorAll("button")
+    .forEach((btn) => btn.addEventListener("click", closeMenu));
 }
