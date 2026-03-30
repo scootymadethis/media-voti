@@ -19,7 +19,9 @@ body {
   margin: 0 auto;
   padding: 28px;
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--surface);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent),
+    var(--surface);
   border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -202,4 +204,37 @@ body {
 
 .ios-checkbox input:checked + .checkbox-wrapper {
   animation: bounce 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.password-field {
+  position: relative;
+  width: 100%;
+}
+
+.password-field .password {
+  padding-right: 3.2rem;
+}
+
+.toggle-password {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--secondary);
+  cursor: pointer;
+  font-size: 1.1rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.toggle-password:hover {
+  color: var(--primary);
+}
+
+.toggle-password:focus {
+  outline: none;
+  color: var(--primary);
 }

@@ -21,14 +21,25 @@
           placeholder="Inserisci il tuo username..."
           required
         />
-        <input
-          type="password"
-          id="password"
-          name="password"
-          class="password"
-          placeholder="Inserisci la tua password..."
-          required
-        />
+        <div class="password-field">
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="password"
+            placeholder="Inserisci la tua password..."
+            required
+          />
+          <button
+            type="button"
+            id="togglePassword"
+            class="toggle-password"
+            aria-label="Mostra password"
+            aria-pressed="false"
+          >
+            🙈
+          </button>
+        </div>
       </div>
       <p class="gestione-credenziali-text"></p>
 

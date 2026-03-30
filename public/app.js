@@ -94,3 +94,18 @@ credenzialiModal?.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeModal();
 });
+
+const passwordInput = document.getElementById("password");
+const togglePasswordBtn = document.getElementById("togglePassword");
+
+togglePasswordBtn?.addEventListener("click", () => {
+  const isHidden = passwordInput.type === "password";
+
+  passwordInput.type = isHidden ? "text" : "password";
+  togglePasswordBtn.textContent = !isHidden ? "🙈" : "🐵";
+  togglePasswordBtn.setAttribute(
+    "aria-label",
+    isHidden ? "Nascondi password" : "Mostra password",
+  );
+  togglePasswordBtn.setAttribute("aria-pressed", String(isHidden));
+});
