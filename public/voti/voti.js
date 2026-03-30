@@ -193,11 +193,12 @@ function renderActualVoti(voti, periodoLabel = "Periodo", materia = "") {
 
   voti.forEach((voto) => {
     if (voto.color == "blue") votiLength -= 1;
+    if (voto.displayValue == "") votiLength -= 1;
 
     const votoDiv = document.createElement("div");
     votoDiv.classList.add("voto");
     votoDiv.innerHTML = `
-      <div class="voto-score grade-${voto.color}">${voto.displayValue}</div>
+      <div class="voto-score grade-${voto.displayValue != "" ? voto.color : "blue"}">${voto.displayValue}</div>
       <div class="voto-meta">
         <div class="voto-desc">${voto.notesForFamily || "Valutazione registrata"}</div>
       </div>
