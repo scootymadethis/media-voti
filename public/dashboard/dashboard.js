@@ -898,6 +898,10 @@ document.addEventListener("keydown", (e) => {
 });
 
 // --- Navigation buttons ---
+function goToHome() {
+  window.location.href = "/dashboard/";
+}
+
 function goToVoti() {
   window.location.href = "/voti/";
 }

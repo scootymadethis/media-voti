@@ -47,7 +47,9 @@ button { cursor: pointer; }
 .navbar { position: sticky; top: 16px; z-index: 40; width: var(--container-width); margin: 20px auto 0; padding: 14px 18px; background: rgba(24, 24, 24, 0.88); border: 1px solid rgba(255,255,255,0.06); border-radius: calc(var(--radius-lg) + 4px); display: flex; align-items: center; justify-content: space-between; gap: 18px; box-shadow: var(--shadow); backdrop-filter: blur(18px); }
 .navbar-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .navbar-brand-mark { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; font-weight: 900; color: #fff; background: linear-gradient(135deg, #dc2626, #ef4444 55%, #7f1d1d); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2); }
+.navbar-brand-mark:hover { cursor: pointer; }
 .navbar .title { font-size: clamp(1.45rem, 3vw, 2rem); line-height: 1; }
+.navbar .title:hover { cursor: pointer; }
 .navbar-subtitle { color: var(--secondary); font-size: 0.9rem; }
 .navbar-right { display: flex; align-items: center; gap: 12px; }
 .buttons { display: flex; flex-wrap: wrap; gap: 10px; min-width: 0; }
