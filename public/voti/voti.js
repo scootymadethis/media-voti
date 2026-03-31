@@ -197,8 +197,19 @@ function renderActualVoti(voti, periodoLabel = "Periodo", materia = "") {
 
     const votoDiv = document.createElement("div");
     votoDiv.classList.add("voto");
+
+    let votoColor = "blue";
+
+    if (voto.displayValue != "") {
+      if (voto.color == "blue") {
+        votoColor = "blue";
+      } else {
+        votoColor = getColorFromVoto(voto.decimalValue.toFixed(2));
+      }
+    }
+
     votoDiv.innerHTML = `
-      <div class="voto-score grade-${voto.displayValue != "" ? voto.color : "blue"}">${voto.displayValue}</div>
+      <div class="voto-score grade-${votoColor}">${voto.displayValue}</div>
       <div class="voto-meta">
         <div class="voto-desc">${voto.notesForFamily || "Valutazione registrata"}</div>
       </div>
@@ -447,6 +458,14 @@ function initMobileMenu() {
   drawer
     .querySelectorAll("button")
     .forEach((btn) => btn.addEventListener("click", closeMenu));
+}
+
+function getColorFromVoto(voto) {
+  const valore = parseFloat(voto);
+
+  if (valore >= 6) return "green";
+  if (valore >= 5.75) return "orange";
+  return "red";
 }
 
 function goToHome() {
