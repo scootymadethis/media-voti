@@ -11,6 +11,8 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
 from ClasseVivaAPI import Utente, RequestURLs
 import os
@@ -25,13 +27,38 @@ from typing import Optional
 
 app = FastAPI()
 
+DEV_MODE = os.getenv("DEV_MODE", "").strip().lower() in {"1", "true", "yes"}
+PUBLIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "public")
+
+
+class ApiPrefixMiddleware(BaseHTTPMiddleware):
+    """In dev, riscrive /api/* verso /* come fa Nginx in produzione."""
+
+    async def dispatch(self, request, call_next):
+        path = request.scope.get("path", "")
+        if path == "/api":
+            request.scope["path"] = "/"
+        elif path.startswith("/api/"):
+            request.scope["path"] = path[4:] or "/"
+        return await call_next(request)
+
+
+if DEV_MODE:
+    app.add_middleware(ApiPrefixMiddleware)
+
 
 def parse_allowed_origins() -> list[str]:
     default_origins = ",".join([
         "https://spaggiari2.federicoscutariu.it",
         "http://localhost",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
         "http://localhost:3000",
         "http://localhost:5173",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
         "capacitor://localhost",
         "ionic://localhost",
     ])
@@ -1503,3 +1530,7 @@ async def admin_delete_average_leaderboard(
     if removed:
         await broadcast_average_leaderboard_change("delete", username.strip())
     return {"ok": True, "removed": removed}
+
+
+if DEV_MODE and os.path.isdir(PUBLIC_DIR):
+    app.mount("/", StaticFiles(directory=PUBLIC_DIR, html=True), name="public")
