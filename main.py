@@ -21,6 +21,7 @@ import sqlite3
 import time
 import secrets
 import json
+import hashlib
 import requests
 from math import ceil
 from threading import Lock
@@ -138,6 +139,12 @@ class AdminVisibilityBody(BaseModel):
     visible_in_leaderboard: bool
 
 
+class AnnouncementUpdateBody(BaseModel):
+    title: str
+    body_markdown: str
+    enabled: bool = True
+
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: set[WebSocket] = set()
@@ -238,6 +245,38 @@ def init_db():
                 conn.execute("ALTER TABLE average_leaderboard_entries_scoped ADD COLUMN school_code TEXT")
             except Exception:
                 pass
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS site_announcement (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    title TEXT NOT NULL DEFAULT '',
+                    body_markdown TEXT NOT NULL DEFAULT '',
+                    enabled INTEGER NOT NULL DEFAULT 0,
+                    content_version TEXT NOT NULL DEFAULT '',
+                    updated_at REAL NOT NULL DEFAULT 0
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS announcement_views (
+                    username TEXT NOT NULL,
+                    content_version TEXT NOT NULL,
+                    viewed_at REAL NOT NULL,
+                    PRIMARY KEY (username, content_version)
+                )
+                """
+            )
+            existing = conn.execute("SELECT id FROM site_announcement WHERE id = 1").fetchone()
+            if not existing:
+                conn.execute(
+                    """
+                    INSERT INTO site_announcement (id, title, body_markdown, enabled, content_version, updated_at)
+                    VALUES (1, '', '', 0, '', ?)
+                    """,
+                    (time.time(),),
+                )
 
             conn.commit()
 
@@ -1536,6 +1575,174 @@ def get_average_leaderboard(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---- ANNUNCI / CHANGELOG MODAL ----
+def announcement_content_version(title: str, body_markdown: str) -> str:
+    payload = f"{title.strip()}\n---\n{body_markdown.strip()}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def row_to_announcement(row: sqlite3.Row | None):
+    if not row:
+        return {
+            "title": "",
+            "body_markdown": "",
+            "enabled": False,
+            "content_version": "",
+            "updated_at": 0,
+        }
+    return {
+        "title": row["title"] or "",
+        "body_markdown": row["body_markdown"] or "",
+        "enabled": bool(row["enabled"]),
+        "content_version": row["content_version"] or "",
+        "updated_at": row["updated_at"],
+    }
+
+
+def get_site_announcement():
+    with get_db_connection() as conn:
+        row = conn.execute(
+            "SELECT title, body_markdown, enabled, content_version, updated_at FROM site_announcement WHERE id = 1"
+        ).fetchone()
+    return row_to_announcement(row)
+
+
+def save_site_announcement(*, title: str, body_markdown: str, enabled: bool):
+    current = get_site_announcement()
+    new_version = announcement_content_version(title, body_markdown)
+    version_changed = new_version != (current.get("content_version") or "")
+    now = time.time()
+
+    with db_lock:
+        with get_db_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO site_announcement (id, title, body_markdown, enabled, content_version, updated_at)
+                VALUES (1, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    title = excluded.title,
+                    body_markdown = excluded.body_markdown,
+                    enabled = excluded.enabled,
+                    content_version = excluded.content_version,
+                    updated_at = excluded.updated_at
+                """,
+                (title.strip(), body_markdown, 1 if enabled else 0, new_version, now),
+            )
+            if version_changed and new_version:
+                conn.execute(
+                    "DELETE FROM announcement_views WHERE content_version != ?",
+                    (new_version,),
+                )
+            conn.commit()
+
+    saved = get_site_announcement()
+    return saved, version_changed
+
+
+def user_has_seen_announcement(username: str, content_version: str) -> bool:
+    if not content_version:
+        return True
+    normalized_username = username.strip()
+    with get_db_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT 1 FROM announcement_views
+            WHERE username = ? AND content_version = ?
+            """,
+            (normalized_username, content_version),
+        ).fetchone()
+    return row is not None
+
+
+def mark_announcement_viewed(username: str, content_version: str):
+    normalized_username = username.strip()
+    if not normalized_username or not content_version:
+        return
+    now = time.time()
+    with db_lock:
+        with get_db_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO announcement_views (username, content_version, viewed_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(username, content_version) DO UPDATE SET viewed_at = excluded.viewed_at
+                """,
+                (normalized_username, content_version, now),
+            )
+            conn.commit()
+
+
+def count_announcement_views(content_version: str) -> int:
+    if not content_version:
+        return 0
+    with get_db_connection() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS c FROM announcement_views WHERE content_version = ?",
+            (content_version,),
+        ).fetchone()
+    return int(row["c"]) if row else 0
+
+
+@app.get("/announcement/me")
+def announcement_for_user(u: Utente = Depends(current_user)):
+    username = get_session_username(u)
+    announcement = get_site_announcement()
+    version = announcement.get("content_version") or ""
+    enabled = bool(announcement.get("enabled")) and bool(version)
+    has_title_or_body = bool(announcement.get("title", "").strip()) or bool(
+        announcement.get("body_markdown", "").strip()
+    )
+    should_show = (
+        enabled
+        and has_title_or_body
+        and not user_has_seen_announcement(username, version)
+    )
+    return {
+        "ok": True,
+        "should_show": should_show,
+        "title": announcement.get("title", ""),
+        "body_markdown": announcement.get("body_markdown", ""),
+        "content_version": version,
+    }
+
+
+@app.post("/announcement/dismiss")
+def dismiss_announcement(u: Utente = Depends(current_user)):
+    username = get_session_username(u)
+    announcement = get_site_announcement()
+    version = announcement.get("content_version") or ""
+    if version:
+        mark_announcement_viewed(username, version)
+    return {"ok": True}
+
+
+@app.get("/admin/announcement")
+def admin_get_announcement(_: Utente = Depends(current_admin)):
+    announcement = get_site_announcement()
+    version = announcement.get("content_version") or ""
+    return {
+        "ok": True,
+        "announcement": announcement,
+        "views_count": count_announcement_views(version),
+    }
+
+
+@app.put("/admin/announcement")
+def admin_save_announcement(body: AnnouncementUpdateBody, _: Utente = Depends(current_admin)):
+    saved, version_changed = save_site_announcement(
+        title=body.title,
+        body_markdown=body.body_markdown,
+        enabled=bool(body.enabled),
+    )
+    version = saved.get("content_version") or ""
+    return {
+        "ok": True,
+        "announcement": saved,
+        "version_changed": version_changed,
+        "views_count": count_announcement_views(version),
+    }
 
 
 # ---- EASTER EGG (gioco Godot) ----

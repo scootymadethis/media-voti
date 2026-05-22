@@ -420,6 +420,8 @@ async function loadDashboardData() {
     if (welcome) {
       welcome.textContent = `Connesso come ${overviewRes.data.admin_username}. Gestione classifiche e monitoraggio sistema.`;
     }
+
+    await loadAdminAnnouncement();
   } catch (err) {
     console.error(err);
     disconnectAdminRealtime();
@@ -589,10 +591,96 @@ function initMobileMenu() {
   backdrop.addEventListener("click", closeMenu);
 }
 
+function setAnnouncementSaveMessage(text, type = "") {
+  const el = document.getElementById("announcementSaveMsg");
+  if (!el) return;
+  el.textContent = text || "";
+  el.className = "admin-msg" + (type ? ` ${type}` : "");
+}
+
+function updateAnnouncementMeta(announcement, viewsCount) {
+  const meta = document.getElementById("announcementMeta");
+  if (!meta) return;
+  const enabled = announcement?.enabled ? "attivo" : "disattivato";
+  const version = announcement?.content_version || "—";
+  meta.textContent = `Stato: ${enabled} · versione ${version} · visto da ${viewsCount ?? 0} utenti`;
+}
+
+function renderAnnouncementPreview() {
+  const body = document.getElementById("announcementBody")?.value || "";
+  const title = document.getElementById("announcementTitle")?.value || "";
+  const preview = document.getElementById("announcementPreview");
+  if (!preview) return;
+
+  if (typeof window.renderAnnouncementMarkdown === "function") {
+    preview.innerHTML = `<strong>${title || "Senza titolo"}</strong><hr>${window.renderAnnouncementMarkdown(body)}`;
+  } else {
+    preview.textContent = body || "(vuoto)";
+  }
+}
+
+async function loadAdminAnnouncement() {
+  const { res, data } = await fetchAdmin("/api/admin/announcement");
+  if (!res.ok) return;
+
+  const announcement = data?.announcement || {};
+  document.getElementById("announcementTitle").value = announcement.title || "";
+  document.getElementById("announcementBody").value = announcement.body_markdown || "";
+  document.getElementById("announcementEnabled").checked = !!announcement.enabled;
+  updateAnnouncementMeta(announcement, data?.views_count ?? 0);
+  renderAnnouncementPreview();
+}
+
+function initAdminAnnouncementForm() {
+  const form = document.getElementById("adminAnnouncementForm");
+  if (!form) return;
+
+  document.getElementById("announcementPreviewBtn")?.addEventListener("click", async () => {
+    if (typeof window.renderAnnouncementMarkdown !== "function") {
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js";
+      script.onload = renderAnnouncementPreview;
+      document.head.appendChild(script);
+      return;
+    }
+    renderAnnouncementPreview();
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setAnnouncementSaveMessage("Salvataggio...", "");
+
+    const payload = {
+      title: document.getElementById("announcementTitle")?.value || "",
+      body_markdown: document.getElementById("announcementBody")?.value || "",
+      enabled: !!document.getElementById("announcementEnabled")?.checked,
+    };
+
+    const { res, data } = await fetchAdmin("/api/admin/announcement", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      setAnnouncementSaveMessage(data?.detail || "Errore salvataggio", "error");
+      return;
+    }
+
+    const versionNote = data?.version_changed
+      ? " Nuova versione: tutti gli utenti lo rivedranno al prossimo login."
+      : "";
+    setAnnouncementSaveMessage(`Annuncio salvato.${versionNote}`, "ok");
+    updateAnnouncementMeta(data?.announcement, data?.views_count ?? 0);
+    renderAnnouncementPreview();
+  });
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
   initAdminTabs();
   initAdminLoginForm();
+  initAdminAnnouncementForm();
 
   const ok = await ensureMainLogin();
   if (!ok) return;

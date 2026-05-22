@@ -90,6 +90,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     loading?.classList.add("hidden");
 
+    if (typeof window.initSiteAnnouncementModal === "function") {
+      await window.initSiteAnnouncementModal();
+    }
+
     if (calcolatorBtn) {
       calcolatorBtn.onclick = () => {
         const voti = document.querySelectorAll(".voto-score");

@@ -178,6 +178,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     await new Promise((res) => requestAnimationFrame(res));
 
     loading?.classList.add("hidden");
+
+    if (typeof window.initSiteAnnouncementModal === "function") {
+      await window.initSiteAnnouncementModal();
+    }
   } catch (err) {
     console.error(err);
     document.getElementById("loading-overlay")?.classList.add("hidden");

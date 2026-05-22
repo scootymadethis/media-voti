@@ -88,6 +88,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderLeaderboardEmpty("Si è verificato un errore durante il caricamento.");
   } finally {
     showLoading(false);
+    if (typeof window.initSiteAnnouncementModal === "function") {
+      await window.initSiteAnnouncementModal();
+    }
   }
 });
 

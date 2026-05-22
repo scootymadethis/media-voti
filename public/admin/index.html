@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spaggiari 2 - Admin</title>
     <link rel="stylesheet" href="/common.css?v=2" />
+    <link rel="stylesheet" href="/announcement-modal.css?v=1" />
     <link rel="stylesheet" href="admin.css?v=1" />
   </head>
   <body>
@@ -133,6 +134,7 @@
           Classifica assenze
         </button>
         <button class="admin-tab" data-tab="voti" type="button">Classifica voti</button>
+        <button class="admin-tab" data-tab="annunci" type="button">Annunci</button>
       </div>
 
       <section class="admin-panel active" data-panel="overview">
@@ -169,6 +171,43 @@
         </div>
       </section>
 
+      <section class="admin-panel" data-panel="annunci">
+        <div class="admin-panel-header">
+          <h2>Modal annunci / changelog</h2>
+        </div>
+        <form id="adminAnnouncementForm" class="admin-announcement-form panel">
+          <label>
+            Titolo
+            <input type="text" id="announcementTitle" maxlength="200" placeholder="Es. Changelog v2.1" />
+          </label>
+          <label>
+            Contenuto (Markdown)
+            <textarea
+              id="announcementBody"
+              placeholder="# Novità&#10;&#10;- Supporto **markdown**&#10;- Emoji 🎉&#10;- Liste e link"
+            ></textarea>
+          </label>
+          <div class="admin-announcement-row">
+            <label class="admin-announcement-toggle">
+              <input type="checkbox" id="announcementEnabled" />
+              Annuncio attivo
+            </label>
+            <span id="announcementMeta" class="admin-announcement-meta"></span>
+          </div>
+          <div class="admin-announcement-actions">
+            <button type="button" class="btn-secondary" id="announcementPreviewBtn">
+              Anteprima
+            </button>
+            <button type="submit" class="login-btn">Salva annuncio</button>
+          </div>
+          <div class="admin-announcement-preview">
+            <h3>Anteprima</h3>
+            <div id="announcementPreview" class="announcement-body"></div>
+          </div>
+          <p id="announcementSaveMsg" class="admin-msg"></p>
+        </form>
+      </section>
+
       <section class="admin-panel" data-panel="voti">
         <div class="admin-panel-header">
           <h2>Leaderboard medie</h2>
@@ -201,6 +240,7 @@
     <script src="/config.js?v=1"></script>
     <script src="/nav.js?v=1"></script>
     <script src="/easter-egg.js?v=1"></script>
-    <script src="admin.js?v=3"></script>
+    <script src="/announcement-modal.js?v=1"></script>
+    <script src="admin.js?v=4"></script>
   </body>
 </html>
