@@ -81,6 +81,18 @@ SESSION_TTL = 60 * 30  # 30 minuti
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").strip().lower() not in {"0", "false", "no"}
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "S10371278X").strip()
 ADMIN_SESSION_TTL = 60 * 30  # allineato alla sessione principale
+DEFAULT_EASTER_EGG_USERNAMES = (
+    "S10371217U,aaronrai829@gmail.com,S10371278X,510371115,S9456217C,S10371066B"
+)
+GAME_GODOT_INDEX = os.path.join(PUBLIC_DIR, "game", "godot", "index.html")
+
+
+def parse_easter_egg_usernames() -> set[str]:
+    raw = os.getenv("EASTER_EGG_USERNAMES", DEFAULT_EASTER_EGG_USERNAMES)
+    return {item.strip() for item in raw.split(",") if item.strip()}
+
+
+EASTER_EGG_USERNAMES = parse_easter_egg_usernames()
 
 # ---- session store in memoria ----
 sessions: dict[str, dict] = {}
@@ -784,6 +796,22 @@ def get_session_username(user: Utente) -> str:
 
 def is_admin_username(username: str) -> bool:
     return username.strip() == ADMIN_USERNAME
+
+
+def is_easter_egg_username(username: str) -> bool:
+    return username.strip() in EASTER_EGG_USERNAMES
+
+
+def godot_export_available() -> bool:
+    if not os.path.isfile(GAME_GODOT_INDEX):
+        return False
+    try:
+        with open(GAME_GODOT_INDEX, "r", encoding="utf-8", errors="ignore") as handle:
+            sample = handle.read(1200).lower()
+        # Placeholder lasciato nel repo finché non carichi l'export reale.
+        return "sostituisci questa cartella" not in sample
+    except OSError:
+        return False
 
 
 def create_admin_session(main_session_id: str) -> str:
@@ -1508,6 +1536,20 @@ def get_average_leaderboard(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---- EASTER EGG (gioco Godot) ----
+@app.get("/easter-egg/eligible")
+def easter_egg_eligible(u: Utente = Depends(current_user)):
+    username = get_session_username(u)
+    return {
+        "ok": True,
+        "eligible": is_easter_egg_username(username),
+        "username": username,
+        "game_ready": godot_export_available(),
+        "game_url": "/game/godot/index.html",
+        "launcher_url": "/game/",
+    }
 
 
 # ---- ADMIN ----

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spaggiari 2 - Easter egg</title>
+    <link rel="stylesheet" href="/common.css?v=2" />
+    <link rel="stylesheet" href="game.css?v=1" />
+  </head>
+  <body>
+    <div class="navbar">
+      <div class="navbar-brand">
+        <div class="navbar-brand-mark" onclick="goToHome()">S2</div>
+        <div>
+          <h1 class="title" onclick="goToHome()">Spaggiari 2</h1>
+          <p class="navbar-subtitle">Easter egg</p>
+        </div>
+      </div>
+      <div class="navbar-right">
+        <div class="buttons">
+          <button class="btn-secondary" type="button" onclick="goToHome()">
+            Torna alla dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <main class="game-shell page-shell">
+      <header class="game-header">
+        <div>
+          <h1>Modalità segreta</h1>
+          <p>Accesso riservato. Buon divertimento.</p>
+        </div>
+      </header>
+      <div id="gameContent"></div>
+    </main>
+
+    <script src="/config.js?v=1"></script>
+    <script src="game.js?v=1"></script>
+  </body>
+</html>

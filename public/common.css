@@ -59,6 +59,8 @@ button { cursor: pointer; }
 .buttons .btn-secondary:hover { background: #242424; }
 .buttons .btn-admin { background: linear-gradient(135deg, #7c3aed, #a855f7); border: none; color: #fff; }
 .buttons .btn-admin:hover { background: linear-gradient(135deg, #6d28d9, #9333ea); box-shadow: 0 10px 24px rgba(124, 58, 237, 0.28); }
+.buttons .btn-easter-egg { background: var(--surface-alt); border: 1px solid var(--border); color: var(--primary); font-size: 1.15rem; line-height: 1; padding: 0.65rem 0.85rem; min-width: 48px; }
+.buttons .btn-easter-egg:hover { background: #242424; transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25); }
 .navbar-toggle { display: none; width: 48px; height: 48px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-alt); color: var(--primary); align-items: center; justify-content: center; flex-direction: column; gap: 5px; }
 .navbar-toggle span { width: 18px; height: 2px; border-radius: 999px; background: currentColor; transition: transform 0.22s ease, opacity 0.22s ease; }
 .navbar-toggle.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }

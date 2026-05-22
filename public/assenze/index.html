@@ -33,6 +33,17 @@
           >
             Admin
           </button>
+          <button
+            type="button"
+            class="btn-easter-egg"
+            data-easter-egg-nav
+            hidden
+            aria-label="Easter egg"
+            title="Easter egg"
+            onclick="goToEasterEggGame()"
+          >
+            🤫
+          </button>
           <button id="logoutBtn" onclick="logout()">Logout</button>
         </div>
         <button
@@ -73,6 +84,16 @@
         <button class="btn-secondary" onclick="goToVoti()">Voti</button>
         <button class="btn-admin" data-admin-nav hidden onclick="goToAdmin()">
           Admin
+        </button>
+        <button
+          type="button"
+          class="btn-easter-egg"
+          data-easter-egg-nav
+          hidden
+          aria-label="Easter egg"
+          onclick="goToEasterEggGame()"
+        >
+          🤫
         </button>
         <button onclick="logout()">Logout</button>
       </div>
@@ -172,6 +193,7 @@
 
     <script src="/config.js?v=1"></script>
     <script src="/nav.js?v=1"></script>
+    <script src="/easter-egg.js?v=1"></script>
     <script src="assenze.js?v=3"></script>
   </body>
 </html>

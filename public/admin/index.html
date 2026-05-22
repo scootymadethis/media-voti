@@ -21,6 +21,17 @@
           <button class="btn-secondary" onclick="goToHome()">Home</button>
           <button class="btn-secondary" onclick="goToVoti()">Voti</button>
           <button class="btn-secondary" onclick="goToAssenze()">Assenze</button>
+          <button
+            type="button"
+            class="btn-easter-egg"
+            data-easter-egg-nav
+            hidden
+            aria-label="Easter egg"
+            title="Easter egg"
+            onclick="goToEasterEggGame()"
+          >
+            🤫
+          </button>
           <button id="adminLogoutBtn" onclick="adminPanelLogout()">Esci admin</button>
         </div>
         <button
@@ -60,6 +71,16 @@
         <button class="btn-secondary" onclick="goToHome()">Home</button>
         <button class="btn-secondary" onclick="goToVoti()">Voti</button>
         <button class="btn-secondary" onclick="goToAssenze()">Assenze</button>
+        <button
+          type="button"
+          class="btn-easter-egg"
+          data-easter-egg-nav
+          hidden
+          aria-label="Easter egg"
+          onclick="goToEasterEggGame()"
+        >
+          🤫
+        </button>
         <button onclick="adminPanelLogout()">Esci admin</button>
       </div>
     </aside>
@@ -179,6 +200,7 @@
 
     <script src="/config.js?v=1"></script>
     <script src="/nav.js?v=1"></script>
+    <script src="/easter-egg.js?v=1"></script>
     <script src="admin.js?v=3"></script>
   </body>
 </html>

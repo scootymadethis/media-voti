@@ -64,5 +64,8 @@
     if (typeof window.initAdminNav === "function") {
       window.initAdminNav();
     }
+    if (typeof window.initEasterEggNav === "function") {
+      window.initEasterEggNav();
+    }
   });
 })();
