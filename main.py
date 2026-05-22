@@ -962,11 +962,13 @@ async def admin_ws(websocket: WebSocket):
         await admin_ws_manager.connect(websocket)
         with admin_events_lock:
             recent_logins = list(recent_admin_login_events)
+        snapshot = build_active_sessions_snapshot()
         await websocket.send_text(
             json.dumps(
                 {
                     "type": "admin_ready",
-                    "active_sessions": build_active_sessions_snapshot(),
+                    "active_sessions": snapshot,
+                    "active_sessions_count": len(snapshot),
                     "recent_logins": recent_logins,
                     "timestamp": time.time(),
                 }
