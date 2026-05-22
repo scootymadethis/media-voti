@@ -7,6 +7,7 @@ let currentLeaderboardPage = 1;
 const leaderboardPageSize = 10;
 
 let myClassCode = null;
+let mySchoolCode = null;
 let myUsername = null;
 let myFullName = null;
 let myLeaderboardHours = 0;
@@ -47,6 +48,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     myUsername = localStorage.getItem("username") || null;
     myFullName = localStorage.getItem("fullName") || null;
+    mySchoolCode = localStorage.getItem("schoolCode") || null;
 
     try {
       myClassCode = await logClasseFromFirstLesson();
@@ -143,6 +145,7 @@ async function syncLeaderboardPreference() {
   try {
     await saveMyAbsenceHours({
       classCode: myClassCode,
+      schoolCode: mySchoolCode,
       hours: myLeaderboardHours,
       fullName: myFullName,
       visibleInLeaderboard: Boolean(leaderboardVisible),
@@ -364,8 +367,8 @@ async function fetchAssenze() {
   return await res.json();
 }
 
-async function saveMyAbsenceHours({ classCode, hours, fullName, visibleInLeaderboard }) {
-  console.log("[leaderboard] saving", { classCode, hours, fullName, visibleInLeaderboard });
+async function saveMyAbsenceHours({ classCode, schoolCode, hours, fullName, visibleInLeaderboard }) {
+  console.log("[leaderboard] saving", { classCode, schoolCode, hours, fullName, visibleInLeaderboard });
 
   const res = await fetch(apiUrl("/api/leaderboard/update"), {
     method: "POST",
@@ -373,6 +376,7 @@ async function saveMyAbsenceHours({ classCode, hours, fullName, visibleInLeaderb
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       class_code: classCode,
+      school_code: schoolCode || null,
       hours,
       full_name: fullName,
       visible_in_leaderboard: visibleInLeaderboard,
@@ -399,7 +403,10 @@ async function loadAndRenderLeaderboard() {
     page_size: String(leaderboardPageSize),
   });
 
-  if (currentLeaderboardType === "class" && myClassCode) params.set("class_code", myClassCode);
+  if (currentLeaderboardType === "class" && myClassCode) {
+    params.set("class_code", myClassCode);
+    if (mySchoolCode) params.set("school_code", mySchoolCode);
+  }
 
   const res = await fetch(apiUrl(`/api/leaderboard?${params.toString()}`), {
     method: "GET",

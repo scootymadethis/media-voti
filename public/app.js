@@ -1,6 +1,40 @@
 const form = document.getElementById("loginForm");
 const msg = document.getElementById("loginMsg");
+const submitBtn = form?.querySelector('[type="submit"]');
 const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
+
+async function readJsonSafe(res) {
+  try {
+    return await res.json();
+  } catch (err) {
+    console.warn("[login] failed to parse JSON response:", err);
+    return null;
+  }
+}
+
+function clearClientLoginState() {
+  localStorage.removeItem("loggedIn");
+  localStorage.removeItem("username");
+}
+
+async function verifyLoginWithCard() {
+  const res = await fetch(apiUrl("/api/card"), {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  return {
+    ok: res.ok,
+    status: res.status,
+    data: await readJsonSafe(res),
+  };
+}
+
+function loginFailedMessage(status, data) {
+  if (status === 401) return "Password errata";
+  return data?.detail || data?.error || "Login fallito";
+}
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -8,7 +42,9 @@ form.addEventListener("submit", async (e) => {
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value;
 
+  clearClientLoginState();
   msg.textContent = "Login in corso...";
+  if (submitBtn) submitBtn.disabled = true;
 
   try {
     console.log("[login] origin:", location.origin);
@@ -16,24 +52,36 @@ form.addEventListener("submit", async (e) => {
       "[login] before submit, localStorage.loggedIn:",
       localStorage.getItem("loggedIn"),
     );
+
     const res = await fetch(apiUrl("/api/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include", // IMPORTANTISSIMO: prende il cookie
+      cache: "no-store",
       body: JSON.stringify({ username, password }),
     });
+
     console.log("[login] response URL:", res.url, "status:", res.status);
-    let data;
-    try {
-      data = await res.json();
-    } catch (err) {
-      console.warn("[login] failed to parse JSON response:", err);
-      data = null;
-    }
+    const data = await readJsonSafe(res);
     console.log("[login] response body:", data);
+
     if (!res.ok) {
-      msg.textContent = data?.detail || data?.error || "Login fallito";
+      msg.textContent = loginFailedMessage(res.status, data);
       console.warn("[login] login not ok, not setting localStorage.loggedIn");
+      return;
+    }
+
+    // La libreria ClasseVivaAPI può far tornare 200 su /login anche con password errata.
+    // Prima di segnare il login come valido, verifichiamo la sessione con /card:
+    // 200 = credenziali valide, 401/altro = login fallito.
+    msg.textContent = "Verifica credenziali...";
+    const cardCheck = await verifyLoginWithCard();
+    console.log("[login] card verification status:", cardCheck.status, cardCheck.data);
+
+    if (!cardCheck.ok) {
+      clearClientLoginState();
+      msg.textContent = loginFailedMessage(cardCheck.status, cardCheck.data);
+      console.warn("[login] card check failed, not setting localStorage.loggedIn");
       return;
     }
 
@@ -48,14 +96,29 @@ form.addEventListener("submit", async (e) => {
     window.location.href = "/dashboard/";
   } catch (err) {
     console.error(err);
+    clearClientLoginState();
     msg.textContent = "Errore di rete / backend non raggiungibile";
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
   }
 });
 
-document.addEventListener("DOMContentLoaded", () => {
-  if (localStorage.getItem("loggedIn") === "true") {
-    window.location.href = "/dashboard/";
+document.addEventListener("DOMContentLoaded", async () => {
+  if (localStorage.getItem("loggedIn") !== "true") return;
+
+  msg.textContent = "Verifica sessione...";
+  try {
+    const cardCheck = await verifyLoginWithCard();
+    if (cardCheck.ok) {
+      window.location.href = "/dashboard/";
+      return;
+    }
+  } catch (err) {
+    console.warn("[login] stored session verification failed:", err);
   }
+
+  clearClientLoginState();
+  msg.textContent = "Sessione scaduta: effettua di nuovo il login";
 });
 
 // --- Modal credenziali ---

@@ -36,3 +36,4 @@ dist/
 reload/
 
 ris.json
+data/*

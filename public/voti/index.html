@@ -157,10 +157,62 @@
                 <p class="error" id="error"></p>
                 <div class="result" id="result"></div>
               </div>
+
             </div>
           </div>
+
+          
         </div>
+      <div class="voti voti-leaderboard-panel">
+        <section class="grade-leaderboard-shell grade-leaderboard-shell--standalone">
+          <div class="leaderboard-header">
+            <div>
+              <h3 class="leaderboard-title">Classifica media generale</h3>
+              <p class="leaderboard-subtitle">
+                Ordinata in base alla media generale salvata nella dashboard
+              </p>
+            </div>
+            <div class="leaderboard-mini-summary" id="myAverageBadge"></div>
+          </div>
+
+
+          <div class="leaderboard-preferences panel-subsection">
+            <div>
+              <div class="leaderboard-preferences-title">Visibilità in classifica</div>
+              <div id="averageLeaderboardVisibilityText" class="leaderboard-preferences-text">
+                Puoi scegliere se comparire oppure no nella classifica.
+              </div>
+            </div>
+            <button id="toggleAverageLeaderboardVisibilityBtn" class="btn-secondary" type="button">
+              Cambia impostazione
+            </button>
+          </div>
+
+          <div class="leaderboard-tabs" aria-label="Tipo classifica media generale">
+            <button id="averageTabClassBtn" class="leaderboard-tab active" type="button">
+              La mia classe
+            </button>
+            <button id="averageTabGlobalBtn" class="leaderboard-tab" type="button">
+              Globale
+            </button>
+          </div>
+
+          <div id="averageLeaderboardMeta" class="leaderboard-meta"></div>
+          <div id="averageLeaderboardList" class="leaderboard-list"></div>
+
+          <div class="leaderboard-pagination">
+            <button id="averagePrevPageBtn" class="btn-secondary" type="button">
+              ← Precedente
+            </button>
+            <span id="averagePageIndicator" class="page-indicator">Pagina 1</span>
+            <button id="averageNextPageBtn" class="btn-secondary" type="button">
+              Successiva →
+            </button>
+          </div>
+        </section>
       </div>
+
+</div>
     </div>
 
     <div id="entryModal" class="modal" aria-hidden="true">
