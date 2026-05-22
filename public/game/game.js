@@ -1,11 +1,18 @@
 const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
 
+let currentGameUrl = null;
+
 async function readJsonSafe(res) {
   try {
     return await res.json();
   } catch {
     return null;
   }
+}
+
+function gameUrlWithCacheBust(baseUrl) {
+  const separator = baseUrl.includes("?") ? "&" : "?";
+  return `${baseUrl}${separator}t=${Date.now()}`;
 }
 
 function renderSetupPanel() {
@@ -28,55 +35,154 @@ function renderSetupPanel() {
   `;
 }
 
-function enterGameLayoutMode() {
-  document.body.classList.add("game-page--playing");
+function getGameFrameWrap() {
+  return document.getElementById("gameFrameWrap");
 }
 
-function toggleGameFullscreen() {
-  const frame = document.getElementById("gameFrameWrap");
-  if (!frame) return;
+function getGodotFrame() {
+  return document.getElementById("godotFrame");
+}
 
-  if (document.fullscreenElement === frame) {
-    document.exitFullscreen?.();
-    return;
+function ensureGameFrameDom() {
+  let wrap = getGameFrameWrap();
+  if (wrap) return wrap;
+
+  const shell = document.getElementById("gameContent");
+  if (!shell) return null;
+
+  wrap = document.createElement("div");
+  wrap.id = "gameFrameWrap";
+  wrap.className = "game-frame-wrap game-frame-wrap--hidden";
+  wrap.setAttribute("aria-hidden", "true");
+
+  const iframe = document.createElement("iframe");
+  iframe.id = "godotFrame";
+  iframe.title = "Gioco Easter egg";
+  iframe.setAttribute("allow", "fullscreen");
+  iframe.setAttribute("loading", "eager");
+
+  wrap.appendChild(iframe);
+  shell.appendChild(wrap);
+  return wrap;
+}
+
+function loadGame({ reload = false } = {}) {
+  if (!currentGameUrl) return null;
+
+  const wrap = ensureGameFrameDom();
+  const iframe = getGodotFrame();
+  if (!wrap || !iframe) return null;
+
+  const targetUrl = reload ? gameUrlWithCacheBust(currentGameUrl) : currentGameUrl;
+  iframe.src = targetUrl;
+
+  iframe.addEventListener(
+    "load",
+    () => {
+      try {
+        iframe.focus();
+      } catch {
+        /* ignore */
+      }
+    },
+    { once: true },
+  );
+
+  return iframe;
+}
+
+function hideGameFrame() {
+  const wrap = getGameFrameWrap();
+  if (!wrap) return;
+  wrap.classList.add("game-frame-wrap--hidden");
+  wrap.setAttribute("aria-hidden", "true");
+}
+
+function showGameFrameForFullscreen() {
+  const wrap = getGameFrameWrap();
+  if (!wrap) return;
+  wrap.classList.remove("game-frame-wrap--hidden");
+  wrap.setAttribute("aria-hidden", "false");
+}
+
+async function openGameFullscreen() {
+  if (!currentGameUrl) return;
+
+  const iframe = getGodotFrame();
+  if (!iframe?.src) {
+    loadGame({ reload: false });
   }
 
-  frame.requestFullscreen?.().catch((err) => {
+  const wrap = ensureGameFrameDom();
+  if (!wrap) return;
+
+  showGameFrameForFullscreen();
+
+  try {
+    if (document.fullscreenElement !== wrap) {
+      await wrap.requestFullscreen();
+    }
+  } catch (err) {
     console.warn("[game] fullscreen not available:", err);
+    hideGameFrame();
+  }
+}
+
+function reloadGame() {
+  if (!currentGameUrl) return;
+  loadGame({ reload: true });
+
+  const wrap = getGameFrameWrap();
+  if (document.fullscreenElement === wrap) return;
+
+  const hint = document.getElementById("gameReloadHint");
+  if (hint) {
+    hint.textContent = "Gioco ricaricato. Apri Schermo intero per giocare.";
+    hint.classList.add("visible");
+    window.setTimeout(() => hint.classList.remove("visible"), 3200);
+  }
+}
+
+function bindLauncherActions() {
+  document.getElementById("gameFullscreenBtn")?.addEventListener("click", () => {
+    openGameFullscreen();
+  });
+  document.getElementById("gameReloadBtn")?.addEventListener("click", () => {
+    reloadGame();
   });
 }
 
-function renderGameFrame(gameUrl) {
+function onFullscreenChange() {
+  const wrap = getGameFrameWrap();
+  if (!wrap) return;
+
+  if (document.fullscreenElement === wrap) return;
+
+  hideGameFrame();
+}
+
+function renderGameLauncher(gameUrl) {
+  currentGameUrl = gameUrl;
   const shell = document.getElementById("gameContent");
   if (!shell) return;
 
-  enterGameLayoutMode();
-
   shell.innerHTML = `
-    <div class="game-toolbar">
-      <button type="button" id="gameFullscreenBtn">Schermo intero</button>
-    </div>
-    <div class="game-frame-wrap" id="gameFrameWrap">
-      <iframe
-        id="godotFrame"
-        src="${gameUrl}"
-        title="Gioco Easter egg"
-        allow="fullscreen"
-        loading="eager"
-      ></iframe>
-    </div>
+    <section class="game-launcher panel">
+      <p class="game-launcher-hint">
+        Per un'esperienza di gioco migliore, clicca <strong>Schermo intero</strong>.
+      </p>
+      <p id="gameReloadHint" class="game-reload-hint" aria-live="polite"></p>
+      <div class="game-launcher-actions">
+        <button type="button" class="btn-primary" id="gameFullscreenBtn">Schermo intero</button>
+        <button type="button" class="btn-secondary" id="gameReloadBtn">Ricarica gioco</button>
+      </div>
+    </section>
   `;
 
-  document.getElementById("gameFullscreenBtn")?.addEventListener("click", toggleGameFullscreen);
+  ensureGameFrameDom();
+  bindLauncherActions();
 
-  const frame = document.getElementById("godotFrame");
-  frame?.addEventListener("load", () => {
-    try {
-      frame.focus();
-    } catch {
-      /* ignore */
-    }
-  });
+  document.addEventListener("fullscreenchange", onFullscreenChange);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -100,7 +206,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (data.username) localStorage.setItem("username", data.username);
 
     if (data.game_ready && data.game_url) {
-      renderGameFrame(data.game_url);
+      renderGameLauncher(data.game_url);
     } else {
       renderSetupPanel();
     }
@@ -111,5 +217,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function goToHome() {
+  if (document.fullscreenElement) {
+    document.exitFullscreen?.();
+  }
   window.location.href = "/dashboard/";
 }

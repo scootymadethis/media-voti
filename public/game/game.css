@@ -1,26 +1,3 @@
-/* Pagina gioco: iframe quasi a tutto schermo sotto la navbar */
-body.game-page--playing {
-  overflow-x: hidden;
-}
-
-body.game-page--playing .game-shell {
-  width: 100%;
-  max-width: 100%;
-  margin: 10px 0 0;
-  padding: 0 0 10px;
-  min-height: calc(100dvh - 88px);
-  display: flex;
-  flex-direction: column;
-}
-
-body.game-page--playing .game-header {
-  display: none;
-}
-
-body.game-page--playing .footer {
-  display: none;
-}
-
 .game-shell {
   width: var(--container-width);
   margin: 20px auto 0;
@@ -28,34 +5,12 @@ body.game-page--playing .footer {
   min-height: calc(100vh - 120px);
 }
 
-.game-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 0 0 10px;
-}
-
-.game-toolbar button {
-  border: 1px solid var(--border);
-  background: var(--surface-alt);
-  color: var(--primary);
-  border-radius: 999px;
-  padding: 0.55rem 1rem;
-  font-weight: 600;
-  font-size: 0.88rem;
-}
-
-.game-toolbar button:hover {
-  background: #242424;
-}
-
 .game-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 
 .game-header h1 {
@@ -67,39 +22,101 @@ body.game-page--playing .footer {
   font-size: 0.92rem;
 }
 
-.game-frame-wrap {
-  position: relative;
-  flex: 1;
-  width: 100%;
-  min-height: calc(100dvh - 100px);
-  height: calc(100dvh - 100px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: #000;
-  box-shadow: var(--shadow-lg);
+.game-launcher {
+  padding: 32px 28px;
+  text-align: center;
+  max-width: 560px;
+  margin: 24px auto 0;
 }
 
-body.game-page--playing .game-frame-wrap {
-  min-height: calc(100dvh - 100px);
-  height: calc(100dvh - 100px);
-  border-radius: 12px;
+.game-launcher-hint {
+  color: var(--primary);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  margin-bottom: 22px;
+}
+
+.game-launcher-hint strong {
+  color: var(--primary-btn);
+}
+
+.game-launcher-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.game-launcher-actions .btn-primary,
+.game-launcher-actions .btn-secondary {
+  border: none;
+  border-radius: 999px;
+  padding: 0.8rem 1.25rem;
+  font-weight: 700;
+  min-width: 160px;
+}
+
+.game-launcher-actions .btn-primary {
+  background: var(--primary-btn);
+  color: #fff;
+}
+
+.game-launcher-actions .btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.game-launcher-actions .btn-secondary {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  color: var(--primary);
+}
+
+.game-launcher-actions .btn-secondary:hover {
+  background: #242424;
+}
+
+.game-reload-hint {
+  min-height: 1.25rem;
+  margin: -8px 0 14px;
+  font-size: 0.9rem;
+  color: var(--success);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.game-reload-hint.visible {
+  opacity: 1;
+}
+
+/* Contenitore gioco: nascosto finché non vai in schermo intero */
+.game-frame-wrap {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.game-frame-wrap:not(.game-frame-wrap--hidden) {
+  z-index: 99999;
+  pointer-events: auto;
+  opacity: 1;
 }
 
 .game-frame-wrap:fullscreen,
 .game-frame-wrap:-webkit-full-screen {
   width: 100vw;
   height: 100vh;
-  min-height: 100vh;
-  border: none;
-  border-radius: 0;
-  margin: 0;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .game-frame-wrap iframe {
   width: 100%;
   height: 100%;
-  min-height: 100%;
   border: 0;
   display: block;
   background: #000;
@@ -110,6 +127,8 @@ body.game-page--playing .game-frame-wrap {
   border: 1px dashed var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
+  max-width: 640px;
+  margin: 24px auto 0;
 }
 
 .game-setup h2 {
@@ -129,22 +148,18 @@ body.game-page--playing .game-frame-wrap {
   border-radius: 6px;
 }
 
-@media (max-width: 860px) {
-  body.game-page--playing .game-frame-wrap {
-    min-height: calc(100dvh - 92px);
-    height: calc(100dvh - 92px);
-  }
-}
-
 @media (max-width: 640px) {
-  body.game-page--playing .navbar {
-    width: calc(100% - 16px);
-    margin-top: 8px;
+  .game-launcher {
+    padding: 24px 18px;
+    margin-top: 12px;
   }
 
-  body.game-page--playing .game-frame-wrap {
-    min-height: calc(100dvh - 86px);
-    height: calc(100dvh - 86px);
-    border-radius: 10px;
+  .game-launcher-actions {
+    flex-direction: column;
+  }
+
+  .game-launcher-actions .btn-primary,
+  .game-launcher-actions .btn-secondary {
+    width: 100%;
   }
 }
