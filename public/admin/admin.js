@@ -105,23 +105,30 @@ async function authenticateAdminFlow() {
   setLoginMessage("");
 }
 
+function updateActiveSessionsCount(count) {
+  const el = document.getElementById("adminActiveSessionsStat");
+  if (!el) return;
+  const normalized = Number.isFinite(Number(count)) ? Number(count) : 0;
+  el.textContent = String(normalized);
+}
+
 function renderStats(overview) {
   const stats = document.getElementById("adminStats");
   if (!stats) return;
 
   const cards = [
-    ["Sessioni attive", overview.active_sessions],
-    ["Voci assenze", overview.leaderboard_entries],
-    ["Studenti in classifica medie", overview.average_leaderboard_entries],
-    ["Admin", overview.admin_username],
+    ["Sessioni attive", overview.active_sessions, "adminActiveSessionsStat"],
+    ["Voci assenze", overview.leaderboard_entries, ""],
+    ["Studenti in classifica medie", overview.average_leaderboard_entries, ""],
+    ["Admin", overview.admin_username, ""],
   ];
 
   stats.innerHTML = cards
     .map(
-      ([label, value]) => `
+      ([label, value, valueId]) => `
       <article class="admin-stat">
         <div class="label">${label}</div>
-        <div class="value">${value}</div>
+        <div class="value"${valueId ? ` id="${valueId}"` : ""}>${escapeHtml(value)}</div>
       </article>
     `,
     )
@@ -159,34 +166,6 @@ function setAdminWsStatus(text, state = "") {
   if (!el) return;
   el.textContent = text;
   el.className = "admin-ws-status" + (state ? ` ${state}` : "");
-}
-
-function renderSessionsFromSnapshot(sessions) {
-  const container = document.getElementById("adminSessions");
-  if (!container) return;
-
-  if (!sessions?.length) {
-    container.innerHTML = '<p class="admin-empty">Nessuna sessione attiva.</p>';
-    return;
-  }
-
-  container.innerHTML = sessions
-    .map((session) => {
-      const username = escapeHtml(session.username || "");
-      const when = formatDateTime(session.logged_at);
-      return `<span class="admin-session-chip" title="Login: ${when}">${username}</span>`;
-    })
-    .join("");
-}
-
-function renderSessions(usernames) {
-  if (Array.isArray(usernames) && usernames.length && typeof usernames[0] === "object") {
-    renderSessionsFromSnapshot(usernames);
-    return;
-  }
-  renderSessionsFromSnapshot(
-    (usernames || []).map((username) => ({ username, logged_at: Date.now() / 1000 })),
-  );
 }
 
 function prependLoginFeedItem(username, timestamp) {
@@ -236,18 +215,29 @@ function renderLoginFeed(events) {
     .join("");
 }
 
+function syncActiveSessionsFromPayload(payload) {
+  const sessions = payload?.active_sessions;
+  if (Array.isArray(sessions)) {
+    updateActiveSessionsCount(sessions.length);
+    return;
+  }
+  if (Number.isFinite(Number(payload?.active_sessions_count))) {
+    updateActiveSessionsCount(payload.active_sessions_count);
+  }
+}
+
 function handleAdminRealtimeMessage(payload) {
   if (!payload || typeof payload !== "object") return;
 
   if (payload.type === "admin_ready") {
     renderLoginFeed(payload.recent_logins || []);
-    renderSessionsFromSnapshot(payload.active_sessions || []);
+    syncActiveSessionsFromPayload(payload);
     return;
   }
 
   if (payload.type === "user_login") {
     prependLoginFeedItem(payload.username, payload.timestamp);
-    renderSessionsFromSnapshot(payload.active_sessions || []);
+    syncActiveSessionsFromPayload(payload);
   }
 }
 
@@ -419,10 +409,7 @@ async function loadDashboardData() {
     if (!overviewRes.res.ok) throw new Error("Impossibile caricare panoramica");
 
     renderStats(overviewRes.data);
-    renderSessionsFromSnapshot(
-      overviewRes.data.active_session_details ||
-        (overviewRes.data.active_usernames || []).map((username) => ({ username })),
-    );
+    updateActiveSessionsCount(overviewRes.data.active_sessions);
 
     assenzeItems = assenzeRes.data?.items || [];
     votiItems = votiRes.data?.items || [];

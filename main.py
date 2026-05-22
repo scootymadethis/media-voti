@@ -895,10 +895,12 @@ def record_admin_login_event(username: str) -> dict:
 
 async def broadcast_admin_login(username: str):
     event = record_admin_login_event(username)
+    snapshot = build_active_sessions_snapshot()
     await admin_ws_manager.broadcast(
         {
             **event,
-            "active_sessions": build_active_sessions_snapshot(),
+            "active_sessions": snapshot,
+            "active_sessions_count": len(snapshot),
         }
     )
 
