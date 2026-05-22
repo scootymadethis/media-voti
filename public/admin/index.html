@@ -116,6 +116,13 @@
 
       <section class="admin-panel active" data-panel="overview">
         <div class="admin-panel-header">
+          <h2>Login in tempo reale</h2>
+          <span id="adminWsStatus" class="admin-ws-status">Connessione…</span>
+        </div>
+        <div id="adminLoginFeed" class="admin-login-feed">
+          <p class="admin-empty">In attesa di login…</p>
+        </div>
+        <div class="admin-panel-header" style="margin-top: 18px">
           <h2>Sessioni attive</h2>
         </div>
         <div id="adminSessions" class="admin-sessions"></div>
@@ -156,9 +163,8 @@
           <table class="admin-table">
             <thead>
               <tr>
-                <th>Utente</th>
-                <th>Materia</th>
-                <th>Periodo</th>
+                <th>Nome completo</th>
+                <th>Username</th>
                 <th>Media</th>
                 <th>Visibilità</th>
                 <th>Azioni</th>
@@ -177,6 +183,6 @@
 
     <script src="/config.js?v=1"></script>
     <script src="/nav.js?v=1"></script>
-    <script src="admin.js?v=1"></script>
+    <script src="admin.js?v=2"></script>
   </body>
 </html>

@@ -9,6 +9,7 @@ from fastapi import (
     Query,
     WebSocket,
     WebSocketDisconnect,
+    BackgroundTasks,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -158,6 +159,13 @@ class ConnectionManager:
 
 
 ws_manager = ConnectionManager()
+admin_ws_manager = ConnectionManager()
+ADMIN_LOGIN_EVENTS_MAX = 80
+recent_admin_login_events: list[dict] = []
+admin_events_lock = Lock()
+
+GENERAL_AVERAGE_SUBJECT = "Media generale"
+GENERAL_AVERAGE_PERIOD_KEY = "generale"
 
 
 def ensure_data_dir():
@@ -616,6 +624,41 @@ def list_all_average_leaderboard_entries():
     return [row_to_average_entry(row) for row in rows]
 
 
+def is_general_average_entry(entry: dict) -> bool:
+    subject = (entry.get("subject_name") or "").strip()
+    period_key = (entry.get("period_key") or "").strip().lower()
+    return subject == GENERAL_AVERAGE_SUBJECT and period_key == GENERAL_AVERAGE_PERIOD_KEY
+
+
+def list_average_leaderboard_users_for_admin():
+    entries = list_all_average_leaderboard_entries()
+    grouped: dict[str, list[dict]] = {}
+
+    for entry in entries:
+        username = (entry.get("username") or "").strip()
+        if not username:
+            continue
+        grouped.setdefault(username, []).append(entry)
+
+    result = []
+    for username, rows in grouped.items():
+        general_rows = [row for row in rows if is_general_average_entry(row)]
+        pick = general_rows[0] if general_rows else max(rows, key=lambda row: row.get("updated_at", 0))
+        result.append(
+            {
+                "username": username,
+                "full_name": pick.get("full_name") or username,
+                "average": pick.get("average", 0),
+                "visible_in_leaderboard": any(row.get("visible_in_leaderboard") for row in rows),
+                "updated_at": pick.get("updated_at"),
+                "entries_count": len(rows),
+            }
+        )
+
+    result.sort(key=lambda item: (-float(item.get("average", 0)), item.get("username", "").lower()))
+    return result
+
+
 def update_leaderboard_visibility(username: str, visible: bool) -> bool:
     normalized_username = username.strip()
     with db_lock:
@@ -639,6 +682,22 @@ def update_average_leaderboard_visibility(username: str, subject_name: str, peri
                 WHERE username = ? AND subject_name = ? AND period_key = ?
                 """,
                 (1 if visible else 0, time.time(), normalized_username, subject_name.strip(), period_key.strip()),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+
+def update_average_leaderboard_visibility_for_user(username: str, visible: bool) -> bool:
+    normalized_username = username.strip()
+    with db_lock:
+        with get_db_connection() as conn:
+            cur = conn.execute(
+                """
+                UPDATE average_leaderboard_entries_scoped
+                SET visible_in_leaderboard = ?, updated_at = ?
+                WHERE username = ?
+                """,
+                (1 if visible else 0, time.time(), normalized_username),
             )
             conn.commit()
             return cur.rowcount > 0
@@ -799,37 +858,74 @@ def count_active_sessions() -> int:
 
 
 def list_active_session_usernames() -> list[str]:
+    return [item["username"] for item in build_active_sessions_snapshot()]
+
+
+def build_active_sessions_snapshot() -> list[dict]:
     now = time.time()
-    usernames: list[str] = []
+    items: list[dict] = []
     with sessions_lock:
         for sess in sessions.values():
             if sess["expires"] < now:
                 continue
             uid = getattr(sess["user"], "uid", None)
-            if uid:
-                usernames.append(str(uid).strip())
-    return sorted(set(usernames))
+            if not uid:
+                continue
+            items.append(
+                {
+                    "username": str(uid).strip(),
+                    "logged_at": sess.get("created_at", now),
+                }
+            )
+    items.sort(key=lambda item: item.get("logged_at", 0), reverse=True)
+    return items
+
+
+def record_admin_login_event(username: str) -> dict:
+    event = {
+        "type": "user_login",
+        "username": username.strip(),
+        "timestamp": time.time(),
+    }
+    with admin_events_lock:
+        recent_admin_login_events.insert(0, event)
+        del recent_admin_login_events[ADMIN_LOGIN_EVENTS_MAX:]
+    return event
+
+
+async def broadcast_admin_login(username: str):
+    event = record_admin_login_event(username)
+    await admin_ws_manager.broadcast(
+        {
+            **event,
+            "active_sessions": build_active_sessions_snapshot(),
+        }
+    )
 
 
 # ---- LOGIN UNA VOLTA ----
 def create_session(u: Utente, pwd: str) -> str:
     sid = secrets.token_urlsafe(32)
+    now = time.time()
     with sessions_lock:
         sessions[sid] = {
             "user": u,
             "password": pwd,  # TEMP
-            "expires": time.time() + SESSION_TTL,
+            "created_at": now,
+            "expires": now + SESSION_TTL,
         }
     return sid
 
 
 @app.post("/login")
-def login(body: LoginBody, response: Response):
+def login(body: LoginBody, response: Response, background_tasks: BackgroundTasks):
     try:
         u = Utente(uid=body.username, pwd=body.password)
         u.login()
 
         sid = create_session(u, body.password)
+        username = body.username.strip()
+        background_tasks.add_task(broadcast_admin_login, username)
 
         response.set_cookie(
             key="session_id",
@@ -838,9 +934,52 @@ def login(body: LoginBody, response: Response):
             samesite="lax",
             secure=COOKIE_SECURE,
         )
-        return {"ok": True, "user": body.username}
+        return {"ok": True, "user": username}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
+
+
+async def websocket_admin_auth(websocket: WebSocket) -> Utente:
+    session_id = websocket.cookies.get("session_id")
+    admin_session_id = websocket.cookies.get("admin_session_id")
+    if not admin_session_id:
+        await websocket.close(code=4403, reason="Accesso admin non autorizzato")
+        raise WebSocketDisconnect(code=4403)
+
+    try:
+        return validate_admin_access(session_id, admin_session_id)
+    except HTTPException:
+        await websocket.close(code=4403, reason="Accesso admin non valido")
+        raise WebSocketDisconnect(code=4403)
+
+
+@app.websocket("/ws/admin")
+async def admin_ws(websocket: WebSocket):
+    try:
+        await websocket_admin_auth(websocket)
+        await admin_ws_manager.connect(websocket)
+        with admin_events_lock:
+            recent_logins = list(recent_admin_login_events)
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "admin_ready",
+                    "active_sessions": build_active_sessions_snapshot(),
+                    "recent_logins": recent_logins,
+                    "timestamp": time.time(),
+                }
+            )
+        )
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        admin_ws_manager.disconnect(websocket)
+    except Exception:
+        admin_ws_manager.disconnect(websocket)
+        try:
+            await websocket.close()
+        except Exception:
+            pass
 
 
 @app.websocket("/ws/leaderboard")
@@ -1451,15 +1590,17 @@ def admin_overview(_: Utente = Depends(current_admin)):
     with db_lock:
         with get_db_connection() as conn:
             assenze_count = conn.execute("SELECT COUNT(*) AS c FROM leaderboard_entries").fetchone()["c"]
-            voti_count = conn.execute("SELECT COUNT(*) AS c FROM average_leaderboard_entries_scoped").fetchone()["c"]
+
+    average_users = list_average_leaderboard_users_for_admin()
 
     return {
         "ok": True,
         "admin_username": ADMIN_USERNAME,
         "active_sessions": count_active_sessions(),
         "active_usernames": list_active_session_usernames(),
+        "active_session_details": build_active_sessions_snapshot(),
         "leaderboard_entries": assenze_count,
-        "average_leaderboard_entries": voti_count,
+        "average_leaderboard_entries": len(average_users),
         "database_path": DATABASE_PATH,
     }
 
@@ -1494,28 +1635,35 @@ async def admin_delete_leaderboard(username: str, _: Utente = Depends(current_ad
 
 @app.get("/admin/average-leaderboard")
 def admin_average_leaderboard(_: Utente = Depends(current_admin)):
-    entries = list_all_average_leaderboard_entries()
+    entries = list_average_leaderboard_users_for_admin()
     return {"ok": True, "items": entries}
 
 
 @app.patch("/admin/average-leaderboard/{username}/visibility")
 async def admin_average_leaderboard_visibility(
     username: str,
-    subject_name: str = Query(...),
-    period_key: str = Query(...),
-    body: AdminVisibilityBody = Body(...),
+    body: AdminVisibilityBody,
+    subject_name: Optional[str] = Query(default=None),
+    period_key: Optional[str] = Query(default=None),
     _: Utente = Depends(current_admin),
 ):
-    updated = update_average_leaderboard_visibility(
-        username,
-        subject_name,
-        period_key,
-        body.visible_in_leaderboard,
-    )
+    if subject_name and period_key:
+        updated = update_average_leaderboard_visibility(
+            username,
+            subject_name,
+            period_key,
+            body.visible_in_leaderboard,
+        )
+    else:
+        updated = update_average_leaderboard_visibility_for_user(
+            username,
+            body.visible_in_leaderboard,
+        )
     if not updated:
         raise HTTPException(status_code=404, detail="Voce non trovata")
     await broadcast_average_leaderboard_change("upsert", username.strip())
-    item = get_average_leaderboard_entry(username, subject_name, period_key)
+    items = list_average_leaderboard_users_for_admin()
+    item = next((row for row in items if row.get("username") == username.strip()), None)
     return {"ok": True, "item": item}
 
 

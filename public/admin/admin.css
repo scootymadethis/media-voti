@@ -240,6 +240,49 @@
   font-size: 0.84rem;
 }
 
+.admin-ws-status {
+  font-size: 0.82rem;
+  color: var(--secondary);
+}
+
+.admin-ws-status.live {
+  color: var(--success);
+}
+
+.admin-ws-status.error {
+  color: var(--error);
+}
+
+.admin-login-feed {
+  max-height: 320px;
+  overflow: auto;
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-login-item {
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.admin-login-item strong {
+  color: var(--primary);
+}
+
+.admin-login-item time {
+  color: var(--secondary);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
 .admin-empty {
   padding: 20px 16px;
   color: var(--secondary);

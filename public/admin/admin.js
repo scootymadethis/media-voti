@@ -1,8 +1,12 @@
 const ADMIN_USERNAME = "S10371278X";
 const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
+const wsUrl = (path) => window.APP_CONFIG?.wsUrl?.(path) ?? path;
 
 let assenzeItems = [];
 let votiItems = [];
+let adminRealtimeSocket = null;
+let adminRealtimeReconnectTimer = null;
+const MAX_LOGIN_FEED_ITEMS = 40;
 
 async function readJsonSafe(res) {
   try {
@@ -83,6 +87,7 @@ async function authenticateAdminFlow() {
   if (await checkAdminAuthenticated()) {
     showDashboard();
     await loadDashboardData();
+    connectAdminRealtime();
     return;
   }
 
@@ -91,9 +96,11 @@ async function authenticateAdminFlow() {
   if (bootstrapped && (await checkAdminAuthenticated())) {
     showDashboard();
     await loadDashboardData();
+    connectAdminRealtime();
     return;
   }
 
+  disconnectAdminRealtime();
   showGate();
   setLoginMessage("");
 }
@@ -105,7 +112,7 @@ function renderStats(overview) {
   const cards = [
     ["Sessioni attive", overview.active_sessions],
     ["Voci assenze", overview.leaderboard_entries],
-    ["Voci medie", overview.average_leaderboard_entries],
+    ["Studenti in classifica medie", overview.average_leaderboard_entries],
     ["Admin", overview.admin_username],
   ];
 
@@ -121,18 +128,178 @@ function renderStats(overview) {
     .join("");
 }
 
-function renderSessions(usernames) {
+function escapeHtml(value) {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (ch) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[ch],
+  );
+}
+
+function formatDateTime(timestamp) {
+  const date = new Date(Number(timestamp) * 1000);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function setAdminWsStatus(text, state = "") {
+  const el = document.getElementById("adminWsStatus");
+  if (!el) return;
+  el.textContent = text;
+  el.className = "admin-ws-status" + (state ? ` ${state}` : "");
+}
+
+function renderSessionsFromSnapshot(sessions) {
   const container = document.getElementById("adminSessions");
   if (!container) return;
 
-  if (!usernames?.length) {
+  if (!sessions?.length) {
     container.innerHTML = '<p class="admin-empty">Nessuna sessione attiva.</p>';
     return;
   }
 
-  container.innerHTML = usernames
-    .map((u) => `<span class="admin-session-chip">${u}</span>`)
+  container.innerHTML = sessions
+    .map((session) => {
+      const username = escapeHtml(session.username || "");
+      const when = formatDateTime(session.logged_at);
+      return `<span class="admin-session-chip" title="Login: ${when}">${username}</span>`;
+    })
     .join("");
+}
+
+function renderSessions(usernames) {
+  if (Array.isArray(usernames) && usernames.length && typeof usernames[0] === "object") {
+    renderSessionsFromSnapshot(usernames);
+    return;
+  }
+  renderSessionsFromSnapshot(
+    (usernames || []).map((username) => ({ username, logged_at: Date.now() / 1000 })),
+  );
+}
+
+function prependLoginFeedItem(username, timestamp) {
+  const feed = document.getElementById("adminLoginFeed");
+  if (!feed) return;
+
+  const empty = feed.querySelector(".admin-empty");
+  if (empty) empty.remove();
+
+  const item = document.createElement("article");
+  item.className = "admin-login-item";
+  item.innerHTML = `
+    <div>
+      <strong>${escapeHtml(username)}</strong>
+      <div style="color: var(--secondary); font-size: 0.84rem;">Nuovo accesso</div>
+    </div>
+    <time datetime="${timestamp}">${formatDateTime(timestamp)}</time>
+  `;
+  feed.prepend(item);
+
+  while (feed.children.length > MAX_LOGIN_FEED_ITEMS) {
+    feed.lastElementChild?.remove();
+  }
+}
+
+function renderLoginFeed(events) {
+  const feed = document.getElementById("adminLoginFeed");
+  if (!feed) return;
+
+  if (!events?.length) {
+    feed.innerHTML = '<p class="admin-empty">In attesa di login…</p>';
+    return;
+  }
+
+  feed.innerHTML = events
+    .map(
+      (event) => `
+      <article class="admin-login-item">
+        <div>
+          <strong>${escapeHtml(event.username)}</strong>
+          <div style="color: var(--secondary); font-size: 0.84rem;">Accesso registrato</div>
+        </div>
+        <time datetime="${event.timestamp}">${formatDateTime(event.timestamp)}</time>
+      </article>
+    `,
+    )
+    .join("");
+}
+
+function handleAdminRealtimeMessage(payload) {
+  if (!payload || typeof payload !== "object") return;
+
+  if (payload.type === "admin_ready") {
+    renderLoginFeed(payload.recent_logins || []);
+    renderSessionsFromSnapshot(payload.active_sessions || []);
+    return;
+  }
+
+  if (payload.type === "user_login") {
+    prependLoginFeedItem(payload.username, payload.timestamp);
+    renderSessionsFromSnapshot(payload.active_sessions || []);
+  }
+}
+
+function scheduleAdminRealtimeReconnect() {
+  if (adminRealtimeReconnectTimer) return;
+  adminRealtimeReconnectTimer = window.setTimeout(() => {
+    adminRealtimeReconnectTimer = null;
+    connectAdminRealtime();
+  }, 3000);
+}
+
+function disconnectAdminRealtime() {
+  if (adminRealtimeReconnectTimer) {
+    window.clearTimeout(adminRealtimeReconnectTimer);
+    adminRealtimeReconnectTimer = null;
+  }
+  if (adminRealtimeSocket) {
+    adminRealtimeSocket.close();
+    adminRealtimeSocket = null;
+  }
+  setAdminWsStatus("Disconnesso");
+}
+
+function connectAdminRealtime() {
+  disconnectAdminRealtime();
+  setAdminWsStatus("Connessione…");
+
+  const socket = new WebSocket(wsUrl("/api/ws/admin"));
+  adminRealtimeSocket = socket;
+
+  socket.addEventListener("open", () => {
+    setAdminWsStatus("Live", "live");
+  });
+
+  socket.addEventListener("message", (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      handleAdminRealtimeMessage(payload);
+    } catch (err) {
+      console.warn("[admin] invalid websocket payload:", err);
+    }
+  });
+
+  socket.addEventListener("close", () => {
+    adminRealtimeSocket = null;
+    setAdminWsStatus("Riconnessione…", "error");
+    scheduleAdminRealtimeReconnect();
+  });
+
+  socket.addEventListener("error", () => {
+    setAdminWsStatus("Errore connessione", "error");
+  });
 }
 
 function visibilityBadge(visible) {
@@ -184,30 +351,33 @@ function renderVotiTable() {
 
   if (!votiItems.length) {
     body.innerHTML =
-      '<tr><td colspan="6" class="admin-empty">Nessuna voce in classifica medie.</td></tr>';
+      '<tr><td colspan="5" class="admin-empty">Nessuna voce in classifica medie.</td></tr>';
     return;
   }
 
   body.innerHTML = votiItems
     .map((item) => {
-      const username = item.username || "";
-      const subject = item.subject_name || "";
-      const period = item.period_label || item.period_key || "";
-      const periodKey = item.period_key || "";
+      const rawUsername = item.username || "";
+      const username = escapeHtml(rawUsername);
+      const fullName = escapeHtml(item.full_name || rawUsername || "-");
       const visible = !!item.visible_in_leaderboard;
+      const entriesCount = Number(item.entries_count || 1);
+      const entriesHint =
+        entriesCount > 1
+          ? ` <span style="color:var(--secondary);font-size:0.78rem;">(${entriesCount} voci DB)</span>`
+          : "";
       return `
         <tr>
+          <td>${fullName}</td>
           <td>${username}</td>
-          <td>${subject}</td>
-          <td>${period}</td>
-          <td>${Number(item.average || 0).toFixed(2)}</td>
+          <td>${Number(item.average || 0).toFixed(2)}${entriesHint}</td>
           <td>${visibilityBadge(visible)}</td>
           <td>
             <div class="admin-actions">
-              <button type="button" onclick="toggleVotiVisibility('${username}', '${subject}', '${periodKey}', ${!visible})">
+              <button type="button" data-username="${escapeHtml(rawUsername)}" class="js-toggle-voti">
                 ${visible ? "Nascondi" : "Mostra"}
               </button>
-              <button type="button" class="danger" onclick="deleteVotiEntry('${username}', '${subject}', '${periodKey}')">
+              <button type="button" class="danger js-delete-voti" data-username="${escapeHtml(rawUsername)}">
                 Elimina
               </button>
             </div>
@@ -216,6 +386,18 @@ function renderVotiTable() {
       `;
     })
     .join("");
+
+  body.querySelectorAll(".js-toggle-voti").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const username = btn.dataset.username;
+      const row = votiItems.find((item) => item.username === username);
+      toggleVotiVisibility(username, !(row && row.visible_in_leaderboard));
+    });
+  });
+
+  body.querySelectorAll(".js-delete-voti").forEach((btn) => {
+    btn.addEventListener("click", () => deleteVotiEntry(btn.dataset.username));
+  });
 }
 
 async function loadDashboardData() {
@@ -228,6 +410,7 @@ async function loadDashboardData() {
     ]);
 
     if (overviewRes.res.status === 401 || assenzeRes.res.status === 401) {
+      disconnectAdminRealtime();
       showGate();
       setLoginMessage("Sessione admin scaduta. Reinserisci la password.", "error");
       return;
@@ -236,7 +419,10 @@ async function loadDashboardData() {
     if (!overviewRes.res.ok) throw new Error("Impossibile caricare panoramica");
 
     renderStats(overviewRes.data);
-    renderSessions(overviewRes.data.active_usernames || []);
+    renderSessionsFromSnapshot(
+      overviewRes.data.active_session_details ||
+        (overviewRes.data.active_usernames || []).map((username) => ({ username })),
+    );
 
     assenzeItems = assenzeRes.data?.items || [];
     votiItems = votiRes.data?.items || [];
@@ -249,6 +435,7 @@ async function loadDashboardData() {
     }
   } catch (err) {
     console.error(err);
+    disconnectAdminRealtime();
     setLoginMessage("Errore nel caricamento del pannello admin.", "error");
     showGate();
   } finally {
@@ -296,18 +483,9 @@ window.deleteAssenzeEntry = async function deleteAssenzeEntry(username) {
   await reloadAssenzeTable();
 };
 
-window.toggleVotiVisibility = async function toggleVotiVisibility(
-  username,
-  subjectName,
-  periodKey,
-  visible,
-) {
-  const params = new URLSearchParams({
-    subject_name: subjectName,
-    period_key: periodKey,
-  });
+window.toggleVotiVisibility = async function toggleVotiVisibility(username, visible) {
   const { res } = await fetchAdmin(
-    `/api/admin/average-leaderboard/${encodeURIComponent(username)}/visibility?${params}`,
+    `/api/admin/average-leaderboard/${encodeURIComponent(username)}/visibility`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -318,18 +496,10 @@ window.toggleVotiVisibility = async function toggleVotiVisibility(
   await reloadVotiTable();
 };
 
-window.deleteVotiEntry = async function deleteVotiEntry(
-  username,
-  subjectName,
-  periodKey,
-) {
-  if (!confirm(`Eliminare la voce media di ${username} (${subjectName})?`)) return;
-  const params = new URLSearchParams({
-    subject_name: subjectName,
-    period_key: periodKey,
-  });
+window.deleteVotiEntry = async function deleteVotiEntry(username) {
+  if (!confirm(`Eliminare tutte le voci media di ${username}?`)) return;
   const { res } = await fetchAdmin(
-    `/api/admin/average-leaderboard/${encodeURIComponent(username)}?${params}`,
+    `/api/admin/average-leaderboard/${encodeURIComponent(username)}`,
     { method: "DELETE" },
   );
   if (!res.ok) return;
@@ -337,6 +507,7 @@ window.deleteVotiEntry = async function deleteVotiEntry(
 };
 
 window.adminPanelLogout = async function adminPanelLogout() {
+  disconnectAdminRealtime();
   await fetchAdmin("/api/admin/logout", { method: "POST" });
   showGate();
   setLoginMessage("Sei uscito dal pannello admin.", "");
@@ -380,6 +551,7 @@ function initAdminLoginForm() {
     setLoginMessage("Accesso admin confermato.", "ok");
     showDashboard();
     await loadDashboardData();
+    connectAdminRealtime();
   });
 }
 
