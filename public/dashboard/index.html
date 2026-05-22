@@ -24,6 +24,15 @@
           <button id="assenzeBtn" class="btn-secondary" onclick="goToAssenze()">
             Assenze
           </button>
+          <button
+            id="adminBtn"
+            class="btn-admin"
+            data-admin-nav
+            hidden
+            onclick="goToAdmin()"
+          >
+            Admin
+          </button>
           <button id="logoutBtn" onclick="logout()">Logout</button>
         </div>
         <button
@@ -62,6 +71,9 @@
       <div class="buttons">
         <button class="btn-secondary" onclick="goToVoti()">Voti</button>
         <button class="btn-secondary" onclick="goToAssenze()">Assenze</button>
+        <button class="btn-admin" data-admin-nav hidden onclick="goToAdmin()">
+          Admin
+        </button>
         <button onclick="logout()">Logout</button>
       </div>
     </aside>
@@ -198,6 +210,7 @@
     </div>
 
     <script src="/config.js?v=1"></script>
+    <script src="/nav.js?v=1"></script>
     <script src="dashboard.js?v=2"></script>
   </body>
 </html>
