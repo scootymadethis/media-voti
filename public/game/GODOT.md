@@ -25,7 +25,10 @@ Consigliato: **Godot 4.x** (funziona anche Godot 3 con export HTML5, i file camb
 - **Export Path**: scegli una cartella temporanea sul PC, es. `C:\export\spaggiari2-game\`
 - Il nome del file di output sarà qualcosa come `index.html` (Godot 4) o `index.html` + `index.js` (Godot 3).
 - **Custom HTML Shell** (opzionale): di default va bene.
-- Per fullscreen nel sito, il gioco gira già dentro un iframe su `/game/`; non è obbligatorio modificare la shell.
+- Per adattarsi al frame del sito (quasi tutto schermo), in Godot imposta anche:
+  - **Project Settings → Display → Window → Mode**: `canvas_items` o `viewport` come preferisci
+  - **Stretch Mode**: `canvas_items` con **Stretch Aspect**: `expand` (o `ignore`) così il canvas riempie l'iframe
+- Su `/game/` c'è il pulsante **Schermo intero** per il vero fullscreen del browser.
 
 4. Clicca **Export Project** (o **Export All** se Godot propone più file).
 

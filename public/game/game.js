@@ -28,11 +28,35 @@ function renderSetupPanel() {
   `;
 }
 
+function enterGameLayoutMode() {
+  document.body.classList.add("game-page--playing");
+}
+
+function toggleGameFullscreen() {
+  const frame = document.getElementById("gameFrameWrap");
+  if (!frame) return;
+
+  if (document.fullscreenElement === frame) {
+    document.exitFullscreen?.();
+    return;
+  }
+
+  frame.requestFullscreen?.().catch((err) => {
+    console.warn("[game] fullscreen not available:", err);
+  });
+}
+
 function renderGameFrame(gameUrl) {
   const shell = document.getElementById("gameContent");
   if (!shell) return;
+
+  enterGameLayoutMode();
+
   shell.innerHTML = `
-    <div class="game-frame-wrap">
+    <div class="game-toolbar">
+      <button type="button" id="gameFullscreenBtn">Schermo intero</button>
+    </div>
+    <div class="game-frame-wrap" id="gameFrameWrap">
       <iframe
         id="godotFrame"
         src="${gameUrl}"
@@ -42,6 +66,17 @@ function renderGameFrame(gameUrl) {
       ></iframe>
     </div>
   `;
+
+  document.getElementById("gameFullscreenBtn")?.addEventListener("click", toggleGameFullscreen);
+
+  const frame = document.getElementById("godotFrame");
+  frame?.addEventListener("load", () => {
+    try {
+      frame.focus();
+    } catch {
+      /* ignore */
+    }
+  });
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
