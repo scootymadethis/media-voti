@@ -548,6 +548,16 @@ function goToHome() {
   window.location.href = "/dashboard/";
 }
 
+function goToAdmin() {
+  window.location.href = "/admin/";
+}
+
+function logout() {
+  localStorage.removeItem("loggedIn");
+  localStorage.removeItem("username");
+  window.location.href = "/";
+}
+
 function goToVoti() {
   window.location.href = "/voti/";
 }

@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spaggiari 2 - Assenze</title>
-    <link rel="stylesheet" href="/common.css?v=3" />
-    <link rel="stylesheet" href="/announcement-modal.css?v=1" />
-    <link rel="stylesheet" href="assenze.css?v=3" />
+    <link rel="stylesheet" href="/common.css?v=5" />
+    <link rel="stylesheet" href="/announcement-modal.css?v=2" />
+    <link rel="stylesheet" href="assenze.css?v=4" />
   </head>
   <body>
     <div class="navbar">
@@ -19,21 +19,6 @@
       </div>
       <div class="navbar-right">
         <div class="buttons" aria-label="Navigazione principale">
-          <button id="homeBtn" class="btn-secondary" onclick="goToHome()">
-            Home
-          </button>
-          <button id="votiBtn" class="btn-secondary" onclick="goToVoti()">
-            Voti
-          </button>
-          <button
-            id="adminBtn"
-            class="btn-admin"
-            data-admin-nav
-            hidden
-            onclick="goToAdmin()"
-          >
-            Admin
-          </button>
           <button
             type="button"
             class="btn-easter-egg"
@@ -44,6 +29,21 @@
             onclick="goToEasterEggGame()"
           >
             🤫
+          </button>
+          <button id="votiBtn" class="btn-secondary" onclick="goToVoti()">
+            Voti
+          </button>
+          <button id="assenzeBtn" class="btn-secondary" onclick="goToAssenze()">
+            Assenze
+          </button>
+          <button
+            id="adminBtn"
+            class="btn-admin"
+            data-admin-nav
+            hidden
+            onclick="goToAdmin()"
+          >
+            Admin
           </button>
           <button id="logoutBtn" onclick="logout()">Logout</button>
         </div>
@@ -81,11 +81,6 @@
         </button>
       </div>
       <div class="buttons">
-        <button class="btn-secondary" onclick="goToHome()">Home</button>
-        <button class="btn-secondary" onclick="goToVoti()">Voti</button>
-        <button class="btn-admin" data-admin-nav hidden onclick="goToAdmin()">
-          Admin
-        </button>
         <button
           type="button"
           class="btn-easter-egg"
@@ -95,6 +90,11 @@
           onclick="goToEasterEggGame()"
         >
           🤫
+        </button>
+        <button class="btn-secondary" onclick="goToVoti()">Voti</button>
+        <button class="btn-secondary" onclick="goToAssenze()">Assenze</button>
+        <button class="btn-admin" data-admin-nav hidden onclick="goToAdmin()">
+          Admin
         </button>
         <button onclick="logout()">Logout</button>
       </div>
@@ -192,10 +192,10 @@
       >
     </div>
 
-    <script src="/config.js?v=1"></script>
-    <script src="/nav.js?v=1"></script>
-    <script src="/easter-egg.js?v=1"></script>
-    <script src="/announcement-modal.js?v=1"></script>
-    <script src="assenze.js?v=4"></script>
+    <script src="/config.js?v=2"></script>
+    <script src="/nav.js?v=2"></script>
+    <script src="/easter-egg.js?v=2"></script>
+    <script src="/announcement-modal.js?v=2"></script>
+    <script src="assenze.js?v=5"></script>
   </body>
 </html>

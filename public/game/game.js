@@ -186,6 +186,8 @@ function renderGameLauncher(gameUrl) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initMobileMenu();
+
   if (localStorage.getItem("loggedIn") !== "true") {
     window.location.href = "/";
     return;
@@ -221,4 +223,56 @@ function goToHome() {
     document.exitFullscreen?.();
   }
   window.location.href = "/dashboard/";
+}
+
+function goToVoti() {
+  window.location.href = "/voti/";
+}
+
+function goToAssenze() {
+  window.location.href = "/assenze/";
+}
+
+function logout() {
+  localStorage.removeItem("loggedIn");
+  localStorage.removeItem("username");
+  window.location.href = "/";
+}
+
+function initMobileMenu() {
+  const toggle = document.getElementById("navToggle");
+  const drawer = document.getElementById("mobileNavDrawer");
+  const backdrop = document.getElementById("mobileNavBackdrop");
+  const closeBtn = document.getElementById("navDrawerClose");
+  if (!toggle || !drawer || !backdrop) return;
+
+  const openMenu = () => {
+    drawer.classList.add("open");
+    backdrop.classList.add("open");
+    document.body.classList.add("menu-open");
+    toggle.classList.add("is-open");
+    toggle.setAttribute("aria-expanded", "true");
+    drawer.setAttribute("aria-hidden", "false");
+  };
+
+  const closeMenu = () => {
+    drawer.classList.remove("open");
+    backdrop.classList.remove("open");
+    document.body.classList.remove("menu-open");
+    toggle.classList.remove("is-open");
+    toggle.setAttribute("aria-expanded", "false");
+    drawer.setAttribute("aria-hidden", "true");
+  };
+
+  toggle.addEventListener("click", () =>
+    drawer.classList.contains("open") ? closeMenu() : openMenu(),
+  );
+  backdrop.addEventListener("click", closeMenu);
+  closeBtn?.addEventListener("click", closeMenu);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMenu();
+  });
+  drawer
+    .querySelectorAll("button")
+    .forEach((btn) => btn.addEventListener("click", closeMenu));
 }
