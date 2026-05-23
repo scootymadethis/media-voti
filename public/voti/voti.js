@@ -16,6 +16,7 @@ let mySchoolCode = null;
 let myUsername = null;
 let myFullName = null;
 let currentAverageValue = 0;
+let cachedAllVoti = [];
 
 const GENERAL_AVERAGE_LEADERBOARD_SUBJECT = "Media generale";
 const GENERAL_AVERAGE_LEADERBOARD_PERIOD_KEY = "generale";
@@ -30,8 +31,129 @@ function getAverageLeaderboardWsUrl() {
   return wsUrl("/api/ws/leaderboard");
 }
 
+function shouldExcludeVotoFromAverage(voto) {
+  const subject = String(voto?.subjectDesc || "").toUpperCase();
+  if (subject.includes("RELIGIONE")) return true;
+  if (String(voto?.displayValue || "").trim().toUpperCase() === "A") return true;
+  if (String(voto?.color || "").toLowerCase() === "blue") return true;
+  return false;
+}
+
+function parseVotoDecimalValue(voto) {
+  const raw = voto?.decimalValue;
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "string") {
+    const match = raw.replace(",", ".").match(/-?\d+(?:\.\d+)?/);
+    if (match) return parseFloat(match[0]);
+  }
+  return null;
+}
+
+function averageRounded(values) {
+  if (!values.length) return null;
+  const sum = values.reduce((acc, value) => acc + value, 0);
+  return Math.round(sum / values.length);
+}
+
+function buildPrevisionePagellaRows(voti) {
+  const bySubject = new Map();
+
+  voti.forEach((voto) => {
+    const subject = String(voto?.subjectDesc || "").trim();
+    if (!subject) return;
+    if (shouldExcludeVotoFromAverage(voto)) return;
+
+    const value = parseVotoDecimalValue(voto);
+    if (value === null) return;
+
+    if (!bySubject.has(subject)) {
+      bySubject.set(subject, { primo: [], secondo: [] });
+    }
+
+    const bucket = bySubject.get(subject);
+    if (voto.periodPos == 1) bucket.primo.push(value);
+    if (voto.periodPos == 3) bucket.secondo.push(value);
+  });
+
+  return Array.from(bySubject.entries())
+    .map(([subject, periods]) => ({
+      subject,
+      primo: averageRounded(periods.primo),
+      secondo: averageRounded(periods.secondo),
+    }))
+    .sort((a, b) => a.subject.localeCompare(b.subject, "it"));
+}
+
+function renderPrevisionePagella(voti) {
+  const root = document.getElementById("previsionePagellaRoot");
+  if (!root) return;
+
+  const rows = buildPrevisionePagellaRows(voti);
+  if (!rows.length) {
+    root.innerHTML =
+      '<p class="previsione-empty">Nessun voto disponibile per la previsione pagella.</p>';
+    return;
+  }
+
+  const bodyHtml = rows
+    .map((row) => {
+      const primoCell =
+        row.primo === null
+          ? '<span class="previsione-average is-empty" aria-hidden="true">·</span>'
+          : `<span class="previsione-average">${row.primo}</span>`;
+      const secondoCell =
+        row.secondo === null
+          ? '<span class="previsione-average is-empty" aria-hidden="true">·</span>'
+          : `<span class="previsione-average">${row.secondo}</span>`;
+
+      return `
+        <div class="previsione-row">
+          <span class="previsione-subject">${escapeHtml(row.subject)}</span>
+          ${primoCell}
+          ${secondoCell}
+        </div>
+      `;
+    })
+    .join("");
+
+  root.innerHTML = `
+    <div class="previsione-table-head">
+      <span>Materia</span>
+      <span>Primo periodo</span>
+      <span>Secondo periodo</span>
+    </div>
+    ${bodyHtml}
+  `;
+}
+
+function setVotiView(view) {
+  document.querySelectorAll(".voti-view-tab").forEach((tab) => {
+    const active = tab.dataset.votiView === view;
+    tab.classList.toggle("active", active);
+    tab.setAttribute("aria-selected", active ? "true" : "false");
+  });
+
+  document.querySelectorAll("[data-voti-panel]").forEach((panel) => {
+    const active = panel.dataset.votiPanel === view;
+    panel.classList.toggle("is-active", active);
+    panel.hidden = !active;
+  });
+}
+
+function initVotiViewTabs() {
+  document.querySelectorAll(".voti-view-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const view = tab.dataset.votiView;
+      if (!view) return;
+      setVotiView(view);
+    });
+  });
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
+  initVotiViewTabs();
   initAverageLeaderboardTabs();
   initAverageLeaderboardPreferenceControls();
 
@@ -62,6 +184,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const materie = [];
     const votiData = await fetchVoti();
     const voti = votiData.voti.grades || [];
+    cachedAllVoti = voti;
+    renderPrevisionePagella(cachedAllVoti);
 
     voti.forEach((voto) => {
       if (!materie.includes(voto.subjectDesc)) materie.push(voto.subjectDesc);

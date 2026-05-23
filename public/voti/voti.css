@@ -46,8 +46,109 @@
   padding: 24px;
 }
 
-.voti-leaderboard-panel {
+.voti-view-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.voti-view-tab {
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--primary);
+  border-radius: 999px;
+  padding: 0.72rem 1.15rem;
+  font-weight: 700;
+  transition: 0.2s ease;
+}
+
+.voti-view-tab:hover {
+  background: #242424;
+  transform: translateY(-1px);
+}
+
+.voti-view-tab.active {
+  background: var(--primary-btn);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(220, 38, 38, 0.18);
+}
+
+.voti-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.voti-panel:not(.is-active) {
+  display: none;
+}
+
+.voti-leaderboard-section {
   margin-top: 26px;
+}
+
+.previsione-pagella {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.previsione-table-head,
+.previsione-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(72px, 0.55fr) minmax(72px, 0.55fr);
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+}
+
+.previsione-table-head {
+  color: var(--secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.previsione-table-head span:not(:first-child) {
+  text-align: center;
+}
+
+.previsione-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.previsione-row:last-child {
+  border-bottom: none;
+}
+
+.previsione-subject {
+  font-weight: 700;
+  color: var(--primary);
+  overflow-wrap: anywhere;
+}
+
+.previsione-average {
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.previsione-average.is-empty {
+  color: transparent;
+  user-select: none;
+}
+
+.previsione-empty {
+  color: var(--secondary);
+  padding: 24px 8px;
+  text-align: center;
 }
 
 .voti-list {
@@ -822,7 +923,7 @@
 }
 
 .grade-leaderboard-shell--standalone {
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .grade-leaderboard-shell .leaderboard-header {

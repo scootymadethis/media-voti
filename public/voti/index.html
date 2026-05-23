@@ -6,7 +6,7 @@
     <title>Spaggiari 2 - Voti</title>
     <link rel="stylesheet" href="/common.css?v=2" />
     <link rel="stylesheet" href="/announcement-modal.css?v=1" />
-    <link rel="stylesheet" href="voti.css?v=2" />
+    <link rel="stylesheet" href="voti.css?v=3" />
   </head>
   <body>
     <div class="navbar">
@@ -116,8 +116,32 @@
         </div>
       </section>
 
-      <div class="voti">
-        <div class="voti-list" id="votiList">
+      <div
+        class="voti-view-switch"
+        role="tablist"
+        aria-label="Sezione area voti"
+      >
+        <button
+          type="button"
+          class="voti-view-tab active"
+          data-voti-view="voti"
+          aria-selected="true"
+        >
+          Voti
+        </button>
+        <button
+          type="button"
+          class="voti-view-tab"
+          data-voti-view="previsione"
+          aria-selected="false"
+        >
+          Previsione pagella
+        </button>
+      </div>
+
+      <div class="voti-panels">
+        <div class="voti voti-panel is-active" data-voti-panel="voti">
+          <div class="voti-list" id="votiList">
           <section class="voti-controls">
             <div class="control-card subject-card">
               <div class="control-card-header">
@@ -195,10 +219,19 @@
             </div>
           </div>
 
-          
+          </div>
         </div>
-      <div class="voti voti-leaderboard-panel">
-        <section class="grade-leaderboard-shell grade-leaderboard-shell--standalone">
+
+        <div class="voti voti-panel" data-voti-panel="previsione" hidden>
+          <div id="previsionePagellaRoot" class="previsione-pagella">
+            <p class="previsione-empty">Caricamento previsioni…</p>
+          </div>
+        </div>
+      </div>
+
+      <section
+        class="grade-leaderboard-shell grade-leaderboard-shell--standalone voti-leaderboard-section"
+      >
           <div class="leaderboard-header">
             <div>
               <h3 class="leaderboard-title">Classifica media generale</h3>
@@ -243,10 +276,7 @@
               Successiva →
             </button>
           </div>
-        </section>
-      </div>
-
-</div>
+      </section>
     </div>
 
     <div id="entryModal" class="modal" aria-hidden="true">
@@ -281,6 +311,6 @@
     <script src="/nav.js?v=1"></script>
     <script src="/easter-egg.js?v=1"></script>
     <script src="/announcement-modal.js?v=1"></script>
-    <script src="voti.js?v=3"></script>
+    <script src="voti.js?v=4"></script>
   </body>
 </html>
