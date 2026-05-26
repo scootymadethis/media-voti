@@ -17,6 +17,8 @@ let allClasses = [];
 let selectedClass = null;
 let currentHighlight = { day: null, ora: null };
 let highlightTimer = null;
+let comboboxOpen = false;
+let comboboxActiveIndex = -1;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -210,7 +212,47 @@ function getRomeNowParts() {
   const day = weekdayMap[weekdayRaw.slice(0, 3)] ?? null;
   const hour = parseInt(map.hour, 10);
   const minute = parseInt(map.minute, 10);
-  return { day, minutes: hour * 60 + minute };
+  const second = parseInt(map.second || "0", 10);
+  return {
+    day,
+    minutes: hour * 60 + minute,
+    seconds: hour * 3600 + minute * 60 + second,
+  };
+}
+
+function msUntilNextHighlightChange() {
+  const { seconds } = getRomeNowParts();
+  const totalSec = seconds % 86_400;
+  const boundaries = new Set();
+
+  for (const slot of LESSON_SLOTS) {
+    boundaries.add(slot.start[0] * 3600 + slot.start[1] * 60);
+    boundaries.add(slot.end[0] * 3600 + slot.end[1] * 60);
+  }
+
+  const sorted = Array.from(boundaries).sort((a, b) => a - b);
+  for (const boundary of sorted) {
+    if (boundary > totalSec) {
+      return Math.max(50, (boundary - totalSec) * 1000);
+    }
+  }
+
+  const untilMidnight = 86_400 - totalSec;
+  return Math.max(50, untilMidnight * 1000);
+}
+
+function startHighlightClock() {
+  if (highlightTimer) {
+    clearTimeout(highlightTimer);
+    highlightTimer = null;
+  }
+
+  const tick = () => {
+    refreshCurrentHighlight();
+    highlightTimer = window.setTimeout(tick, msUntilNextHighlightChange());
+  };
+
+  tick();
 }
 
 function computeCurrentSlot() {
@@ -301,24 +343,77 @@ function setStatus(message, isError = false) {
   el.classList.toggle("is-error", Boolean(isError));
 }
 
-function setLoading(active) {
+function setLoading(active, message) {
+  if (window.LoadingScreen) {
+    if (active) window.LoadingScreen.show(message || "Caricamento in corso…");
+    else window.LoadingScreen.hide();
+    return;
+  }
   const overlay = document.getElementById("loading-overlay");
   if (!overlay) return;
   overlay.classList.toggle("hidden", !active);
-}
-
-function populateClassDatalist(classes) {
-  const datalist = document.getElementById("orarioClassList");
-  if (!datalist) return;
-  datalist.innerHTML = classes
-    .map((code) => `<option value="${escapeHtml(code)}"></option>`)
-    .join("");
+  document.body.classList.toggle("is-loading", Boolean(active));
 }
 
 function filterClassSuggestions(query) {
   const q = query.trim().toUpperCase();
-  if (!q) return allClasses.slice(0, 12);
-  return allClasses.filter((code) => code.includes(q)).slice(0, 12);
+  if (!q) return allClasses.slice(0, 40);
+  return allClasses.filter((code) => code.includes(q)).slice(0, 40);
+}
+
+function getComboboxEls() {
+  return {
+    root: document.getElementById("orarioClassCombobox"),
+    input: document.getElementById("orarioClassInput"),
+    menu: document.getElementById("orarioClassMenu"),
+    toggle: document.getElementById("orarioClassToggle"),
+  };
+}
+
+function setComboboxOpen(open) {
+  const { root, menu, toggle, input } = getComboboxEls();
+  comboboxOpen = open;
+  if (root) root.classList.toggle("is-open", open);
+  if (menu) menu.hidden = !open;
+  const expanded = open ? "true" : "false";
+  if (toggle) toggle.setAttribute("aria-expanded", expanded);
+  if (input) input.setAttribute("aria-expanded", expanded);
+}
+
+function renderComboboxOptions(items) {
+  const { menu } = getComboboxEls();
+  if (!menu) return;
+
+  if (!items.length) {
+    menu.innerHTML = `<li class="orario-combobox-empty">Nessuna classe trovata</li>`;
+    comboboxActiveIndex = -1;
+    return;
+  }
+
+  menu.innerHTML = items
+    .map((code, index) => {
+      const active = index === comboboxActiveIndex ? " is-active" : "";
+      return `<li role="presentation"><button type="button" class="orario-combobox-option${active}" data-class="${escapeHtml(code)}" role="option">${escapeHtml(code)}</button></li>`;
+    })
+    .join("");
+
+  menu.querySelectorAll(".orario-combobox-option").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const code = btn.getAttribute("data-class");
+      const { input } = getComboboxEls();
+      if (input) input.value = code;
+      setComboboxOpen(false);
+      loadScheduleForClass(code);
+    });
+  });
+}
+
+function updateComboboxList() {
+  const { input } = getComboboxEls();
+  const query = input?.value || "";
+  const items = filterClassSuggestions(query);
+  if (comboboxActiveIndex >= items.length) comboboxActiveIndex = items.length - 1;
+  renderComboboxOptions(items);
 }
 
 async function loadScheduleForClass(classCode, { persist = true } = {}) {
@@ -358,8 +453,9 @@ async function loadScheduleForClass(classCode, { persist = true } = {}) {
 }
 
 function refreshCurrentHighlight() {
-  currentHighlight = computeCurrentSlot();
-  const { day, ora } = currentHighlight;
+  const next = computeCurrentSlot();
+  const { day, ora } = next;
+  currentHighlight = next;
   document.querySelectorAll(".orario-day-col").forEach((col, index) => {
     col.classList.toggle("is-today", day === index + 1);
   });
@@ -371,23 +467,71 @@ function refreshCurrentHighlight() {
 }
 
 function bindClassPicker() {
-  const input = document.getElementById("orarioClassInput");
-  if (!input) return;
+  const { root, input, menu, toggle } = getComboboxEls();
+  if (!input || !menu) return;
 
-  input.addEventListener("change", () => {
-    loadScheduleForClass(input.value);
-  });
+  const selectActiveOption = () => {
+    const items = filterClassSuggestions(input.value);
+    const code = items[comboboxActiveIndex];
+    if (!code) return;
+    input.value = code;
+    setComboboxOpen(false);
+    loadScheduleForClass(code);
+  };
 
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      loadScheduleForClass(input.value);
-    }
+  input.addEventListener("focus", () => {
+    comboboxActiveIndex = 0;
+    updateComboboxList();
+    setComboboxOpen(true);
   });
 
   input.addEventListener("input", () => {
-    const suggestions = filterClassSuggestions(input.value);
-    populateClassDatalist(suggestions.length ? suggestions : allClasses);
+    comboboxActiveIndex = 0;
+    updateComboboxList();
+    setComboboxOpen(true);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    const items = filterClassSuggestions(input.value);
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setComboboxOpen(true);
+      comboboxActiveIndex = Math.min(items.length - 1, comboboxActiveIndex + 1);
+      updateComboboxList();
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      comboboxActiveIndex = Math.max(0, comboboxActiveIndex - 1);
+      updateComboboxList();
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (comboboxOpen && comboboxActiveIndex >= 0 && items[comboboxActiveIndex]) {
+        selectActiveOption();
+      } else {
+        loadScheduleForClass(input.value);
+      }
+      return;
+    }
+    if (e.key === "Escape") {
+      setComboboxOpen(false);
+    }
+  });
+
+  toggle?.addEventListener("click", () => {
+    if (comboboxOpen) {
+      setComboboxOpen(false);
+      return;
+    }
+    updateComboboxList();
+    setComboboxOpen(true);
+    input.focus();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!root?.contains(e.target)) setComboboxOpen(false);
   });
 }
 
@@ -410,9 +554,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   bindClassPicker();
   currentHighlight = computeCurrentSlot();
-  highlightTimer = window.setInterval(refreshCurrentHighlight, 60_000);
+  startHighlightClock();
 
-  setLoading(true);
+  setLoading(true, "Caricamento orario…");
   try {
     const meta = await fetchOrarioMeta();
     allClasses = Array.isArray(meta?.classes) ? meta.classes : [];
@@ -420,7 +564,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       setStatus("Elenco classi non disponibile.", true);
       return;
     }
-    populateClassDatalist(allClasses);
+    updateComboboxList();
 
     const initial = await resolveInitialClass();
     const input = document.getElementById("orarioClassInput");

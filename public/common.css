@@ -74,11 +74,75 @@ button { cursor: pointer; }
 .nav-drawer-close { width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-alt); color: var(--primary); }
 .nav-drawer .buttons { flex-direction: column; }
 .nav-drawer .buttons button { width: 100%; min-height: 50px; justify-content: center; }
-.loading-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.55); z-index: 9998; }
-.loading-overlay.hidden { display: none; }
-.loading-card { background: var(--surface); color: var(--primary); padding: 18px 22px; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); box-shadow: var(--shadow); }
-.loading-text { font-size: 16px; }
-.spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.08); border-top-color: var(--primary-btn); animation: spin 1s linear infinite; }
+body.is-loading { overflow: hidden; }
+body.is-loading .navbar,
+body.is-loading .main,
+body.is-loading .page-shell,
+body.is-loading .nav-drawer,
+body.is-loading .nav-drawer-backdrop,
+body.is-loading .footer,
+body.is-loading button,
+body.is-loading a,
+body.is-loading input,
+body.is-loading select,
+body.is-loading textarea {
+  pointer-events: none !important;
+}
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8, 8, 10, 0.96);
+  backdrop-filter: blur(10px);
+  z-index: 10050;
+  pointer-events: auto;
+}
+.loading-overlay.hidden {
+  display: none;
+  pointer-events: none;
+}
+.loading-card {
+  background: var(--surface);
+  color: var(--primary);
+  padding: 20px 22px 18px;
+  border-radius: var(--radius-md);
+  width: min(400px, calc(100vw - 48px));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+.loading-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.loading-progress-bar {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #475569, #94a3b8 55%, #cbd5e1);
+  transition: width 0.12s linear;
+}
+.loading-card-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.loading-text { font-size: 15px; font-weight: 600; color: var(--primary); }
+.spinner {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.08);
+  border-top-color: #94a3b8;
+  animation: spin 0.85s linear infinite;
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.65); z-index: 9999; padding: 20px; }
 .modal.show { display: flex; }

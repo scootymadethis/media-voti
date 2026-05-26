@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spaggiari 2 - Orario</title>
-    <link rel="stylesheet" href="/common.css?v=7" />
+    <link rel="stylesheet" href="/common.css?v=8" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
-    <link rel="stylesheet" href="orario.css?v=1" />
+    <link rel="stylesheet" href="orario.css?v=2" />
   </head>
   <body>
     <div class="navbar">
@@ -110,13 +110,6 @@
     </aside>
 
     <div class="main">
-      <div id="loading-overlay" class="loading-overlay hidden">
-        <div class="loading-card">
-          <div class="spinner" aria-hidden="true"></div>
-          <div class="loading-text">Caricamento in corso…</div>
-        </div>
-      </div>
-
       <header class="orario-page-header">
         <p class="orario-kicker">Istituto Marconi</p>
         <h1 class="orario-title">
@@ -131,16 +124,35 @@
       <div class="orario-toolbar panel">
         <div class="orario-class-picker">
           <label for="orarioClassInput">Cambia classe</label>
-          <input
-            id="orarioClassInput"
-            name="orarioClass"
-            type="search"
-            list="orarioClassList"
-            placeholder="Cerca classe, es. 4EI"
-            autocomplete="off"
-            spellcheck="false"
-          />
-          <datalist id="orarioClassList"></datalist>
+          <div id="orarioClassCombobox" class="orario-combobox">
+            <input
+              id="orarioClassInput"
+              class="orario-combobox-input"
+              name="orarioClass"
+              type="search"
+              placeholder="Cerca classe, es. 4EI"
+              autocomplete="off"
+              spellcheck="false"
+              role="combobox"
+              aria-expanded="false"
+              aria-controls="orarioClassMenu"
+            />
+            <button
+              id="orarioClassToggle"
+              class="orario-combobox-toggle"
+              type="button"
+              aria-label="Apri elenco classi"
+              aria-expanded="false"
+            >
+              ▼
+            </button>
+            <ul
+              id="orarioClassMenu"
+              class="orario-combobox-menu"
+              role="listbox"
+              hidden
+            ></ul>
+          </div>
           <p class="orario-class-hint">
             Di default viene usata la tua classe (da agenda). La scelta resta
             salvata nel browser.
@@ -154,10 +166,34 @@
       </div>
     </div>
 
+    <div
+      id="loading-overlay"
+      class="loading-overlay hidden"
+      aria-hidden="true"
+      aria-busy="false"
+    >
+      <div class="loading-card" role="status" aria-live="polite">
+        <div
+          class="loading-progress"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+        >
+          <div id="loadingProgressBar" class="loading-progress-bar"></div>
+        </div>
+        <div class="loading-card-body">
+          <div class="spinner" aria-hidden="true"></div>
+          <p class="loading-text" id="loadingText">Caricamento in corso…</p>
+        </div>
+      </div>
+    </div>
+
     <script src="/config.js?v=3"></script>
+    <script src="/loading.js?v=1"></script>
     <script src="/nav.js?v=3"></script>
     <script src="/easter-egg.js?v=3"></script>
     <script src="/announcement-modal.js?v=3"></script>
-    <script src="orario.js?v=1"></script>
+    <script src="orario.js?v=2"></script>
   </body>
 </html>

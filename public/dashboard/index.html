@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spaggiari 2 - made by scooty</title>
-    <link rel="stylesheet" href="/common.css?v=7" />
+    <link rel="stylesheet" href="/common.css?v=8" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
     <link rel="stylesheet" href="dashboard.css?v=4" />
   </head>
@@ -103,13 +103,6 @@
     </aside>
 
     <div class="main">
-      <div id="loading-overlay" class="loading-overlay hidden">
-        <div class="loading-card">
-          <div class="spinner" aria-hidden="true"></div>
-          <div class="loading-text">Caricamento in corso…</div>
-        </div>
-      </div>
-
       <h1 class="greeting" id="greeting"></h1>
       <p class="time" id="time"></p>
       <p class="date" id="date"></p>
@@ -233,10 +226,34 @@
       </div>
     </div>
 
+    <div
+      id="loading-overlay"
+      class="loading-overlay hidden"
+      aria-hidden="true"
+      aria-busy="false"
+    >
+      <div class="loading-card" role="status" aria-live="polite">
+        <div
+          class="loading-progress"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+        >
+          <div id="loadingProgressBar" class="loading-progress-bar"></div>
+        </div>
+        <div class="loading-card-body">
+          <div class="spinner" aria-hidden="true"></div>
+          <p class="loading-text" id="loadingText">Caricamento in corso…</p>
+        </div>
+      </div>
+    </div>
+
     <script src="/config.js?v=2"></script>
+    <script src="/loading.js?v=1"></script>
     <script src="/nav.js?v=2"></script>
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
-    <script src="dashboard.js?v=5"></script>
+    <script src="dashboard.js?v=6"></script>
   </body>
 </html>

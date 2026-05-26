@@ -6,8 +6,7 @@ let currentWeekOffset = 0;
 
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
-  const loading = document.getElementById("loading-overlay");
-  if (loading) loading.classList.remove("hidden");
+  window.LoadingScreen?.show("Caricamento dashboard…");
 
   console.log("[dashboard] origin:", location.origin);
   console.log(
@@ -177,14 +176,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     updateGreeting();
     await new Promise((res) => requestAnimationFrame(res));
 
-    loading?.classList.add("hidden");
+    window.LoadingScreen?.hide();
 
     if (typeof window.initSiteAnnouncementModal === "function") {
       await window.initSiteAnnouncementModal();
     }
   } catch (err) {
     console.error(err);
-    document.getElementById("loading-overlay")?.classList.add("hidden");
+    window.LoadingScreen?.hide();
   }
 });
 

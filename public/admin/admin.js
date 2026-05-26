@@ -16,10 +16,16 @@ async function readJsonSafe(res) {
   }
 }
 
-function setLoading(show) {
+function setLoading(show, message) {
+  if (window.LoadingScreen) {
+    if (show) window.LoadingScreen.show(message || "Caricamento pannello…");
+    else window.LoadingScreen.hide();
+    return;
+  }
   const overlay = document.getElementById("loading-overlay");
   if (!overlay) return;
   overlay.classList.toggle("hidden", !show);
+  document.body.classList.toggle("is-loading", Boolean(show));
 }
 
 function showGate() {
