@@ -1155,6 +1155,10 @@ function getColorFromVoto(voto) {
 function goToHome() {
   window.location.href = "/dashboard/";
 }
+
+function goToOrario() {
+  window.location.href = "/orario/";
+}
 function goToAssenze() {
   window.location.href = "/assenze/";
 }

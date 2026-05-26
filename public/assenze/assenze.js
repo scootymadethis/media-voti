@@ -631,6 +631,10 @@ function goToAssenze() {
   window.location.href = "/assenze";
 }
 
+function goToOrario() {
+  window.location.href = "/orario/";
+}
+
 function goToVoti() {
   window.location.href = "/voti";
 }

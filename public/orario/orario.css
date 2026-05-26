@@ -1,0 +1,197 @@
+.orario-page-header {
+  margin-bottom: 22px;
+}
+
+.orario-kicker {
+  display: inline-flex;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.12);
+  color: #fca5a5;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.orario-title {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  margin-bottom: 8px;
+}
+
+.orario-subtitle {
+  color: var(--secondary);
+  max-width: 720px;
+}
+
+.orario-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding: 18px 20px;
+}
+
+.orario-class-picker {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.orario-class-picker label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin-bottom: 8px;
+}
+
+.orario-class-picker input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  background: var(--surface-alt);
+  color: var(--primary);
+}
+
+.orario-class-picker input:focus {
+  outline: 2px solid rgba(220, 38, 38, 0.45);
+  border-color: rgba(220, 38, 38, 0.55);
+}
+
+.orario-class-hint {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--secondary);
+}
+
+.orario-status {
+  flex: 1 1 200px;
+  font-size: 0.9rem;
+  color: var(--secondary);
+}
+
+.orario-status.is-error {
+  color: var(--error);
+}
+
+.orario-grid-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.orario-grid-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.orario-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(168px, 1fr));
+  min-width: min(100%, 840px);
+}
+
+.orario-day-col {
+  border-right: 1px solid var(--border);
+  min-width: 0;
+}
+
+.orario-day-col:last-child {
+  border-right: none;
+}
+
+.orario-day-head {
+  padding: 14px 12px;
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: linear-gradient(135deg, #b91c1c, #dc2626 55%, #991b1b);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.orario-day-col.is-today .orario-day-head {
+  box-shadow: inset 0 -3px 0 rgba(255, 255, 255, 0.35);
+}
+
+.orario-slot {
+  min-height: 88px;
+  padding: 10px 12px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.orario-slot:last-child {
+  border-bottom: none;
+}
+
+.orario-slot-time {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #f87171;
+  margin-bottom: 6px;
+}
+
+.orario-slot-body {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.orario-slot-support {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--secondary);
+}
+
+.orario-slot.is-empty {
+  background: var(--surface-alt);
+}
+
+.orario-slot.is-empty .orario-slot-body {
+  color: var(--disabled);
+  font-weight: 500;
+}
+
+.orario-slot.is-now {
+  background: rgba(220, 38, 38, 0.12);
+  box-shadow: inset 0 0 0 2px rgba(220, 38, 38, 0.55);
+}
+
+.orario-slot.is-now .orario-slot-time {
+  color: #fecaca;
+}
+
+.orario-empty-state {
+  padding: 28px 20px;
+  text-align: center;
+  color: var(--secondary);
+}
+
+@media (max-width: 900px) {
+  .orario-grid {
+    grid-template-columns: repeat(5, minmax(148px, 1fr));
+  }
+
+  .orario-slot {
+    min-height: 82px;
+  }
+}
+
+@media (max-width: 640px) {
+  .orario-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .orario-grid {
+    grid-template-columns: repeat(5, minmax(132px, 1fr));
+  }
+}

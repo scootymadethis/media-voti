@@ -910,6 +910,10 @@ function goToHome() {
   window.location.href = "/dashboard/";
 }
 
+function goToOrario() {
+  window.location.href = "/orario/";
+}
+
 function goToVoti() {
   window.location.href = "/voti/";
 }

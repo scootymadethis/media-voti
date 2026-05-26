@@ -3,9 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spaggiari 2 - Easter egg</title>
-    <link rel="stylesheet" href="/common.css?v=5" />
-    <link rel="stylesheet" href="game.css?v=4" />
+    <title>Spaggiari 2 - Orario</title>
+    <link rel="stylesheet" href="/common.css?v=7" />
+    <link rel="stylesheet" href="/announcement-modal.css?v=3" />
+    <link rel="stylesheet" href="orario.css?v=1" />
   </head>
   <body>
     <div class="navbar">
@@ -13,7 +14,7 @@
         <div class="navbar-brand-mark" onclick="goToHome()">S2</div>
         <div>
           <h1 class="title" onclick="goToHome()">Spaggiari 2</h1>
-          <p class="navbar-subtitle">Easter egg</p>
+          <p class="navbar-subtitle">Orario scolastico</p>
         </div>
       </div>
       <div class="navbar-right">
@@ -29,7 +30,12 @@
           >
             🤫
           </button>
-          <button class="btn-secondary" type="button" onclick="goToOrario()">
+          <button
+            id="orarioBtn"
+            class="btn-primary"
+            type="button"
+            onclick="goToOrario()"
+          >
             Orario
           </button>
           <button class="btn-secondary" type="button" onclick="goToVoti()">
@@ -47,7 +53,7 @@
           >
             Admin
           </button>
-          <button type="button" onclick="logout()">Logout</button>
+          <button id="logoutBtn" type="button" onclick="logout()">Logout</button>
         </div>
         <button
           id="navToggle"
@@ -93,7 +99,7 @@
         >
           🤫
         </button>
-        <button class="btn-secondary" onclick="goToOrario()">Orario</button>
+        <button class="btn-primary" onclick="goToOrario()">Orario</button>
         <button class="btn-secondary" onclick="goToVoti()">Voti</button>
         <button class="btn-secondary" onclick="goToAssenze()">Assenze</button>
         <button class="btn-admin" data-admin-nav hidden onclick="goToAdmin()">
@@ -103,19 +109,55 @@
       </div>
     </aside>
 
-    <main class="game-shell page-shell">
-      <header class="game-header">
-        <div>
-          <h1>Modalità segreta</h1>
-          <p>Accesso riservato. Buon divertimento.</p>
+    <div class="main">
+      <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-card">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="loading-text">Caricamento in corso…</div>
         </div>
-      </header>
-      <div id="gameContent"></div>
-    </main>
+      </div>
 
-    <script src="/config.js?v=2"></script>
-    <script src="/nav.js?v=2"></script>
-    <script src="/easter-egg.js?v=2"></script>
-    <script src="game.js?v=5"></script>
+      <header class="orario-page-header">
+        <p class="orario-kicker">Istituto Marconi</p>
+        <h1 class="orario-title">
+          Orario classe <span id="orarioClassTitle">—</span>
+        </h1>
+        <p class="orario-subtitle">
+          Griglia settimanale con evidenziazione dell'ora in corso (fuso orario
+          Italia).
+        </p>
+      </header>
+
+      <div class="orario-toolbar panel">
+        <div class="orario-class-picker">
+          <label for="orarioClassInput">Cambia classe</label>
+          <input
+            id="orarioClassInput"
+            name="orarioClass"
+            type="search"
+            list="orarioClassList"
+            placeholder="Cerca classe, es. 4EI"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <datalist id="orarioClassList"></datalist>
+          <p class="orario-class-hint">
+            Di default viene usata la tua classe (da agenda). La scelta resta
+            salvata nel browser.
+          </p>
+        </div>
+        <p id="orarioStatus" class="orario-status" aria-live="polite"></p>
+      </div>
+
+      <div id="orarioGridMount" class="orario-grid-wrap">
+        <div class="orario-empty-state">Seleziona una classe per vedere l'orario.</div>
+      </div>
+    </div>
+
+    <script src="/config.js?v=3"></script>
+    <script src="/nav.js?v=3"></script>
+    <script src="/easter-egg.js?v=3"></script>
+    <script src="/announcement-modal.js?v=3"></script>
+    <script src="orario.js?v=1"></script>
   </body>
 </html>

@@ -1147,6 +1147,50 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
         raise HTTPException(status_code=502, detail=str(e))
 
 
+MARCONI_ORARIO_API = "https://apps.marconivr.it/orario/api.php"
+MARCONI_ORARIO_CVERS = "-1"
+
+
+@app.get("/orario/meta")
+def orario_meta(u: Utente = Depends(current_user)):
+    try:
+        upstream = requests.get(
+            MARCONI_ORARIO_API,
+            params={"CVers": MARCONI_ORARIO_CVERS},
+            timeout=20,
+        )
+        if upstream.status_code >= 400:
+            raise HTTPException(status_code=502, detail=f"Orario Marconi: {upstream.status_code}")
+        return {"ok": True, "meta": upstream.json()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.get("/orario/class")
+def orario_class(
+    class_name: str = Query(..., min_length=1, max_length=16, alias="class"),
+    u: Utente = Depends(current_user),
+):
+    code = class_name.strip().upper()
+    try:
+        upstream = requests.get(
+            MARCONI_ORARIO_API,
+            params={"class": code, "CVers": MARCONI_ORARIO_CVERS},
+            timeout=20,
+        )
+        if upstream.status_code >= 400:
+            raise HTTPException(status_code=502, detail=f"Orario Marconi: {upstream.status_code}")
+        payload = upstream.json()
+        entries = payload if isinstance(payload, list) else []
+        return {"ok": True, "class": code, "entries": entries}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
 @app.post("/didattica")
 def didattica(u: Utente = Depends(current_user)):
     try:

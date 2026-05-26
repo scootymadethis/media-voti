@@ -558,6 +558,10 @@ function logout() {
   window.location.href = "/";
 }
 
+function goToOrario() {
+  window.location.href = "/orario/";
+}
+
 function goToVoti() {
   window.location.href = "/voti/";
 }
