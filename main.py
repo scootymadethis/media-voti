@@ -1149,10 +1149,75 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
 
 MARCONI_ORARIO_API = "https://apps.marconivr.it/orario/api.php"
 MARCONI_ORARIO_CVERS = "-1"
+MARCONI_MIUR_SCHOOL_CODE = "VRTF03000V"
+ORARIO_ACCESS_DENIED_DETAIL = (
+    "Al momento la funzione orario è disponibile solo per gli studenti dell'Istituto Marconi."
+)
+
+
+def extract_student_card_fields(card_res) -> dict:
+    if not isinstance(card_res, dict):
+        return {}
+    inner = card_res.get("card") if isinstance(card_res.get("card"), dict) else card_res
+    if isinstance(inner, dict) and isinstance(inner.get("card"), dict):
+        inner = inner["card"]
+    return inner if isinstance(inner, dict) else {}
+
+
+def is_marconi_student_card(card_res) -> bool:
+    fields = extract_student_card_fields(card_res)
+    miur = (
+        (fields.get("miurSchoolCode") or fields.get("miurDivisionCode") or "")
+        .strip()
+        .upper()
+    )
+    label = " ".join(
+        str(fields.get(key) or "")
+        for key in ("schName", "schDedication", "schCity", "schProv", "schCode")
+    ).lower()
+    name_ok = "marconi" in label
+    miur_ok = miur == MARCONI_MIUR_SCHOOL_CODE
+
+    if miur and not miur_ok:
+        return False
+    if miur_ok:
+        return True
+    return name_ok
+
+
+def fetch_student_card_or_401(u: Utente) -> dict:
+    try:
+        return u.request(RequestURLs.card).json()
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+
+def require_marconi_orario_access(u: Utente) -> dict:
+    card_res = fetch_student_card_or_401(u)
+    if not is_marconi_student_card(card_res):
+        raise HTTPException(status_code=403, detail=ORARIO_ACCESS_DENIED_DETAIL)
+    return card_res
+
+
+@app.get("/orario/eligible")
+def orario_eligible(u: Utente = Depends(current_user)):
+    try:
+        card_res = fetch_student_card_or_401(u)
+        eligible = is_marconi_student_card(card_res)
+        return {
+            "ok": True,
+            "eligible": eligible,
+            "detail": None if eligible else ORARIO_ACCESS_DENIED_DETAIL,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.get("/orario/meta")
 def orario_meta(u: Utente = Depends(current_user)):
+    require_marconi_orario_access(u)
     try:
         upstream = requests.get(
             MARCONI_ORARIO_API,
@@ -1173,6 +1238,7 @@ def orario_class(
     class_name: str = Query(..., min_length=1, max_length=16, alias="class"),
     u: Utente = Depends(current_user),
 ):
+    require_marconi_orario_access(u)
     code = class_name.strip().upper()
     try:
         upstream = requests.get(

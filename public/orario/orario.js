@@ -1,6 +1,16 @@
 const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
 
 const ORARIO_CLASS_STORAGE_KEY = "orario_selected_class";
+const MARCONI_MIUR_SCHOOL_CODE = "VRTF03000V";
+const ORARIO_ACCESS_MESSAGE =
+  "Al momento la funzione orario è disponibile solo per gli studenti dell'Istituto Marconi.";
+
+class OrarioAccessError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "OrarioAccessError";
+  }
+}
 const DAY_NAMES = ["", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì"];
 
 const LESSON_SLOTS = [
@@ -138,13 +148,136 @@ async function detectClassFromAgenda(classes) {
   return null;
 }
 
+function extractCardFields(cardPayload) {
+  if (!cardPayload || typeof cardPayload !== "object") return {};
+  let inner = cardPayload.card ?? cardPayload;
+  if (inner?.card && typeof inner.card === "object") inner = inner.card;
+  return inner && typeof inner === "object" ? inner : {};
+}
+
+function isMarconiStudentFromCard(cardPayload) {
+  const fields = extractCardFields(cardPayload);
+  const miur = String(
+    fields.miurSchoolCode || fields.miurDivisionCode || "",
+  )
+    .trim()
+    .toUpperCase();
+  const label = [
+    fields.schName,
+    fields.schDedication,
+    fields.schCity,
+    fields.schProv,
+    fields.schCode,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const nameOk = label.includes("marconi");
+  const miurOk = miur === MARCONI_MIUR_SCHOOL_CODE;
+
+  if (miur && !miurOk) return false;
+  if (miurOk) return true;
+  return nameOk;
+}
+
+async function readJsonSafe(res) {
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function fetchStudentCard() {
+  const res = await fetch(apiUrl("/api/card"), {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (res.status === 401) {
+    await handleAuthFail(res);
+    throw new Error("card fetch unauthorized");
+  }
+  if (!res.ok) throw new Error("card fetch failed");
+  const data = await readJsonSafe(res);
+  return data?.card ?? data;
+}
+
+async function checkOrarioSchoolAccess() {
+  try {
+    const res = await fetch(apiUrl("/api/orario/eligible"), {
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (res.status === 401) {
+      await handleAuthFail(res);
+      return false;
+    }
+    const data = await readJsonSafe(res);
+    if (res.status === 403 || data?.eligible === false) {
+      return { eligible: false, detail: data?.detail || ORARIO_ACCESS_MESSAGE };
+    }
+    if (!res.ok) {
+      const card = await fetchStudentCard();
+      const eligible = isMarconiStudentFromCard(card);
+      return {
+        eligible,
+        detail: eligible ? null : ORARIO_ACCESS_MESSAGE,
+      };
+    }
+    const eligible = data?.eligible === true;
+    return {
+      eligible,
+      detail: eligible ? null : data?.detail || ORARIO_ACCESS_MESSAGE,
+    };
+  } catch (err) {
+    console.warn("[orario] eligibility check failed, fallback to card:", err);
+    try {
+      const card = await fetchStudentCard();
+      const eligible = isMarconiStudentFromCard(card);
+      return {
+        eligible,
+        detail: eligible ? null : ORARIO_ACCESS_MESSAGE,
+      };
+    } catch (cardErr) {
+      console.error("[orario] card fallback failed:", cardErr);
+      return { eligible: false, detail: ORARIO_ACCESS_MESSAGE };
+    }
+  }
+}
+
+function showOrarioSchoolGate(message) {
+  const gate = document.getElementById("orarioSchoolGate");
+  const app = document.getElementById("orarioAppContent");
+  const text = document.getElementById("orarioSchoolGateText");
+  if (text) text.textContent = message || ORARIO_ACCESS_MESSAGE;
+  gate?.classList.remove("hidden");
+  app?.classList.add("hidden");
+}
+
+function hideOrarioSchoolGate() {
+  document.getElementById("orarioSchoolGate")?.classList.add("hidden");
+  document.getElementById("orarioAppContent")?.classList.remove("hidden");
+}
+
+async function handleOrarioApiError(res) {
+  if (res.status === 401) {
+    await handleAuthFail(res);
+    throw new Error("unauthorized");
+  }
+  if (res.status === 403) {
+    const data = await readJsonSafe(res);
+    throw new OrarioAccessError(data?.detail || ORARIO_ACCESS_MESSAGE);
+  }
+}
+
 async function fetchOrarioMeta() {
   const res = await fetch(apiUrl("/api/orario/meta"), {
     credentials: "include",
     cache: "no-store",
   });
   if (!res.ok) {
-    await handleAuthFail(res);
+    await handleOrarioApiError(res);
     throw new Error("meta fetch failed");
   }
   const data = await res.json();
@@ -158,7 +291,7 @@ async function fetchOrarioClass(classCode) {
     cache: "no-store",
   });
   if (!res.ok) {
-    await handleAuthFail(res);
+    await handleOrarioApiError(res);
     throw new Error("class schedule fetch failed");
   }
   return res.json();
@@ -445,6 +578,10 @@ async function loadScheduleForClass(classCode, { persist = true } = {}) {
     renderSchedule(normalized, data.entries || []);
     setStatus(`Orario aggiornato · ${normalized}`);
   } catch (err) {
+    if (err instanceof OrarioAccessError) {
+      showOrarioSchoolGate(err.message);
+      return;
+    }
     console.error("[orario] load failed:", err);
     setStatus("Impossibile caricare l'orario. Riprova.", true);
   } finally {
@@ -552,12 +689,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  bindClassPicker();
-  currentHighlight = computeCurrentSlot();
-  startHighlightClock();
-
-  setLoading(true, "Caricamento orario…");
+  setLoading(true, "Verifica scuola…");
   try {
+    const access = await checkOrarioSchoolAccess();
+    if (!access.eligible) {
+      showOrarioSchoolGate(access.detail);
+      return;
+    }
+    hideOrarioSchoolGate();
+
+    bindClassPicker();
+    currentHighlight = computeCurrentSlot();
+    startHighlightClock();
+
+    window.LoadingScreen?.setMessage("Caricamento orario…");
     const meta = await fetchOrarioMeta();
     allClasses = Array.isArray(meta?.classes) ? meta.classes : [];
     if (!allClasses.length) {
@@ -576,6 +721,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (input) input.placeholder = "Es. 4EI";
     }
   } catch (err) {
+    if (err instanceof OrarioAccessError) {
+      showOrarioSchoolGate(err.message);
+      return;
+    }
     console.error("[orario] init failed:", err);
     setStatus("Errore di caricamento. Ricarica la pagina.", true);
   } finally {
