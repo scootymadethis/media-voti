@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spaggiari 2 - Admin</title>
-    <link rel="stylesheet" href="/common.css?v=7" />
+    <link rel="stylesheet" href="/common.css?v=8" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
     <link rel="stylesheet" href="admin.css?v=3" />
   </head>
@@ -30,6 +30,7 @@
           >
             🤫
           </button>
+          <button class="btn-secondary" onclick="goToOrario()">Orario</button>
           <button class="btn-secondary" onclick="goToVoti()">Voti</button>
           <button class="btn-secondary" onclick="goToAssenze()">Assenze</button>
           <button
@@ -86,6 +87,7 @@
         >
           🤫
         </button>
+        <button class="btn-secondary" onclick="goToOrario()">Orario</button>
         <button class="btn-secondary" onclick="goToVoti()">Voti</button>
         <button class="btn-secondary" onclick="goToAssenze()">Assenze</button>
         <button class="btn-admin" data-admin-nav hidden onclick="goToAdmin()">
@@ -121,13 +123,6 @@
     </section>
 
     <main id="adminDashboard" class="admin-dashboard hidden page-shell">
-      <div id="loading-overlay" class="loading-overlay hidden">
-        <div class="loading-card">
-          <div class="spinner" aria-hidden="true"></div>
-          <div class="loading-text">Caricamento pannello…</div>
-        </div>
-      </div>
-
       <header class="admin-header">
         <div>
           <h1>Pannello amministratore</h1>
@@ -256,10 +251,34 @@
       <span class="copyright">&#169; Copyright 2026 github.com/scootymadethis</span>
     </div>
 
+    <div
+      id="loading-overlay"
+      class="loading-overlay hidden"
+      aria-hidden="true"
+      aria-busy="false"
+    >
+      <div class="loading-card" role="status" aria-live="polite">
+        <div
+          class="loading-progress"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+        >
+          <div id="loadingProgressBar" class="loading-progress-bar"></div>
+        </div>
+        <div class="loading-card-body">
+          <div class="spinner" aria-hidden="true"></div>
+          <p class="loading-text" id="loadingText">Caricamento pannello…</p>
+        </div>
+      </div>
+    </div>
+
     <script src="/config.js?v=2"></script>
+    <script src="/loading.js?v=1"></script>
     <script src="/nav.js?v=2"></script>
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
-    <script src="admin.js?v=5"></script>
+    <script src="admin.js?v=6"></script>
   </body>
 </html>

@@ -157,8 +157,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initAverageLeaderboardTabs();
   initAverageLeaderboardPreferenceControls();
 
-  const loading = document.getElementById("loading-overlay");
-  if (loading) loading.classList.remove("hidden");
+  window.LoadingScreen?.show("Caricamento voti…");
 
   if (localStorage.getItem("loggedIn") !== "true") {
     window.location.href = "/";
@@ -212,7 +211,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderAverageLeaderboardEmpty("Nessuna classifica disponibile al momento.");
     }
 
-    loading?.classList.add("hidden");
+    window.LoadingScreen?.hide();
 
     if (typeof window.initSiteAnnouncementModal === "function") {
       await window.initSiteAnnouncementModal();
@@ -234,7 +233,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   } catch (err) {
     console.error(err);
-    document.getElementById("loading-overlay")?.classList.add("hidden");
+    window.LoadingScreen?.hide();
     renderAverageLeaderboardEmpty("Si è verificato un errore durante il caricamento.");
   }
 
@@ -931,10 +930,16 @@ function formatAverage(value) {
   return n.toFixed(2);
 }
 
-function showLoading(show) {
+function showLoading(show, message) {
+  if (window.LoadingScreen) {
+    if (show) window.LoadingScreen.show(message || "Caricamento in corso…");
+    else window.LoadingScreen.hide();
+    return;
+  }
   const overlay = document.getElementById("loading-overlay");
   if (!overlay) return;
   overlay.classList.toggle("hidden", !show);
+  document.body.classList.toggle("is-loading", Boolean(show));
 }
 
 function formatDateYYYYMMDD(d) {
@@ -1154,6 +1159,10 @@ function getColorFromVoto(voto) {
 
 function goToHome() {
   window.location.href = "/dashboard/";
+}
+
+function goToOrario() {
+  window.location.href = "/orario/";
 }
 function goToAssenze() {
   window.location.href = "/assenze/";

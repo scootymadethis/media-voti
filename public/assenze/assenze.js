@@ -267,10 +267,16 @@ function calcolaRiduzioneProporzionale(oreAssenza) {
   return 33 + ((oreAssenza - 263) / (263 - 136)) * (33 - 15);
 }
 
-function showLoading(show) {
+function showLoading(show, message) {
+  if (window.LoadingScreen) {
+    if (show) window.LoadingScreen.show(message || "Caricamento in corso…");
+    else window.LoadingScreen.hide();
+    return;
+  }
   const overlay = document.getElementById("loading-overlay");
   if (!overlay) return;
   overlay.classList.toggle("hidden", !show);
+  document.body.classList.toggle("is-loading", Boolean(show));
 }
 
 function formatDateYYYYMMDD(d) {
@@ -629,6 +635,10 @@ function goToHome() {
 
 function goToAssenze() {
   window.location.href = "/assenze";
+}
+
+function goToOrario() {
+  window.location.href = "/orario/";
 }
 
 function goToVoti() {

@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spaggiari 2 - Orario</title>
+    <link rel="stylesheet" href="/common.css?v=8" />
+    <link rel="stylesheet" href="/announcement-modal.css?v=3" />
+    <link rel="stylesheet" href="orario.css?v=2" />
+  </head>
+  <body>
+    <div class="navbar">
+      <div class="navbar-brand">
+        <div class="navbar-brand-mark" onclick="goToHome()">S2</div>
+        <div>
+          <h1 class="title" onclick="goToHome()">Spaggiari 2</h1>
+          <p class="navbar-subtitle">Orario scolastico</p>
+        </div>
+      </div>
+      <div class="navbar-right">
+        <div class="buttons" aria-label="Navigazione principale">
+          <button
+            type="button"
+            class="btn-easter-egg"
+            data-easter-egg-nav
+            hidden
+            aria-label="Easter egg"
+            title="Easter egg"
+            onclick="goToEasterEggGame()"
+          >
+            🤫
+          </button>
+          <button
+            id="orarioBtn"
+            class="btn-primary"
+            type="button"
+            onclick="goToOrario()"
+          >
+            Orario
+          </button>
+          <button class="btn-secondary" type="button" onclick="goToVoti()">
+            Voti
+          </button>
+          <button class="btn-secondary" type="button" onclick="goToAssenze()">
+            Assenze
+          </button>
+          <button
+            class="btn-admin"
+            data-admin-nav
+            hidden
+            type="button"
+            onclick="goToAdmin()"
+          >
+            Admin
+          </button>
+          <button id="logoutBtn" type="button" onclick="logout()">Logout</button>
+        </div>
+        <button
+          id="navToggle"
+          class="navbar-toggle"
+          type="button"
+          aria-label="Apri menu"
+          aria-expanded="false"
+          aria-controls="mobileNavDrawer"
+        >
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+
+    <div
+      id="mobileNavBackdrop"
+      class="nav-drawer-backdrop"
+      aria-hidden="true"
+    ></div>
+    <aside id="mobileNavDrawer" class="nav-drawer" aria-hidden="true">
+      <div class="nav-drawer-header">
+        <div>
+          <h2>Menu</h2>
+          <p class="navbar-subtitle">Navigazione rapida</p>
+        </div>
+        <button
+          id="navDrawerClose"
+          class="nav-drawer-close"
+          type="button"
+          aria-label="Chiudi menu"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="buttons">
+        <button
+          type="button"
+          class="btn-easter-egg"
+          data-easter-egg-nav
+          hidden
+          aria-label="Easter egg"
+          onclick="goToEasterEggGame()"
+        >
+          🤫
+        </button>
+        <button class="btn-primary" onclick="goToOrario()">Orario</button>
+        <button class="btn-secondary" onclick="goToVoti()">Voti</button>
+        <button class="btn-secondary" onclick="goToAssenze()">Assenze</button>
+        <button class="btn-admin" data-admin-nav hidden onclick="goToAdmin()">
+          Admin
+        </button>
+        <button onclick="logout()">Logout</button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="orario-page-header">
+        <p class="orario-kicker">Istituto Marconi</p>
+        <h1 class="orario-title">
+          Orario classe <span id="orarioClassTitle">—</span>
+        </h1>
+        <p class="orario-subtitle">
+          Griglia settimanale con evidenziazione dell'ora in corso (fuso orario
+          Italia).
+        </p>
+      </header>
+
+      <div class="orario-toolbar panel">
+        <div class="orario-class-picker">
+          <label for="orarioClassInput">Cambia classe</label>
+          <div id="orarioClassCombobox" class="orario-combobox">
+            <input
+              id="orarioClassInput"
+              class="orario-combobox-input"
+              name="orarioClass"
+              type="search"
+              placeholder="Cerca classe, es. 4EI"
+              autocomplete="off"
+              spellcheck="false"
+              role="combobox"
+              aria-expanded="false"
+              aria-controls="orarioClassMenu"
+            />
+            <button
+              id="orarioClassToggle"
+              class="orario-combobox-toggle"
+              type="button"
+              aria-label="Apri elenco classi"
+              aria-expanded="false"
+            >
+              ▼
+            </button>
+            <ul
+              id="orarioClassMenu"
+              class="orario-combobox-menu"
+              role="listbox"
+              hidden
+            ></ul>
+          </div>
+          <p class="orario-class-hint">
+            Di default viene usata la tua classe (da agenda). La scelta resta
+            salvata nel browser.
+          </p>
+        </div>
+        <p id="orarioStatus" class="orario-status" aria-live="polite"></p>
+      </div>
+
+      <div id="orarioGridMount" class="orario-grid-wrap">
+        <div class="orario-empty-state">Seleziona una classe per vedere l'orario.</div>
+      </div>
+    </div>
+
+    <div
+      id="loading-overlay"
+      class="loading-overlay hidden"
+      aria-hidden="true"
+      aria-busy="false"
+    >
+      <div class="loading-card" role="status" aria-live="polite">
+        <div
+          class="loading-progress"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+        >
+          <div id="loadingProgressBar" class="loading-progress-bar"></div>
+        </div>
+        <div class="loading-card-body">
+          <div class="spinner" aria-hidden="true"></div>
+          <p class="loading-text" id="loadingText">Caricamento in corso…</p>
+        </div>
+      </div>
+    </div>
+
+    <script src="/config.js?v=3"></script>
+    <script src="/loading.js?v=1"></script>
+    <script src="/nav.js?v=3"></script>
+    <script src="/easter-egg.js?v=3"></script>
+    <script src="/announcement-modal.js?v=3"></script>
+    <script src="orario.js?v=2"></script>
+  </body>
+</html>
