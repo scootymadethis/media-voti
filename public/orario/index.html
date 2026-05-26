@@ -6,7 +6,7 @@
     <title>Spaggiari 2 - Orario</title>
     <link rel="stylesheet" href="/common.css?v=8" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
-    <link rel="stylesheet" href="orario.css?v=2" />
+    <link rel="stylesheet" href="orario.css?v=3" />
   </head>
   <body>
     <div class="navbar">
@@ -121,6 +121,22 @@
         </p>
       </header>
 
+      <section
+        id="orarioSchoolGate"
+        class="orario-gate panel hidden"
+        aria-live="polite"
+      >
+        <h2>Orario non disponibile</h2>
+        <p id="orarioSchoolGateText">
+          Al momento la funzione orario è disponibile solo per gli studenti
+          dell'Istituto Marconi.
+        </p>
+        <button type="button" class="btn-secondary" onclick="goToHome()">
+          Torna alla dashboard
+        </button>
+      </section>
+
+      <div id="orarioAppContent" class="orario-app-content">
       <div class="orario-toolbar panel">
         <div class="orario-class-picker">
           <label for="orarioClassInput">Cambia classe</label>
@@ -164,6 +180,7 @@
       <div id="orarioGridMount" class="orario-grid-wrap">
         <div class="orario-empty-state">Seleziona una classe per vedere l'orario.</div>
       </div>
+      </div>
     </div>
 
     <div
@@ -194,6 +211,6 @@
     <script src="/nav.js?v=3"></script>
     <script src="/easter-egg.js?v=3"></script>
     <script src="/announcement-modal.js?v=3"></script>
-    <script src="orario.js?v=2"></script>
+    <script src="orario.js?v=3"></script>
   </body>
 </html>

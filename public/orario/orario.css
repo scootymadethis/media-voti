@@ -24,6 +24,32 @@
   max-width: 720px;
 }
 
+.orario-gate {
+  padding: 28px 24px;
+  margin-bottom: 22px;
+  text-align: center;
+}
+
+.orario-gate.hidden {
+  display: none;
+}
+
+.orario-gate h2 {
+  font-size: 1.35rem;
+  margin-bottom: 12px;
+}
+
+.orario-gate p {
+  color: var(--secondary);
+  max-width: 520px;
+  margin: 0 auto 20px;
+  line-height: 1.5;
+}
+
+.orario-app-content.hidden {
+  display: none;
+}
+
 .orario-toolbar {
   display: flex;
   flex-wrap: wrap;
