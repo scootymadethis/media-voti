@@ -170,6 +170,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     window.addEventListener("resize", updateSlidesLayout);
     window.addEventListener("resize", syncMediaToAssenze);
+    window.addEventListener("orientationchange", syncMediaToAssenze);
     updateSlidesLayout();
 
     updateTimeAndDate();
@@ -377,6 +378,17 @@ function computeEqualHeights() {
 }
 
 let __syncMediaTimeout = null;
+
+function usesCompactMediaLayout() {
+  return window.matchMedia(
+    "(max-width: 720px) and (orientation: portrait), (max-width: 520px)",
+  ).matches;
+}
+
+function shouldSyncMediaHeight() {
+  return window.innerWidth > 1100 && !usesCompactMediaLayout();
+}
+
 function syncMediaToAssenze() {
   clearTimeout(__syncMediaTimeout);
   __syncMediaTimeout = setTimeout(() => {
@@ -384,7 +396,7 @@ function syncMediaToAssenze() {
     const assenze = document.getElementById("assenze");
     if (!media || !assenze) return;
 
-    if (window.innerWidth <= 700) {
+    if (!shouldSyncMediaHeight()) {
       media.style.height = "";
       return;
     }
