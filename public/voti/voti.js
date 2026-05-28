@@ -159,19 +159,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   window.LoadingScreen?.show("Caricamento voti…");
 
-  if (localStorage.getItem("loggedIn") !== "true") {
-    window.location.href = "/";
-    return;
-  }
+  const session = await window.SessionAuth?.requireAuth();
+  if (!session) return;
 
   const votiDiv = document.querySelector(".actual-voti");
   const materiaSelect = document.getElementById("materiaSelect");
   if (votiDiv) votiDiv.innerHTML = "";
 
   try {
-    myUsername = localStorage.getItem("username") || null;
-    myFullName = localStorage.getItem("fullName") || null;
-    mySchoolCode = localStorage.getItem("schoolCode") || null;
+    myUsername = session.username || null;
+    myFullName = session.full_name || localStorage.getItem("fullName") || null;
+    mySchoolCode = session.school_code || localStorage.getItem("schoolCode") || null;
 
     try {
       myClassCode = await logClasseFromFirstLesson();
@@ -418,11 +416,6 @@ function renderActualVoti(voti, periodoLabel = "Periodo", materia = "") {
 }
 
 function getGeneralAverageValue(voti = null) {
-  const savedValue = parseFloat(localStorage.getItem("media_generale") || "");
-  if (Number.isFinite(savedValue)) {
-    return Math.max(0, Math.min(10, savedValue));
-  }
-
   if (!Array.isArray(voti)) return 0;
 
   let sum = 0;
@@ -1032,8 +1025,7 @@ async function handleAuthFail(res) {
     body = await res.text();
   }
   console.log("Auth fail:", res.status, body);
-  localStorage.removeItem("loggedIn");
-  localStorage.removeItem("username");
+  window.SessionAuth?.clearLegacyClientState?.();
   window.location.href = "/";
 }
 
@@ -1168,6 +1160,5 @@ function goToAssenze() {
   window.location.href = "/assenze/";
 }
 function logout() {
-  localStorage.removeItem("loggedIn");
-  window.location.href = "/";
+  window.SessionAuth?.logout();
 }

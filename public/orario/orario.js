@@ -684,10 +684,8 @@ async function resolveInitialClass() {
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
 
-  if (localStorage.getItem("loggedIn") !== "true") {
-    window.location.href = "/";
-    return;
-  }
+  const session = await window.SessionAuth?.requireAuth();
+  if (!session) return;
 
   setLoading(true, "Verifica scuola…");
   try {
@@ -738,7 +736,7 @@ async function handleAuthFail(res) {
   } catch {
     /* ignore */
   }
-  localStorage.removeItem("loggedIn");
+  window.SessionAuth?.clearLegacyClientState?.();
   window.location.href = "/";
 }
 
@@ -759,9 +757,7 @@ function goToAssenze() {
 }
 
 function logout() {
-  localStorage.removeItem("loggedIn");
-  localStorage.removeItem("username");
-  window.location.href = "/";
+  window.SessionAuth?.logout();
 }
 
 function initMobileMenu() {

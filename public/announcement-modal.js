@@ -1,6 +1,7 @@
 (function () {
   const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
   let markedReady = false;
+  let domPurifyReady = false;
 
   function escapeHtml(value) {
     return String(value ?? "").replace(
@@ -16,22 +17,41 @@
     );
   }
 
+  function loadScript(src) {
+    return new Promise((resolve) => {
+      if (document.querySelector(`script[src="${src}"]`)) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+    });
+  }
+
   async function ensureMarked() {
     if (window.marked) {
       markedReady = true;
       return true;
     }
-    return new Promise((resolve) => {
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js";
-      script.async = true;
-      script.onload = () => {
-        markedReady = true;
-        resolve(true);
-      };
-      script.onerror = () => resolve(false);
-      document.head.appendChild(script);
-    });
+    markedReady = await loadScript(
+      "https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js",
+    );
+    return markedReady && Boolean(window.marked);
+  }
+
+  async function ensureDomPurify() {
+    if (window.DOMPurify) {
+      domPurifyReady = true;
+      return true;
+    }
+    domPurifyReady = await loadScript(
+      "https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js",
+    );
+    return domPurifyReady && Boolean(window.DOMPurify);
   }
 
   function renderMarkdown(markdown) {
@@ -39,7 +59,10 @@
     if (markedReady && window.marked) {
       try {
         window.marked.setOptions({ breaks: true, gfm: true });
-        return window.marked.parse(raw);
+        const html = window.marked.parse(raw);
+        if (domPurifyReady && window.DOMPurify) {
+          return window.DOMPurify.sanitize(html);
+        }
       } catch (err) {
         console.warn("[announcement] markdown parse failed:", err);
       }
@@ -133,18 +156,19 @@
   };
 
   window.initSiteAnnouncementModal = async function initSiteAnnouncementModal() {
-    if (localStorage.getItem("loggedIn") !== "true") return;
-
     try {
-      const res = await fetch(apiUrl("/api/announcement/me"), {
+      const { res, data } = await window.SessionAuth.fetchSession();
+      if (!res.ok || !data?.authenticated) return;
+
+      const announcementRes = await fetch(apiUrl("/api/announcement/me"), {
         credentials: "include",
         cache: "no-store",
       });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.should_show) return;
+      const announcementData = await announcementRes.json().catch(() => null);
+      if (!announcementRes.ok || !announcementData?.should_show) return;
 
-      await ensureMarked();
-      openAnnouncementModal(data);
+      await Promise.all([ensureMarked(), ensureDomPurify()]);
+      openAnnouncementModal(announcementData);
     } catch (err) {
       console.warn("[announcement] could not load modal:", err);
     }

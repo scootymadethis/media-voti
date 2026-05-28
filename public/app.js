@@ -13,8 +13,7 @@ async function readJsonSafe(res) {
 }
 
 function clearClientLoginState() {
-  localStorage.removeItem("loggedIn");
-  localStorage.removeItem("username");
+  window.SessionAuth?.clearLegacyClientState?.();
 }
 
 async function verifyLoginWithCard() {
@@ -85,12 +84,7 @@ form.addEventListener("submit", async (e) => {
       return;
     }
 
-    localStorage.setItem("loggedIn", "true");
-    localStorage.setItem("username", username);
-    console.log(
-      "[login] set localStorage.loggedIn = true; origin:",
-      location.origin,
-    );
+    if (username) localStorage.setItem("username", username);
 
     msg.textContent = "Login OK!";
     window.location.href = "/dashboard/";
@@ -104,21 +98,19 @@ form.addEventListener("submit", async (e) => {
 });
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (localStorage.getItem("loggedIn") !== "true") return;
-
   msg.textContent = "Verifica sessione...";
   try {
-    const cardCheck = await verifyLoginWithCard();
-    if (cardCheck.ok) {
+    const { res, data } = await window.SessionAuth.fetchSession();
+    if (res.ok && data?.authenticated) {
       window.location.href = "/dashboard/";
       return;
     }
   } catch (err) {
-    console.warn("[login] stored session verification failed:", err);
+    console.warn("[login] session verification failed:", err);
   }
 
   clearClientLoginState();
-  msg.textContent = "Sessione scaduta: effettua di nuovo il login";
+  msg.textContent = "";
 });
 
 // --- Modal credenziali ---

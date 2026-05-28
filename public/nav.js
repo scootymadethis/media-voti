@@ -1,11 +1,5 @@
 (function () {
-  const ADMIN_USERNAME = "S10371278X";
   const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
-
-  function isAdminUser() {
-    const username = (localStorage.getItem("username") || "").trim();
-    return username === ADMIN_USERNAME;
-  }
 
   function showAdminNavButtons() {
     document.querySelectorAll("[data-admin-nav]").forEach((btn) => {
@@ -21,32 +15,32 @@
   }
 
   async function refreshAdminNavFromServer() {
-    if (localStorage.getItem("loggedIn") !== "true") {
-      hideAdminNavButtons();
-      return;
-    }
-
     try {
-      const res = await fetch(apiUrl("/api/admin/eligible"), {
+      const { res, data } = await window.SessionAuth.fetchSession();
+      if (!res.ok || !data?.authenticated) {
+        hideAdminNavButtons();
+        return;
+      }
+
+      const adminRes = await fetch(apiUrl("/api/admin/eligible"), {
         method: "GET",
         credentials: "include",
         cache: "no-store",
       });
-      if (!res.ok) {
+      if (!adminRes.ok) {
         hideAdminNavButtons();
         return;
       }
-      const data = await res.json();
-      if (data?.eligible) {
-        if (data.username) localStorage.setItem("username", data.username);
+      const adminData = await adminRes.json();
+      if (adminData?.eligible) {
+        if (adminData.username) localStorage.setItem("username", adminData.username);
         showAdminNavButtons();
       } else {
         hideAdminNavButtons();
       }
     } catch (err) {
       console.warn("[nav] admin eligibility check failed:", err);
-      if (isAdminUser()) showAdminNavButtons();
-      else hideAdminNavButtons();
+      hideAdminNavButtons();
     }
   }
 
@@ -56,7 +50,6 @@
 
   window.initAdminNav = function initAdminNav() {
     hideAdminNavButtons();
-    if (isAdminUser()) showAdminNavButtons();
     refreshAdminNavFromServer();
   };
 

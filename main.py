@@ -14,9 +14,10 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from ClasseVivaAPI import Utente, RequestURLs
 import os
+import re
 import sqlite3
 import time
 import secrets
@@ -25,7 +26,7 @@ import hashlib
 import requests
 from math import ceil
 from threading import Lock
-from typing import Optional
+from typing import Optional, Any
 
 app = FastAPI()
 
@@ -47,6 +48,26 @@ class ApiPrefixMiddleware(BaseHTTPMiddleware):
 
 if DEV_MODE:
     app.add_middleware(ApiPrefixMiddleware)
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Header di sicurezza base per ridurre XSS/clickjacking/sniffing."""
+
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        if request.url.scheme == "https" or COOKIE_SECURE:
+            response.headers.setdefault(
+                "Strict-Transport-Security",
+                "max-age=31536000; includeSubDomains",
+            )
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 def parse_allowed_origins() -> list[str]:
@@ -82,6 +103,10 @@ SESSION_TTL = 60 * 30  # 30 minuti
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").strip().lower() not in {"0", "false", "no"}
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "S10371278X").strip()
 ADMIN_SESSION_TTL = 60 * 30  # allineato alla sessione principale
+ADMIN_ALLOW_BOOTSTRAP = os.getenv("ADMIN_ALLOW_BOOTSTRAP", "").strip().lower() in {"1", "true", "yes"}
+LOGIN_RATE_LIMIT_WINDOW = int(os.getenv("LOGIN_RATE_LIMIT_WINDOW", "300"))
+LOGIN_RATE_LIMIT_MAX = int(os.getenv("LOGIN_RATE_LIMIT_MAX", "25"))
+ORARIO_CLASS_PATTERN = re.compile(r"^[A-Z0-9]{1,16}$")
 DEFAULT_EASTER_EGG_USERNAMES = (
     "S10371217U,aaronrai829@gmail.com,S10371278X,510371115,S9456217C,S10371066B"
 )
@@ -100,11 +125,13 @@ sessions: dict[str, dict] = {}
 admin_sessions: dict[str, dict] = {}
 sessions_lock = Lock()
 db_lock = Lock()
+login_attempts_lock = Lock()
+login_attempts: dict[str, list[float]] = {}
 
 
 class LoginBody(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., min_length=1, max_length=128)
+    password: str = Field(..., min_length=1, max_length=256)
 
 
 class AgendaBody(BaseModel):
@@ -791,7 +818,74 @@ async def broadcast_average_leaderboard_change(action: str, username: str):
     )
 
 
+
+def get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip() or "unknown"
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+def check_login_rate_limit(client_ip: str):
+    now = time.time()
+    with login_attempts_lock:
+        attempts = login_attempts.get(client_ip, [])
+        attempts = [ts for ts in attempts if now - ts < LOGIN_RATE_LIMIT_WINDOW]
+        if len(attempts) >= LOGIN_RATE_LIMIT_MAX:
+            raise HTTPException(
+                status_code=429,
+                detail="Troppi tentativi di login. Riprova tra qualche minuto.",
+            )
+        attempts.append(now)
+        login_attempts[client_ip] = attempts
+
+
+def purge_expired_sessions():
+    now = time.time()
+    with sessions_lock:
+        expired = [sid for sid, sess in sessions.items() if sess.get("expires", 0) < now]
+        for sid in expired:
+            sessions.pop(sid, None)
+        expired_admin = [
+            sid for sid, sess in admin_sessions.items() if sess.get("expires", 0) < now
+        ]
+        for sid in expired_admin:
+            admin_sessions.pop(sid, None)
+
+
+def destroy_session(session_id: Optional[str], admin_session_id: Optional[str] = None):
+    if session_id:
+        with sessions_lock:
+            sessions.pop(session_id, None)
+    if admin_session_id:
+        with sessions_lock:
+            admin_sessions.pop(admin_session_id, None)
+
+
+def build_session_profile(u: Utente) -> dict:
+    username = get_session_username(u)
+    profile = {
+        "username": username,
+        "full_name": None,
+        "school_code": None,
+        "class_code": None,
+        "is_admin": is_admin_username(username),
+        "easter_egg_eligible": is_easter_egg_username(username),
+    }
+    try:
+        lb_profile = get_user_profile_for_leaderboards(u)
+        profile["full_name"] = lb_profile.get("full_name")
+        profile["school_code"] = lb_profile.get("school_code")
+        profile["class_code"] = lb_profile.get("class_code")
+    except HTTPException:
+        pass
+    return profile
+
+
 def get_session_user(session_id: Optional[str]) -> Utente:
+    purge_expired_sessions()
     if not session_id:
         raise HTTPException(status_code=401, detail="Non loggato")
 
@@ -973,13 +1067,12 @@ async def broadcast_admin_login(username: str):
 
 
 # ---- LOGIN UNA VOLTA ----
-def create_session(u: Utente, pwd: str) -> str:
+def create_session(u: Utente) -> str:
     sid = secrets.token_urlsafe(32)
     now = time.time()
     with sessions_lock:
         sessions[sid] = {
             "user": u,
-            "password": pwd,  # TEMP
             "created_at": now,
             "expires": now + SESSION_TTL,
         }
@@ -987,12 +1080,19 @@ def create_session(u: Utente, pwd: str) -> str:
 
 
 @app.post("/login")
-def login(body: LoginBody, response: Response, background_tasks: BackgroundTasks):
+def login(
+    body: LoginBody,
+    response: Response,
+    request: Request,
+    background_tasks: BackgroundTasks,
+):
+    client_ip = get_client_ip(request)
+    check_login_rate_limit(client_ip)
     try:
         u = Utente(uid=body.username, pwd=body.password)
         u.login()
 
-        sid = create_session(u, body.password)
+        sid = create_session(u)
         username = body.username.strip()
         background_tasks.add_task(broadcast_admin_login, username)
 
@@ -1002,10 +1102,32 @@ def login(body: LoginBody, response: Response, background_tasks: BackgroundTasks
             httponly=True,
             samesite="lax",
             secure=COOKIE_SECURE,
+            max_age=SESSION_TTL,
+            path="/",
         )
         return {"ok": True, "user": username}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
+
+
+@app.get("/session/me")
+def session_me(u: Utente = Depends(current_user)):
+    profile = build_session_profile(u)
+    return {"ok": True, "authenticated": True, **profile}
+
+
+@app.post("/logout")
+def logout(
+    response: Response,
+    session_id: Optional[str] = Cookie(default=None),
+    admin_session_id: Optional[str] = Cookie(default=None, alias="admin_session_id"),
+):
+    destroy_session(session_id, admin_session_id)
+    response.delete_cookie(key="session_id", httponly=True, samesite="lax", secure=COOKIE_SECURE, path="/")
+    clear_admin_cookie(response)
+    return {"ok": True}
 
 
 async def websocket_admin_auth(websocket: WebSocket) -> Utente:
@@ -1192,6 +1314,153 @@ def fetch_student_card_or_401(u: Utente) -> dict:
         raise HTTPException(status_code=401, detail=str(e))
 
 
+def _parse_float_like(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        cleaned = value.replace(",", ".").strip()
+        number = ""
+        dot_seen = False
+        sign_allowed = True
+        for ch in cleaned:
+            if sign_allowed and ch in {"+", "-"}:
+                number += ch
+                sign_allowed = False
+            elif ch.isdigit():
+                number += ch
+                sign_allowed = False
+            elif ch == "." and not dot_seen:
+                number += ch
+                dot_seen = True
+                sign_allowed = False
+            elif number:
+                break
+        if number and number not in {"+", "-", ".", "+.", "-."}:
+            try:
+                return float(number)
+            except ValueError:
+                return None
+    return None
+
+
+def _extract_first_lesson_class_code(agenda_res: Any) -> Optional[str]:
+    if not isinstance(agenda_res, dict):
+        return None
+    payload = agenda_res.get("agenda", agenda_res)
+    events: list[Any] = []
+    if isinstance(payload, list):
+        events = payload
+    elif isinstance(payload, dict):
+        if isinstance(payload.get("agenda"), list):
+            events = payload["agenda"]
+        else:
+            for value in payload.values():
+                if isinstance(value, list):
+                    events = value
+                    break
+
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        class_desc = str(event.get("classDesc") or "").strip()
+        if not class_desc:
+            continue
+        return class_desc.split(" ")[0].strip().upper() or None
+    return None
+
+
+def get_user_profile_for_leaderboards(u: Utente) -> dict:
+    card_res = fetch_student_card_or_401(u)
+    card_fields = extract_student_card_fields(card_res)
+    full_name = f"{(card_fields.get('firstName') or '').strip()} {(card_fields.get('lastName') or '').strip()}".strip()
+    school_code = (
+        (card_fields.get("schCode") or card_fields.get("miurSchoolCode") or "").strip().upper()
+        or None
+    )
+
+    class_code = None
+    today = time.strftime("%Y%m%d")
+    try:
+        agenda_res = u.request(RequestURLs.agenda, today, today).json()
+        class_code = _extract_first_lesson_class_code(agenda_res)
+    except Exception:
+        class_code = None
+
+    return {
+        "full_name": full_name or None,
+        "school_code": school_code,
+        "class_code": class_code,
+    }
+
+
+def calculate_absence_hours_from_payload(assenze_payload: Any) -> float:
+    events: list[Any] = []
+    if isinstance(assenze_payload, dict):
+        assenze = assenze_payload.get("assenze")
+        if isinstance(assenze, dict) and isinstance(assenze.get("events"), list):
+            events = assenze.get("events") or []
+        elif isinstance(assenze_payload.get("events"), list):
+            events = assenze_payload.get("events") or []
+    elif isinstance(assenze_payload, list):
+        events = assenze_payload
+
+    total_hours = 0.0
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        code = str(event.get("evtCode") or "").strip().upper()
+        if code == "ABA0":
+            total_hours += 6.0
+        elif code in {"ABU0", "ABR0", "ABR1"}:
+            total_hours += float(_parse_float_like(event.get("evtValue")) or 0.0)
+
+    if total_hours <= 0:
+        return 0.0
+    if total_hours <= 102:
+        discount = (total_hours / 102) * 4
+    elif total_hours <= 136:
+        discount = 4 + ((total_hours - 102) / (136 - 102)) * (15 - 4)
+    elif total_hours <= 263:
+        discount = 15 + ((total_hours - 136) / (263 - 136)) * (33 - 15)
+    else:
+        discount = 33 + ((total_hours - 263) / (263 - 136)) * (33 - 15)
+    return max(0.0, total_hours - round(discount))
+
+
+def calculate_general_average_from_payload(voti_payload: Any) -> float:
+    grades: list[Any] = []
+    if isinstance(voti_payload, dict):
+        voti = voti_payload.get("voti", voti_payload)
+        if isinstance(voti, dict) and isinstance(voti.get("grades"), list):
+            grades = voti.get("grades") or []
+        elif isinstance(voti, list):
+            grades = voti
+    elif isinstance(voti_payload, list):
+        grades = voti_payload
+
+    values: list[float] = []
+    for voto in grades:
+        if not isinstance(voto, dict):
+            continue
+        subject = str(voto.get("subjectDesc") or "").upper()
+        if "RELIGIONE" in subject:
+            continue
+        if str(voto.get("displayValue") or "").strip().upper() == "A":
+            continue
+        if str(voto.get("color") or "").strip().lower() == "blue":
+            continue
+        value = _parse_float_like(voto.get("decimalValue"))
+        if value is None:
+            continue
+        values.append(value)
+
+    if not values:
+        return 0.0
+    return sum(values) / len(values)
+
+
 def require_marconi_orario_access(u: Utente) -> dict:
     card_res = fetch_student_card_or_401(u)
     if not is_marconi_student_card(card_res):
@@ -1240,6 +1509,8 @@ def orario_class(
 ):
     require_marconi_orario_access(u)
     code = class_name.strip().upper()
+    if not ORARIO_CLASS_PATTERN.match(code):
+        raise HTTPException(status_code=400, detail="Codice classe non valido")
     try:
         upstream = requests.get(
             MARCONI_ORARIO_API,
@@ -1288,16 +1559,6 @@ def calendario(u: Utente = Depends(current_user)):
 def card(request: Request, u: Utente = Depends(current_user)):
     try:
         card_res = u.request(RequestURLs.card).json()
-
-        try:
-            sid = request.cookies.get("session_id")
-            with sessions_lock:
-                if sid in sessions:
-                    password = sessions[sid].get("password")
-                    if password:
-                        sessions[sid]["password"] = None
-        except Exception as log_err:
-            print(f"Errore durante il salvataggio della sessione: {log_err}")
 
         return {"ok": True, "card": card_res}
     except Exception as e:
@@ -1405,12 +1666,17 @@ async def update_leaderboard(
         if not session_username:
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
+        profile = get_user_profile_for_leaderboards(u)
+        assenze_payload = u.request(RequestURLs.assenze).json()
+        computed_hours = calculate_absence_hours_from_payload(assenze_payload)
+
+        existing = get_leaderboard_entry(session_username)
         saved = upsert_leaderboard_entry(
             username=session_username,
-            full_name=body.full_name,
-            class_code=body.class_code,
-            school_code=body.school_code,
-            hours=float(body.hours),
+            full_name=profile.get("full_name") or existing.get("full_name") if existing else None,
+            class_code=profile.get("class_code") or existing.get("class_code") if existing else None,
+            school_code=profile.get("school_code") or existing.get("school_code") if existing else None,
+            hours=float(computed_hours),
             visible_in_leaderboard=bool(body.visible_in_leaderboard),
         )
 
@@ -1556,15 +1822,30 @@ async def update_average_leaderboard(
         if not session_username:
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
+        profile = get_user_profile_for_leaderboards(u)
+        voti_payload = u.request(RequestURLs.voti).json()
+        computed_average = calculate_general_average_from_payload(voti_payload)
+
+        normalized_subject = body.subject_name.strip()
+        normalized_period_key = body.period_key.strip().lower()
+        if normalized_subject != GENERAL_AVERAGE_SUBJECT or normalized_period_key != GENERAL_AVERAGE_PERIOD_KEY:
+            raise HTTPException(status_code=400, detail="Solo la media generale può essere aggiornata")
+
+        existing = get_average_leaderboard_entry(
+            session_username,
+            normalized_subject,
+            normalized_period_key,
+        )
+
         saved = upsert_average_leaderboard_entry(
             username=session_username,
-            full_name=body.full_name,
-            class_code=body.class_code,
-            school_code=body.school_code,
-            subject_name=body.subject_name,
-            period_key=body.period_key,
+            full_name=profile.get("full_name") or existing.get("full_name") if existing else None,
+            class_code=profile.get("class_code") or existing.get("class_code") if existing else None,
+            school_code=profile.get("school_code") or existing.get("school_code") if existing else None,
+            subject_name=normalized_subject,
+            period_key=normalized_period_key,
             period_label=body.period_label,
-            average=float(body.average),
+            average=float(computed_average),
             visible_in_leaderboard=bool(body.visible_in_leaderboard),
         )
 
@@ -1899,6 +2180,9 @@ def admin_bootstrap(
     u: Utente = Depends(current_user),
     session_id: Optional[str] = Cookie(default=None),
 ):
+    if not ADMIN_ALLOW_BOOTSTRAP:
+        raise HTTPException(status_code=403, detail="Bootstrap admin disabilitato")
+
     username = get_session_username(u)
     if not is_admin_username(username):
         raise HTTPException(status_code=403, detail="Accesso negato")
