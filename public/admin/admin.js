@@ -1,4 +1,3 @@
-const ADMIN_USERNAME = "S10371278X";
 const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
 const wsUrl = (path) => window.APP_CONFIG?.wsUrl?.(path) ?? path;
 
@@ -56,16 +55,8 @@ async function fetchAdmin(path, options = {}) {
 }
 
 async function ensureMainLogin() {
-  if (localStorage.getItem("loggedIn") !== "true") {
-    window.location.href = "/";
-    return false;
-  }
-
-  const username = (localStorage.getItem("username") || "").trim();
-  if (username !== ADMIN_USERNAME) {
-    window.location.href = "/dashboard/";
-    return false;
-  }
+  const session = await window.SessionAuth?.requireAuth({ redirectTo: "/" });
+  if (!session) return false;
 
   const { res, data } = await fetchAdmin("/api/admin/eligible");
   if (!res.ok || !data?.eligible) {
@@ -75,11 +66,6 @@ async function ensureMainLogin() {
 
   if (data.username) localStorage.setItem("username", data.username);
   return true;
-}
-
-async function tryBootstrapAdmin() {
-  const { res, data } = await fetchAdmin("/api/admin/bootstrap", { method: "POST" });
-  return res.ok && data?.ok;
 }
 
 async function checkAdminAuthenticated() {
@@ -97,18 +83,9 @@ async function authenticateAdminFlow() {
     return;
   }
 
-  setLoginMessage("Accesso rapido in corso...");
-  const bootstrapped = await tryBootstrapAdmin();
-  if (bootstrapped && (await checkAdminAuthenticated())) {
-    showDashboard();
-    await loadDashboardData();
-    connectAdminRealtime();
-    return;
-  }
-
   disconnectAdminRealtime();
   showGate();
-  setLoginMessage("");
+  setLoginMessage("Inserisci la password admin per continuare.");
 }
 
 function updateActiveSessionsCount(count) {
@@ -316,21 +293,22 @@ function renderAssenzeTable() {
 
   body.innerHTML = assenzeItems
     .map((item) => {
-      const username = item.username || "";
+      const rawUsername = item.username || "";
+      const username = escapeHtml(rawUsername);
       const visible = !!item.visible_in_leaderboard;
       return `
         <tr>
           <td>${username}</td>
-          <td>${item.full_name || "-"}</td>
-          <td>${item.class_code || "-"}</td>
+          <td>${escapeHtml(item.full_name || "-")}</td>
+          <td>${escapeHtml(item.class_code || "-")}</td>
           <td>${Number(item.hours || 0).toFixed(2)}</td>
           <td>${visibilityBadge(visible)}</td>
           <td>
             <div class="admin-actions">
-              <button type="button" onclick="toggleAssenzeVisibility('${username}', ${!visible})">
+              <button type="button" class="js-toggle-assenze" data-username="${escapeHtml(rawUsername)}">
                 ${visible ? "Nascondi" : "Mostra"}
               </button>
-              <button type="button" class="danger" onclick="deleteAssenzeEntry('${username}')">
+              <button type="button" class="danger js-delete-assenze" data-username="${escapeHtml(rawUsername)}">
                 Elimina
               </button>
             </div>
@@ -339,6 +317,18 @@ function renderAssenzeTable() {
       `;
     })
     .join("");
+
+  body.querySelectorAll(".js-toggle-assenze").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const username = btn.dataset.username;
+      const row = assenzeItems.find((item) => item.username === username);
+      toggleAssenzeVisibility(username, !(row && row.visible_in_leaderboard));
+    });
+  });
+
+  body.querySelectorAll(".js-delete-assenze").forEach((btn) => {
+    btn.addEventListener("click", () => deleteAssenzeEntry(btn.dataset.username));
+  });
 }
 
 function renderVotiTable() {
@@ -559,9 +549,7 @@ function goToAdmin() {
 }
 
 function logout() {
-  localStorage.removeItem("loggedIn");
-  localStorage.removeItem("username");
-  window.location.href = "/";
+  window.SessionAuth?.logout();
 }
 
 function goToOrario() {

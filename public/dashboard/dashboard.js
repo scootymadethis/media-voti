@@ -8,36 +8,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
   window.LoadingScreen?.show("Caricamento dashboard…");
 
-  console.log("[dashboard] origin:", location.origin);
-  console.log(
-    "[dashboard] localStorage.loggedIn (before redirect check):",
-    localStorage.getItem("loggedIn"),
-  );
-
-  if (localStorage.getItem("loggedIn") !== "true") {
-    console.warn(
-      "[dashboard] not logged in according to localStorage - redirecting to login",
-      {
-        origin: location.origin,
-        loggedIn: localStorage.getItem("loggedIn"),
-        referrer: document.referrer,
-      },
-    );
-    window.location.href = "/";
-    return;
-  }
-
-  try {
-    const params = new URLSearchParams(location.search);
-    if (params.has("debug")) {
-      const banner = document.createElement("div");
-      banner.className = "debug-banner";
-      banner.style.cssText =
-        "position:fixed;top:80px;right:20px;background:rgba(0,0,0,0.6);color:#fff;padding:8px 10px;border-radius:8px;z-index:10001;font-size:13px;font-family:Inter, sans-serif;";
-      banner.textContent = `origin: ${location.origin} | loggedIn: ${localStorage.getItem("loggedIn")}`;
-      document.body.appendChild(banner);
-    }
-  } catch (e) {}
+  const session = await window.SessionAuth?.requireAuth();
+  if (!session) return;
 
   try {
     const cardData = await fetchCard();
@@ -835,7 +807,7 @@ async function handleAuthFail(res) {
     body = await res.text();
   }
   console.log("Auth fail:", res.status, body);
-  localStorage.removeItem("loggedIn");
+  window.SessionAuth?.clearLegacyClientState?.();
   window.location.href = "/";
 }
 
@@ -932,8 +904,7 @@ function goToAssenze() {
 }
 
 function logout() {
-  localStorage.removeItem("loggedIn");
-  window.location.href = "/";
+  window.SessionAuth?.logout();
 }
 
 function initMobileMenu() {

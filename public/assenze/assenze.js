@@ -24,31 +24,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   initLeaderboardTabs();
   initLeaderboardPreferenceControls();
 
-  console.log("[assenze] origin:", location.origin);
-  console.log(
-    "[assenze] localStorage.loggedIn (before redirect check):",
-    localStorage.getItem("loggedIn"),
-  );
-
-  if (localStorage.getItem("loggedIn") !== "true") {
-    console.warn(
-      "[assenze] not logged in according to localStorage - redirecting to login",
-      {
-        origin: location.origin,
-        loggedIn: localStorage.getItem("loggedIn"),
-        referrer: document.referrer,
-      },
-    );
-    window.location.href = "/";
-    return;
-  }
+  const session = await window.SessionAuth?.requireAuth();
+  if (!session) return;
 
   try {
     showLoading(true);
 
-    myUsername = localStorage.getItem("username") || null;
-    myFullName = localStorage.getItem("fullName") || null;
-    mySchoolCode = localStorage.getItem("schoolCode") || null;
+    myUsername = session.username || null;
+    myFullName = session.full_name || localStorage.getItem("fullName") || null;
+    mySchoolCode = session.school_code || localStorage.getItem("schoolCode") || null;
 
     try {
       myClassCode = await logClasseFromFirstLesson();
@@ -590,8 +574,7 @@ async function handleAuthFail(res) {
   }
 
   console.log("Auth fail:", res.status, body);
-  localStorage.removeItem("loggedIn");
-  localStorage.removeItem("username");
+  window.SessionAuth?.clearLegacyClientState?.();
   window.location.href = "/";
 }
 
@@ -646,7 +629,5 @@ function goToVoti() {
 }
 
 function logout() {
-  localStorage.removeItem("loggedIn");
-  localStorage.removeItem("username");
-  window.location.href = "/";
+  window.SessionAuth?.logout();
 }

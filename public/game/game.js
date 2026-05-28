@@ -188,10 +188,8 @@ function renderGameLauncher(gameUrl) {
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
 
-  if (localStorage.getItem("loggedIn") !== "true") {
-    window.location.href = "/";
-    return;
-  }
+  const session = await window.SessionAuth?.requireAuth();
+  if (!session) return;
 
   try {
     const res = await fetch(apiUrl("/api/easter-egg/eligible"), {
@@ -238,9 +236,7 @@ function goToAssenze() {
 }
 
 function logout() {
-  localStorage.removeItem("loggedIn");
-  localStorage.removeItem("username");
-  window.location.href = "/";
+  window.SessionAuth?.logout();
 }
 
 function initMobileMenu() {
