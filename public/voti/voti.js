@@ -416,6 +416,11 @@ function renderActualVoti(voti, periodoLabel = "Periodo", materia = "") {
 }
 
 function getGeneralAverageValue(voti = null) {
+  const savedValue = parseFloat(localStorage.getItem("media_generale") || "");
+  if (Number.isFinite(savedValue)) {
+    return Math.max(0, Math.min(10, savedValue));
+  }
+
   if (!Array.isArray(voti)) return 0;
 
   let sum = 0;
@@ -1025,7 +1030,8 @@ async function handleAuthFail(res) {
     body = await res.text();
   }
   console.log("Auth fail:", res.status, body);
-  window.SessionAuth?.clearLegacyClientState?.();
+  localStorage.removeItem("loggedIn");
+  localStorage.removeItem("username");
   window.location.href = "/";
 }
 
@@ -1160,5 +1166,6 @@ function goToAssenze() {
   window.location.href = "/assenze/";
 }
 function logout() {
-  window.SessionAuth?.logout();
+  localStorage.removeItem("loggedIn");
+  window.location.href = "/";
 }
