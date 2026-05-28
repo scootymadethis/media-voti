@@ -17,13 +17,28 @@ let myUsername = null;
 let myFullName = null;
 let currentAverageValue = 0;
 let cachedAllVoti = [];
+let votiPageBootstrapping = true;
 
 const GENERAL_AVERAGE_LEADERBOARD_SUBJECT = "Media generale";
 const GENERAL_AVERAGE_LEADERBOARD_PERIOD_KEY = "generale";
 const GENERAL_AVERAGE_LEADERBOARD_PERIOD_LABEL = "Media generale";
 
+function extractGradesFromVotiResponse(votiData) {
+  if (!votiData || typeof votiData !== "object") return [];
+  const root = votiData.voti ?? votiData;
+  if (Array.isArray(root)) return root;
+  if (Array.isArray(root?.grades)) return root.grades;
+  if (root && typeof root === "object") {
+    for (const value of Object.values(root)) {
+      if (Array.isArray(value)) return value;
+    }
+  }
+  return [];
+}
+
 function setCurrentGeneralAverageValue(voti = null) {
-  currentAverageValue = getGeneralAverageValue(voti);
+  const source = Array.isArray(voti) ? voti : cachedAllVoti;
+  currentAverageValue = getGeneralAverageValue(source);
   return currentAverageValue;
 }
 
@@ -151,6 +166,37 @@ function initVotiViewTabs() {
   });
 }
 
+
+async function resolveClassCodeForLeaderboard(session) {
+  if (session?.class_code) {
+    return session.class_code;
+  }
+
+  try {
+    return await Promise.race([
+      logClasseFromFirstLesson({ maxWeeksToCheck: 12 }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("class detection timeout")), 12000),
+      ),
+    ]);
+  } catch (err) {
+    console.warn("[voti] classe non rilevata in tempo utile:", err);
+    return null;
+  }
+}
+
+async function bootstrapAverageLeaderboardAfterPaint(session) {
+  try {
+    myClassCode = await resolveClassCodeForLeaderboard(session);
+    votiPageBootstrapping = false;
+    await refreshAverageLeaderboardForCurrentSelection();
+  } catch (err) {
+    console.error("[voti] bootstrap classifica media:", err);
+    votiPageBootstrapping = false;
+    renderAverageLeaderboardEmpty("Impossibile caricare la classifica al momento.");
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
   initVotiViewTabs();
@@ -158,9 +204,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   initAverageLeaderboardPreferenceControls();
 
   window.LoadingScreen?.show("Caricamento voti…");
+  votiPageBootstrapping = true;
 
-  const session = await window.SessionAuth?.requireAuth();
-  if (!session) return;
+  if (!window.SessionAuth?.requireAuth) {
+    console.error("[voti] session-auth.js non caricato");
+    window.LoadingScreen?.hide();
+    window.location.href = "/";
+    return;
+  }
+
+  const session = await window.SessionAuth.requireAuth();
+  if (!session) {
+    window.LoadingScreen?.hide();
+    return;
+  }
 
   const votiDiv = document.querySelector(".actual-voti");
   const materiaSelect = document.getElementById("materiaSelect");
@@ -170,27 +227,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     myUsername = session.username || null;
     myFullName = session.full_name || localStorage.getItem("fullName") || null;
     mySchoolCode = session.school_code || localStorage.getItem("schoolCode") || null;
-
-    try {
-      myClassCode = await logClasseFromFirstLesson();
-    } catch (err) {
-      console.error("Errore durante il recupero della classe:", err);
-      myClassCode = null;
-    }
+    myClassCode = session.class_code || null;
 
     const materie = [];
     const votiData = await fetchVoti();
-    const voti = votiData.voti.grades || [];
+    const voti = extractGradesFromVotiResponse(votiData);
     cachedAllVoti = voti;
     renderPrevisionePagella(cachedAllVoti);
 
     voti.forEach((voto) => {
       if (!materie.includes(voto.subjectDesc)) materie.push(voto.subjectDesc);
-  });
+    });
 
     voti.sort((a, b) => new Date(b.evtDate) - new Date(a.evtDate));
     materie.sort();
     setCurrentGeneralAverageValue(voti);
+    updateAverageBadge();
 
     connectAverageLeaderboardRealtime();
 
@@ -205,37 +257,35 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       renderMedia(0);
       updateAverageBadge();
-      updateAverageLeaderboardPreferenceUI();
       renderAverageLeaderboardEmpty("Nessuna classifica disponibile al momento.");
-    }
-
-    window.LoadingScreen?.hide();
-
-    if (typeof window.initSiteAnnouncementModal === "function") {
-      await window.initSiteAnnouncementModal();
     }
 
     if (calcolatorBtn) {
       calcolatorBtn.onclick = () => {
-        const voti = document.querySelectorAll(".voto-score");
+        const votiEls = document.querySelectorAll(".voto-score");
         let numVoti = 0;
-        for (let i = 0; i < voti.length; i++) {
-          const voto = voti[i];
-          if (!voto.classList.contains("grade-blue")) numVoti++;
+        for (let i = 0; i < votiEls.length; i++) {
+          if (!votiEls[i].classList.contains("grade-blue")) numVoti++;
         }
-
         const averageScore = document.querySelector(".average-score");
         const mediaAttuale = parseFloat(averageScore?.textContent || "0");
         calculateNeededGrades(mediaAttuale, numVoti);
       };
     }
+
+    void bootstrapAverageLeaderboardAfterPaint(session);
+
+    if (typeof window.initSiteAnnouncementModal === "function") {
+      void window.initSiteAnnouncementModal();
+    }
   } catch (err) {
     console.error(err);
-    window.LoadingScreen?.hide();
+    votiPageBootstrapping = false;
     renderAverageLeaderboardEmpty("Si è verificato un errore durante il caricamento.");
+  } finally {
+    window.LoadingScreen?.hide();
   }
-
-  });
+});
 
 window.addEventListener("beforeunload", () => {
   if (averageLeaderboardReconnectTimer) {
@@ -415,15 +465,15 @@ function renderActualVoti(voti, periodoLabel = "Periodo", materia = "") {
   void refreshAverageLeaderboardForCurrentSelection();
 }
 
-function getGeneralAverageValue(voti = null) {
-  if (!Array.isArray(voti)) return 0;
+function getGeneralAverageValue(voti) {
+  if (!Array.isArray(voti) || !voti.length) return 0;
 
   let sum = 0;
   let count = 0;
   voti.forEach((voto) => {
-    if (voto?.color === "blue" || voto?.displayValue === "") return;
-    const numericValue = parseFloat(voto?.decimalValue);
-    if (!Number.isFinite(numericValue)) return;
+    if (shouldExcludeVotoFromAverage(voto)) return;
+    const numericValue = parseVotoDecimalValue(voto);
+    if (numericValue === null) return;
     sum += numericValue;
     count += 1;
   });
@@ -562,7 +612,7 @@ function getAverageRingMarkup(value, { mini = false } = {}) {
 
 function updateAverageBadge() {
   const badge = document.getElementById("myAverageBadge");
-  setCurrentGeneralAverageValue();
+  setCurrentGeneralAverageValue(cachedAllVoti);
   if (!badge) return;
 
   badge.innerHTML = getAverageRingMarkup(currentAverageValue, { mini: true });
@@ -640,6 +690,8 @@ async function syncAverageLeaderboardPreference() {
 }
 
 async function refreshAverageLeaderboardForCurrentSelection() {
+  if (votiPageBootstrapping) return;
+
   setCurrentGeneralAverageValue();
   updateAverageBadge();
 
@@ -1025,7 +1077,8 @@ async function handleAuthFail(res) {
     body = await res.text();
   }
   console.log("Auth fail:", res.status, body);
-  window.SessionAuth?.clearLegacyClientState?.();
+  localStorage.removeItem("loggedIn");
+  localStorage.removeItem("username");
   window.location.href = "/";
 }
 
@@ -1160,5 +1213,6 @@ function goToAssenze() {
   window.location.href = "/assenze/";
 }
 function logout() {
-  window.SessionAuth?.logout();
+  localStorage.removeItem("loggedIn");
+  window.location.href = "/";
 }
