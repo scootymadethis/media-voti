@@ -819,8 +819,6 @@ function createMediaContainer(media) {
     : String(truncatedVal);
 
   container.appendChild(label);
-  saveMediaGenerale();
-
   return container;
 }
 
@@ -974,19 +972,4 @@ function initMobileMenu() {
   drawer
     .querySelectorAll("button")
     .forEach((btn) => btn.addEventListener("click", closeMenu));
-}
-
-function saveMediaGenerale() {
-  const el = document.querySelector(".actual-media-generale-value");
-  if (!el) return;
-
-  let value = el.textContent.trim();
-  if (!value) return;
-
-  value = value.replace(",", ".");
-  const num = parseFloat(value);
-
-  if (!isNaN(num)) {
-    localStorage.setItem("media_generale", num.toString());
-  }
 }

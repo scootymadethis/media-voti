@@ -418,11 +418,6 @@ function renderActualVoti(voti, periodoLabel = "Periodo", materia = "") {
 }
 
 function getGeneralAverageValue(voti = null) {
-  const savedValue = parseFloat(localStorage.getItem("media_generale") || "");
-  if (Number.isFinite(savedValue)) {
-    return Math.max(0, Math.min(10, savedValue));
-  }
-
   if (!Array.isArray(voti)) return 0;
 
   let sum = 0;

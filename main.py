@@ -25,7 +25,7 @@ import hashlib
 import requests
 from math import ceil
 from threading import Lock
-from typing import Optional
+from typing import Optional, Any
 
 app = FastAPI()
 
@@ -1192,6 +1192,153 @@ def fetch_student_card_or_401(u: Utente) -> dict:
         raise HTTPException(status_code=401, detail=str(e))
 
 
+def _parse_float_like(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        cleaned = value.replace(",", ".").strip()
+        number = ""
+        dot_seen = False
+        sign_allowed = True
+        for ch in cleaned:
+            if sign_allowed and ch in {"+", "-"}:
+                number += ch
+                sign_allowed = False
+            elif ch.isdigit():
+                number += ch
+                sign_allowed = False
+            elif ch == "." and not dot_seen:
+                number += ch
+                dot_seen = True
+                sign_allowed = False
+            elif number:
+                break
+        if number and number not in {"+", "-", ".", "+.", "-."}:
+            try:
+                return float(number)
+            except ValueError:
+                return None
+    return None
+
+
+def _extract_first_lesson_class_code(agenda_res: Any) -> Optional[str]:
+    if not isinstance(agenda_res, dict):
+        return None
+    payload = agenda_res.get("agenda", agenda_res)
+    events: list[Any] = []
+    if isinstance(payload, list):
+        events = payload
+    elif isinstance(payload, dict):
+        if isinstance(payload.get("agenda"), list):
+            events = payload["agenda"]
+        else:
+            for value in payload.values():
+                if isinstance(value, list):
+                    events = value
+                    break
+
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        class_desc = str(event.get("classDesc") or "").strip()
+        if not class_desc:
+            continue
+        return class_desc.split(" ")[0].strip().upper() or None
+    return None
+
+
+def get_user_profile_for_leaderboards(u: Utente) -> dict:
+    card_res = fetch_student_card_or_401(u)
+    card_fields = extract_student_card_fields(card_res)
+    full_name = f"{(card_fields.get('firstName') or '').strip()} {(card_fields.get('lastName') or '').strip()}".strip()
+    school_code = (
+        (card_fields.get("schCode") or card_fields.get("miurSchoolCode") or "").strip().upper()
+        or None
+    )
+
+    class_code = None
+    today = time.strftime("%Y%m%d")
+    try:
+        agenda_res = u.request(RequestURLs.agenda, today, today).json()
+        class_code = _extract_first_lesson_class_code(agenda_res)
+    except Exception:
+        class_code = None
+
+    return {
+        "full_name": full_name or None,
+        "school_code": school_code,
+        "class_code": class_code,
+    }
+
+
+def calculate_absence_hours_from_payload(assenze_payload: Any) -> float:
+    events: list[Any] = []
+    if isinstance(assenze_payload, dict):
+        assenze = assenze_payload.get("assenze")
+        if isinstance(assenze, dict) and isinstance(assenze.get("events"), list):
+            events = assenze.get("events") or []
+        elif isinstance(assenze_payload.get("events"), list):
+            events = assenze_payload.get("events") or []
+    elif isinstance(assenze_payload, list):
+        events = assenze_payload
+
+    total_hours = 0.0
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        code = str(event.get("evtCode") or "").strip().upper()
+        if code == "ABA0":
+            total_hours += 6.0
+        elif code in {"ABU0", "ABR0", "ABR1"}:
+            total_hours += float(_parse_float_like(event.get("evtValue")) or 0.0)
+
+    if total_hours <= 0:
+        return 0.0
+    if total_hours <= 102:
+        discount = (total_hours / 102) * 4
+    elif total_hours <= 136:
+        discount = 4 + ((total_hours - 102) / (136 - 102)) * (15 - 4)
+    elif total_hours <= 263:
+        discount = 15 + ((total_hours - 136) / (263 - 136)) * (33 - 15)
+    else:
+        discount = 33 + ((total_hours - 263) / (263 - 136)) * (33 - 15)
+    return max(0.0, total_hours - round(discount))
+
+
+def calculate_general_average_from_payload(voti_payload: Any) -> float:
+    grades: list[Any] = []
+    if isinstance(voti_payload, dict):
+        voti = voti_payload.get("voti", voti_payload)
+        if isinstance(voti, dict) and isinstance(voti.get("grades"), list):
+            grades = voti.get("grades") or []
+        elif isinstance(voti, list):
+            grades = voti
+    elif isinstance(voti_payload, list):
+        grades = voti_payload
+
+    values: list[float] = []
+    for voto in grades:
+        if not isinstance(voto, dict):
+            continue
+        subject = str(voto.get("subjectDesc") or "").upper()
+        if "RELIGIONE" in subject:
+            continue
+        if str(voto.get("displayValue") or "").strip().upper() == "A":
+            continue
+        if str(voto.get("color") or "").strip().lower() == "blue":
+            continue
+        value = _parse_float_like(voto.get("decimalValue"))
+        if value is None:
+            continue
+        values.append(value)
+
+    if not values:
+        return 0.0
+    return sum(values) / len(values)
+
+
 def require_marconi_orario_access(u: Utente) -> dict:
     card_res = fetch_student_card_or_401(u)
     if not is_marconi_student_card(card_res):
@@ -1405,12 +1552,17 @@ async def update_leaderboard(
         if not session_username:
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
+        profile = get_user_profile_for_leaderboards(u)
+        assenze_payload = u.request(RequestURLs.assenze).json()
+        computed_hours = calculate_absence_hours_from_payload(assenze_payload)
+
+        existing = get_leaderboard_entry(session_username)
         saved = upsert_leaderboard_entry(
             username=session_username,
-            full_name=body.full_name,
-            class_code=body.class_code,
-            school_code=body.school_code,
-            hours=float(body.hours),
+            full_name=profile.get("full_name") or existing.get("full_name") if existing else None,
+            class_code=profile.get("class_code") or existing.get("class_code") if existing else None,
+            school_code=profile.get("school_code") or existing.get("school_code") if existing else None,
+            hours=float(computed_hours),
             visible_in_leaderboard=bool(body.visible_in_leaderboard),
         )
 
@@ -1556,15 +1708,30 @@ async def update_average_leaderboard(
         if not session_username:
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
+        profile = get_user_profile_for_leaderboards(u)
+        voti_payload = u.request(RequestURLs.voti).json()
+        computed_average = calculate_general_average_from_payload(voti_payload)
+
+        normalized_subject = body.subject_name.strip()
+        normalized_period_key = body.period_key.strip().lower()
+        if normalized_subject != GENERAL_AVERAGE_SUBJECT or normalized_period_key != GENERAL_AVERAGE_PERIOD_KEY:
+            raise HTTPException(status_code=400, detail="Solo la media generale può essere aggiornata")
+
+        existing = get_average_leaderboard_entry(
+            session_username,
+            normalized_subject,
+            normalized_period_key,
+        )
+
         saved = upsert_average_leaderboard_entry(
             username=session_username,
-            full_name=body.full_name,
-            class_code=body.class_code,
-            school_code=body.school_code,
-            subject_name=body.subject_name,
-            period_key=body.period_key,
+            full_name=profile.get("full_name") or existing.get("full_name") if existing else None,
+            class_code=profile.get("class_code") or existing.get("class_code") if existing else None,
+            school_code=profile.get("school_code") or existing.get("school_code") if existing else None,
+            subject_name=normalized_subject,
+            period_key=normalized_period_key,
             period_label=body.period_label,
-            average=float(body.average),
+            average=float(computed_average),
             visible_in_leaderboard=bool(body.visible_in_leaderboard),
         )
 
