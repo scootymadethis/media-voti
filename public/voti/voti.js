@@ -17,6 +17,7 @@ let myUsername = null;
 let myFullName = null;
 let currentAverageValue = 0;
 let cachedAllVoti = [];
+let votiPageBootstrapping = true;
 
 const GENERAL_AVERAGE_LEADERBOARD_SUBJECT = "Media generale";
 const GENERAL_AVERAGE_LEADERBOARD_PERIOD_KEY = "generale";
@@ -165,6 +166,37 @@ function initVotiViewTabs() {
   });
 }
 
+
+async function resolveClassCodeForLeaderboard(session) {
+  if (session?.class_code) {
+    return session.class_code;
+  }
+
+  try {
+    return await Promise.race([
+      logClasseFromFirstLesson({ maxWeeksToCheck: 12 }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("class detection timeout")), 12000),
+      ),
+    ]);
+  } catch (err) {
+    console.warn("[voti] classe non rilevata in tempo utile:", err);
+    return null;
+  }
+}
+
+async function bootstrapAverageLeaderboardAfterPaint(session) {
+  try {
+    myClassCode = await resolveClassCodeForLeaderboard(session);
+    votiPageBootstrapping = false;
+    await refreshAverageLeaderboardForCurrentSelection();
+  } catch (err) {
+    console.error("[voti] bootstrap classifica media:", err);
+    votiPageBootstrapping = false;
+    renderAverageLeaderboardEmpty("Impossibile caricare la classifica al momento.");
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
   initVotiViewTabs();
@@ -172,9 +204,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   initAverageLeaderboardPreferenceControls();
 
   window.LoadingScreen?.show("Caricamento voti…");
+  votiPageBootstrapping = true;
 
-  const session = await window.SessionAuth?.requireAuth();
-  if (!session) return;
+  if (!window.SessionAuth?.requireAuth) {
+    console.error("[voti] session-auth.js non caricato");
+    window.LoadingScreen?.hide();
+    window.location.href = "/";
+    return;
+  }
+
+  const session = await window.SessionAuth.requireAuth();
+  if (!session) {
+    window.LoadingScreen?.hide();
+    return;
+  }
 
   const votiDiv = document.querySelector(".actual-voti");
   const materiaSelect = document.getElementById("materiaSelect");
@@ -184,13 +227,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     myUsername = session.username || null;
     myFullName = session.full_name || localStorage.getItem("fullName") || null;
     mySchoolCode = session.school_code || localStorage.getItem("schoolCode") || null;
-
-    try {
-      myClassCode = await logClasseFromFirstLesson();
-    } catch (err) {
-      console.error("Errore durante il recupero della classe:", err);
-      myClassCode = null;
-    }
+    myClassCode = session.class_code || null;
 
     const materie = [];
     const votiData = await fetchVoti();
@@ -200,11 +237,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     voti.forEach((voto) => {
       if (!materie.includes(voto.subjectDesc)) materie.push(voto.subjectDesc);
-  });
+    });
 
     voti.sort((a, b) => new Date(b.evtDate) - new Date(a.evtDate));
     materie.sort();
     setCurrentGeneralAverageValue(voti);
+    updateAverageBadge();
 
     connectAverageLeaderboardRealtime();
 
@@ -219,37 +257,35 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       renderMedia(0);
       updateAverageBadge();
-      updateAverageLeaderboardPreferenceUI();
       renderAverageLeaderboardEmpty("Nessuna classifica disponibile al momento.");
-    }
-
-    window.LoadingScreen?.hide();
-
-    if (typeof window.initSiteAnnouncementModal === "function") {
-      await window.initSiteAnnouncementModal();
     }
 
     if (calcolatorBtn) {
       calcolatorBtn.onclick = () => {
-        const voti = document.querySelectorAll(".voto-score");
+        const votiEls = document.querySelectorAll(".voto-score");
         let numVoti = 0;
-        for (let i = 0; i < voti.length; i++) {
-          const voto = voti[i];
-          if (!voto.classList.contains("grade-blue")) numVoti++;
+        for (let i = 0; i < votiEls.length; i++) {
+          if (!votiEls[i].classList.contains("grade-blue")) numVoti++;
         }
-
         const averageScore = document.querySelector(".average-score");
         const mediaAttuale = parseFloat(averageScore?.textContent || "0");
         calculateNeededGrades(mediaAttuale, numVoti);
       };
     }
+
+    void bootstrapAverageLeaderboardAfterPaint(session);
+
+    if (typeof window.initSiteAnnouncementModal === "function") {
+      void window.initSiteAnnouncementModal();
+    }
   } catch (err) {
     console.error(err);
-    window.LoadingScreen?.hide();
+    votiPageBootstrapping = false;
     renderAverageLeaderboardEmpty("Si è verificato un errore durante il caricamento.");
+  } finally {
+    window.LoadingScreen?.hide();
   }
-
-  });
+});
 
 window.addEventListener("beforeunload", () => {
   if (averageLeaderboardReconnectTimer) {
@@ -654,6 +690,8 @@ async function syncAverageLeaderboardPreference() {
 }
 
 async function refreshAverageLeaderboardForCurrentSelection() {
+  if (votiPageBootstrapping) return;
+
   setCurrentGeneralAverageValue();
   updateAverageBadge();
 
