@@ -22,8 +22,22 @@ const GENERAL_AVERAGE_LEADERBOARD_SUBJECT = "Media generale";
 const GENERAL_AVERAGE_LEADERBOARD_PERIOD_KEY = "generale";
 const GENERAL_AVERAGE_LEADERBOARD_PERIOD_LABEL = "Media generale";
 
+function extractGradesFromVotiResponse(votiData) {
+  if (!votiData || typeof votiData !== "object") return [];
+  const root = votiData.voti ?? votiData;
+  if (Array.isArray(root)) return root;
+  if (Array.isArray(root?.grades)) return root.grades;
+  if (root && typeof root === "object") {
+    for (const value of Object.values(root)) {
+      if (Array.isArray(value)) return value;
+    }
+  }
+  return [];
+}
+
 function setCurrentGeneralAverageValue(voti = null) {
-  currentAverageValue = getGeneralAverageValue(voti);
+  const source = Array.isArray(voti) ? voti : cachedAllVoti;
+  currentAverageValue = getGeneralAverageValue(source);
   return currentAverageValue;
 }
 
@@ -180,7 +194,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const materie = [];
     const votiData = await fetchVoti();
-    const voti = votiData.voti.grades || [];
+    const voti = extractGradesFromVotiResponse(votiData);
     cachedAllVoti = voti;
     renderPrevisionePagella(cachedAllVoti);
 
@@ -415,20 +429,15 @@ function renderActualVoti(voti, periodoLabel = "Periodo", materia = "") {
   void refreshAverageLeaderboardForCurrentSelection();
 }
 
-function getGeneralAverageValue(voti = null) {
-  const savedValue = parseFloat(localStorage.getItem("media_generale") || "");
-  if (Number.isFinite(savedValue)) {
-    return Math.max(0, Math.min(10, savedValue));
-  }
-
-  if (!Array.isArray(voti)) return 0;
+function getGeneralAverageValue(voti) {
+  if (!Array.isArray(voti) || !voti.length) return 0;
 
   let sum = 0;
   let count = 0;
   voti.forEach((voto) => {
-    if (voto?.color === "blue" || voto?.displayValue === "") return;
-    const numericValue = parseFloat(voto?.decimalValue);
-    if (!Number.isFinite(numericValue)) return;
+    if (shouldExcludeVotoFromAverage(voto)) return;
+    const numericValue = parseVotoDecimalValue(voto);
+    if (numericValue === null) return;
     sum += numericValue;
     count += 1;
   });
@@ -567,7 +576,7 @@ function getAverageRingMarkup(value, { mini = false } = {}) {
 
 function updateAverageBadge() {
   const badge = document.getElementById("myAverageBadge");
-  setCurrentGeneralAverageValue();
+  setCurrentGeneralAverageValue(cachedAllVoti);
   if (!badge) return;
 
   badge.innerHTML = getAverageRingMarkup(currentAverageValue, { mini: true });
