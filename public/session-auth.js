@@ -17,20 +17,72 @@
     }
   }
 
+  function profileFromCardPayload(cardData) {
+    const inner =
+      cardData?.card?.card ??
+      cardData?.card ??
+      cardData ??
+      {};
+    const username =
+      (localStorage.getItem("username") || "").trim() ||
+      String(inner.uid || inner.userId || inner.username || "").trim() ||
+      null;
+    const fullName = [inner.firstName, inner.lastName]
+      .map((part) => String(part || "").trim())
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const schoolCode = inner.schCode || inner.miurSchoolCode || null;
+
+    return {
+      ok: true,
+      authenticated: true,
+      username,
+      full_name: fullName || null,
+      school_code: schoolCode ? String(schoolCode).trim().toUpperCase() : null,
+      class_code: null,
+    };
+  }
+
+  /**
+   * Verifica sessione: preferisce GET /api/session/me, con fallback su POST /api/card
+   * se il backend in produzione non è ancora aggiornato (404).
+   */
   async function fetchSession() {
-    const res = await fetch(apiUrl("/api/session/me"), {
+    const sessionRes = await fetch(apiUrl("/api/session/me"), {
       method: "GET",
       credentials: "include",
       cache: "no-store",
     });
-    const data = await readJsonSafe(res);
-    return { res, data };
+
+    if (sessionRes.status !== 404 && sessionRes.status !== 405) {
+      const data = await readJsonSafe(sessionRes);
+      return { res: sessionRes, data, via: "session/me" };
+    }
+
+    console.warn(
+      "[session] /api/session/me non disponibile (%s), fallback su /api/card",
+      sessionRes.status,
+    );
+
+    const cardRes = await fetch(apiUrl("/api/card"), {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+    });
+    const cardData = await readJsonSafe(cardRes);
+
+    if (!cardRes.ok) {
+      return { res: cardRes, data: cardData, via: "card" };
+    }
+
+    return {
+      res: cardRes,
+      data: profileFromCardPayload(cardData),
+      via: "card",
+    };
   }
 
-  /**
-   * Verifica la sessione HttpOnly lato server.
-   * @returns {Promise<object|null>} profilo sessione o null se non autenticato
-   */
   async function requireAuth({ redirectTo = "/" } = {}) {
     const { res, data } = await fetchSession();
     if (!res.ok || !data?.authenticated) {

@@ -1114,8 +1114,8 @@ def login(
 
 @app.get("/session/me")
 def session_me(u: Utente = Depends(current_user)):
-  profile = build_session_profile(u)
-  return {"ok": True, "authenticated": True, **profile}
+    profile = build_session_profile(u)
+    return {"ok": True, "authenticated": True, **profile}
 
 
 @app.post("/logout")
