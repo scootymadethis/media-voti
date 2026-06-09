@@ -33,13 +33,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     myUsername = session.username || null;
     myFullName = session.full_name || localStorage.getItem("fullName") || null;
     mySchoolCode = session.school_code || localStorage.getItem("schoolCode") || null;
+    myClassCode = session.class_code || null;
 
-    try {
-      myClassCode = await logClasseFromFirstLesson();
-      console.log("Classe rilevata:", myClassCode);
-    } catch (err) {
-      console.error("Errore durante il recupero della classe:", err);
-      myClassCode = null;
+    if (!myClassCode) {
+      try {
+        myClassCode = await logClasseFromFirstLesson();
+        console.log("Classe rilevata:", myClassCode);
+      } catch (err) {
+        console.error("Errore durante il recupero della classe:", err);
+        myClassCode = null;
+      }
     }
 
     let assenzeData = [];
@@ -390,6 +393,13 @@ async function saveMyAbsenceHours({ classCode, schoolCode, hours, fullName, visi
 }
 
 async function loadAndRenderLeaderboard() {
+  if (currentLeaderboardType === "class" && !myClassCode) {
+    renderLeaderboardEmpty(
+      "Classe non rilevata. Impossibile caricare la classifica di classe al momento.",
+    );
+    return;
+  }
+
   const params = new URLSearchParams({
     type: currentLeaderboardType,
     page: String(currentLeaderboardPage),
@@ -562,20 +572,7 @@ function escapeHtml(value) {
 }
 
 async function handleAuthFail(res) {
-  let body;
-  try {
-    body = await res.json();
-  } catch {
-    try {
-      body = await res.text();
-    } catch {
-      body = null;
-    }
-  }
-
-  console.log("Auth fail:", res.status, body);
-  window.SessionAuth?.clearLegacyClientState?.();
-  window.location.href = "/";
+  return window.SessionAuth?.handleAuthFail?.(res) ?? false;
 }
 
 function initMobileMenu() {

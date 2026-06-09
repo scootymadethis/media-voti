@@ -814,6 +814,13 @@ async function saveMyAverage({ classCode, schoolCode, average, fullName, visible
 }
 
 async function loadAndRenderAverageLeaderboard() {
+  if (averageLeaderboardType === "class" && !myClassCode) {
+    renderAverageLeaderboardEmpty(
+      "Classe non rilevata. Impossibile caricare la classifica di classe al momento.",
+    );
+    return;
+  }
+
   const params = new URLSearchParams({
     type: averageLeaderboardType,
     page: String(averageLeaderboardPage),
@@ -1070,16 +1077,7 @@ async function logClasseFromFirstLesson({ maxWeeksToCheck = 52, startOffset = 0 
 }
 
 async function handleAuthFail(res) {
-  let body;
-  try {
-    body = await res.json();
-  } catch {
-    body = await res.text();
-  }
-  console.log("Auth fail:", res.status, body);
-  localStorage.removeItem("loggedIn");
-  localStorage.removeItem("username");
-  window.location.href = "/";
+  return window.SessionAuth?.handleAuthFail?.(res) ?? false;
 }
 
 function openEntryModal(voto) {

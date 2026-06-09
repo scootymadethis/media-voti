@@ -106,6 +106,44 @@
     return data;
   }
 
+  /**
+   * Gestisce errori API di autenticazione.
+   * Reindirizza al login solo su 401/403; altri errori (400, 502, …) non espellono l'utente.
+   * @returns {Promise<boolean>} true se è stato avviato un redirect per sessione non valida
+   */
+  async function handleAuthFail(res) {
+    if (res.status !== 401 && res.status !== 403) {
+      let body = null;
+      try {
+        body = await res.json();
+      } catch {
+        try {
+          body = await res.text();
+        } catch {
+          body = null;
+        }
+      }
+      console.warn("[session] Errore API (non di autenticazione):", res.status, body);
+      return false;
+    }
+
+    let body = null;
+    try {
+      body = await res.json();
+    } catch {
+      try {
+        body = await res.text();
+      } catch {
+        body = null;
+      }
+    }
+
+    console.log("[session] Sessione non valida:", res.status, body);
+    clearLegacyClientState();
+    window.location.href = "/";
+    return true;
+  }
+
   async function logout({ redirectTo = "/" } = {}) {
     try {
       await fetch(apiUrl("/api/logout"), {
@@ -126,6 +164,7 @@
     apiUrl,
     fetchSession,
     requireAuth,
+    handleAuthFail,
     logout,
     clearLegacyClientState,
   };

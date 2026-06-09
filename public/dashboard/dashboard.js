@@ -800,15 +800,7 @@ document.addEventListener("click", (e) => {
 });
 
 async function handleAuthFail(res) {
-  let body;
-  try {
-    body = await res.json();
-  } catch {
-    body = await res.text();
-  }
-  console.log("Auth fail:", res.status, body);
-  window.SessionAuth?.clearLegacyClientState?.();
-  window.location.href = "/";
+  return window.SessionAuth?.handleAuthFail?.(res) ?? false;
 }
 
 // --- Entry modal ---
