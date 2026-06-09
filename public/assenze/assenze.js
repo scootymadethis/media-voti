@@ -393,20 +393,16 @@ async function saveMyAbsenceHours({ classCode, schoolCode, hours, fullName, visi
 }
 
 async function loadAndRenderLeaderboard() {
-  if (currentLeaderboardType === "class" && !myClassCode) {
-    renderLeaderboardEmpty(
-      "Classe non rilevata. Impossibile caricare la classifica di classe al momento.",
-    );
-    return;
-  }
+  const classFallback = currentLeaderboardType === "class" && !myClassCode;
+  const requestType = classFallback ? "global" : currentLeaderboardType;
 
   const params = new URLSearchParams({
-    type: currentLeaderboardType,
+    type: requestType,
     page: String(currentLeaderboardPage),
     page_size: String(leaderboardPageSize),
   });
 
-  if (currentLeaderboardType === "class" && myClassCode) {
+  if (requestType === "class" && myClassCode) {
     params.set("class_code", myClassCode);
     if (mySchoolCode) params.set("school_code", mySchoolCode);
   }
@@ -422,6 +418,7 @@ async function loadAndRenderLeaderboard() {
   }
 
   const data = await res.json();
+  if (classFallback) data.class_fallback = true;
   renderLeaderboard(data);
 }
 
@@ -513,10 +510,14 @@ function renderLeaderboard(data) {
   const classCode = data?.class_code ?? myClassCode ?? null;
 
   if (meta) {
-    meta.textContent =
-      scope === "class"
-        ? `Classifica della tua classe${classCode ? ` (${classCode})` : ""} · ${totalItems} studenti`
-        : `Classifica globale · ${totalItems} studenti`;
+    if (data?.class_fallback) {
+      meta.textContent = `Classifica globale (classe non rilevata) · ${totalItems} studenti`;
+    } else {
+      meta.textContent =
+        scope === "class"
+          ? `Classifica della tua classe${classCode ? ` (${classCode})` : ""} · ${totalItems} studenti`
+          : `Classifica globale · ${totalItems} studenti`;
+    }
   }
 
   if (pageIndicator) pageIndicator.textContent = `Pagina ${page} di ${totalPages}`;

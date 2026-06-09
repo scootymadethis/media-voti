@@ -814,22 +814,18 @@ async function saveMyAverage({ classCode, schoolCode, average, fullName, visible
 }
 
 async function loadAndRenderAverageLeaderboard() {
-  if (averageLeaderboardType === "class" && !myClassCode) {
-    renderAverageLeaderboardEmpty(
-      "Classe non rilevata. Impossibile caricare la classifica di classe al momento.",
-    );
-    return;
-  }
+  const classFallback = averageLeaderboardType === "class" && !myClassCode;
+  const requestType = classFallback ? "global" : averageLeaderboardType;
 
   const params = new URLSearchParams({
-    type: averageLeaderboardType,
+    type: requestType,
     page: String(averageLeaderboardPage),
     page_size: String(averageLeaderboardPageSize),
     subject_name: GENERAL_AVERAGE_LEADERBOARD_SUBJECT,
     period_key: GENERAL_AVERAGE_LEADERBOARD_PERIOD_KEY,
   });
 
-  if (averageLeaderboardType === "class" && myClassCode) {
+  if (requestType === "class" && myClassCode) {
     params.set("class_code", myClassCode);
     if (mySchoolCode) params.set("school_code", mySchoolCode);
   }
@@ -845,6 +841,7 @@ async function loadAndRenderAverageLeaderboard() {
   }
 
   const data = await res.json();
+  if (classFallback) data.class_fallback = true;
   renderAverageLeaderboard(data);
 }
 
@@ -933,10 +930,14 @@ function renderAverageLeaderboard(data) {
   const scope = data?.scope ?? averageLeaderboardType;
   const classCode = data?.class_code ?? myClassCode ?? null;
   if (meta) {
-    meta.textContent =
-      scope === "class"
-        ? `Media generale · Classe${classCode ? ` ${classCode}` : ""} · ${totalItems} studenti`
-        : `Media generale · Globale · ${totalItems} studenti`;
+    if (data?.class_fallback) {
+      meta.textContent = `Media generale · Globale (classe non rilevata) · ${totalItems} studenti`;
+    } else {
+      meta.textContent =
+        scope === "class"
+          ? `Media generale · Classe${classCode ? ` ${classCode}` : ""} · ${totalItems} studenti`
+          : `Media generale · Globale · ${totalItems} studenti`;
+    }
   }
 
   if (pageIndicator) pageIndicator.textContent = `Pagina ${page} di ${totalPages}`;
