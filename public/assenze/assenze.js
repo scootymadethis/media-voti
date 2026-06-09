@@ -33,13 +33,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     myUsername = session.username || null;
     myFullName = session.full_name || localStorage.getItem("fullName") || null;
     mySchoolCode = session.school_code || localStorage.getItem("schoolCode") || null;
+    myClassCode = session.class_code || null;
 
-    try {
-      myClassCode = await logClasseFromFirstLesson();
-      console.log("Classe rilevata:", myClassCode);
-    } catch (err) {
-      console.error("Errore durante il recupero della classe:", err);
-      myClassCode = null;
+    if (!myClassCode) {
+      try {
+        myClassCode = await logClasseFromFirstLesson();
+        console.log("Classe rilevata:", myClassCode);
+      } catch (err) {
+        console.error("Errore durante il recupero della classe:", err);
+        myClassCode = null;
+      }
     }
 
     let assenzeData = [];
@@ -390,13 +393,16 @@ async function saveMyAbsenceHours({ classCode, schoolCode, hours, fullName, visi
 }
 
 async function loadAndRenderLeaderboard() {
+  const classFallback = currentLeaderboardType === "class" && !myClassCode;
+  const requestType = classFallback ? "global" : currentLeaderboardType;
+
   const params = new URLSearchParams({
-    type: currentLeaderboardType,
+    type: requestType,
     page: String(currentLeaderboardPage),
     page_size: String(leaderboardPageSize),
   });
 
-  if (currentLeaderboardType === "class" && myClassCode) {
+  if (requestType === "class" && myClassCode) {
     params.set("class_code", myClassCode);
     if (mySchoolCode) params.set("school_code", mySchoolCode);
   }
@@ -412,6 +418,7 @@ async function loadAndRenderLeaderboard() {
   }
 
   const data = await res.json();
+  if (classFallback) data.class_fallback = true;
   renderLeaderboard(data);
 }
 
@@ -503,10 +510,14 @@ function renderLeaderboard(data) {
   const classCode = data?.class_code ?? myClassCode ?? null;
 
   if (meta) {
-    meta.textContent =
-      scope === "class"
-        ? `Classifica della tua classe${classCode ? ` (${classCode})` : ""} · ${totalItems} studenti`
-        : `Classifica globale · ${totalItems} studenti`;
+    if (data?.class_fallback) {
+      meta.textContent = `Classifica globale (classe non rilevata) · ${totalItems} studenti`;
+    } else {
+      meta.textContent =
+        scope === "class"
+          ? `Classifica della tua classe${classCode ? ` (${classCode})` : ""} · ${totalItems} studenti`
+          : `Classifica globale · ${totalItems} studenti`;
+    }
   }
 
   if (pageIndicator) pageIndicator.textContent = `Pagina ${page} di ${totalPages}`;
@@ -562,20 +573,7 @@ function escapeHtml(value) {
 }
 
 async function handleAuthFail(res) {
-  let body;
-  try {
-    body = await res.json();
-  } catch {
-    try {
-      body = await res.text();
-    } catch {
-      body = null;
-    }
-  }
-
-  console.log("Auth fail:", res.status, body);
-  window.SessionAuth?.clearLegacyClientState?.();
-  window.location.href = "/";
+  return window.SessionAuth?.handleAuthFail?.(res) ?? false;
 }
 
 function initMobileMenu() {

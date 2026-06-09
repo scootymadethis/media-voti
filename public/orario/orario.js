@@ -731,13 +731,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function handleAuthFail(res) {
-  try {
-    await res.json();
-  } catch {
-    /* ignore */
-  }
-  window.SessionAuth?.clearLegacyClientState?.();
-  window.location.href = "/";
+  return window.SessionAuth?.handleAuthFail?.(res) ?? false;
 }
 
 function goToHome() {

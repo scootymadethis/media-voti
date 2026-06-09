@@ -1203,6 +1203,16 @@ def assenze(u: Utente = Depends(current_user)):
         raise HTTPException(status_code=401, detail=str(e))
 
 
+def raise_for_upstream_http_status(status_code: int, *, context: str = "upstream") -> None:
+    if status_code in {401, 403}:
+        raise HTTPException(
+            status_code=401,
+            detail="Sessione Spaggiari scaduta, effettua nuovamente il login",
+        )
+    if status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"Risultato {context}: {status_code}")
+
+
 @app.post("/agenda")
 def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=AgendaBody())):
     try:
@@ -1223,6 +1233,8 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
         try:
             resp = u.request(RequestURLs.agenda, start, end)
             if hasattr(resp, "status_code"):
+                if resp.status_code in {401, 403}:
+                    raise_for_upstream_http_status(resp.status_code, context="agenda upstream")
                 if resp.status_code >= 400:
                     print(f"u.request returned status {resp.status_code}, falling back to direct request")
                 else:
@@ -1248,8 +1260,7 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
                 except Exception:
                     pass
                 upstream = requests.get(formatted_url, headers=headers, timeout=20)
-                if upstream.status_code >= 400:
-                    raise HTTPException(status_code=502, detail=f"Risultato upstream: {upstream.status_code}")
+                raise_for_upstream_http_status(upstream.status_code, context="agenda upstream")
                 try:
                     data = upstream.json()
                 except Exception:
