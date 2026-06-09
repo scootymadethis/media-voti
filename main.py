@@ -1724,11 +1724,31 @@ async def delete_my_leaderboard_entry(u: Utente = Depends(current_user)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+def filter_entries_by_search_query(entries: list[dict], query: Optional[str]) -> list[dict]:
+    needle = (query or "").strip().lower()
+    if not needle:
+        return entries
+
+    filtered: list[dict] = []
+    for entry in entries:
+        haystack = " ".join(
+            [
+                str(entry.get("full_name") or ""),
+                str(entry.get("username") or ""),
+                str(entry.get("class_code") or ""),
+            ]
+        ).lower()
+        if needle in haystack:
+            filtered.append(entry)
+    return filtered
+
+
 @app.get("/leaderboard")
 def get_leaderboard(
     type: str = Query(default="global"),
     class_code: Optional[str] = Query(default=None),
     school_code: Optional[str] = Query(default=None),
+    q: Optional[str] = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
     u: Utente = Depends(current_user),
@@ -1757,6 +1777,7 @@ def get_leaderboard(
             ]
 
         entries.sort(key=lambda x: (-float(x.get("hours", 0)), x.get("username", "").lower()))
+        entries = filter_entries_by_search_query(entries, q)
 
         total_items = len(entries)
         total_pages = max(1, ceil(total_items / page_size))
@@ -1792,6 +1813,7 @@ def get_leaderboard(
             "page_size": page_size,
             "total_items": total_items,
             "total_pages": total_pages,
+            "search_query": (q or "").strip() or None,
             "items": enriched_items,
         }
     except HTTPException:
@@ -1900,6 +1922,7 @@ def get_average_leaderboard(
     school_code: Optional[str] = Query(default=None),
     subject_name: str = Query(...),
     period_key: str = Query(...),
+    q: Optional[str] = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
     u: Utente = Depends(current_user),
@@ -1930,6 +1953,7 @@ def get_average_leaderboard(
             ]
 
         entries.sort(key=lambda x: (-float(x.get("average", 0)), x.get("username", "").lower()))
+        entries = filter_entries_by_search_query(entries, q)
 
         total_items = len(entries)
         total_pages = max(1, ceil(total_items / page_size))
@@ -1971,6 +1995,7 @@ def get_average_leaderboard(
             "page_size": page_size,
             "total_items": total_items,
             "total_pages": total_pages,
+            "search_query": (q or "").strip() or None,
             "items": enriched_items,
         }
     except HTTPException:

@@ -7,6 +7,8 @@ const calcolatorBtn = document.getElementById("calculate-grade");
 const averageLeaderboardPageSize = 10;
 let averageLeaderboardType = "class";
 let averageLeaderboardPage = 1;
+let averageLeaderboardSearchQuery = "";
+let averageLeaderboardSearchDebounceTimer = null;
 let averageLeaderboardVisible = true;
 let averageLeaderboardSocket = null;
 let averageLeaderboardReconnectTimer = null;
@@ -167,27 +169,8 @@ function initVotiViewTabs() {
 }
 
 
-async function resolveClassCodeForLeaderboard(session) {
-  if (session?.class_code) {
-    return session.class_code;
-  }
-
+async function bootstrapAverageLeaderboardAfterPaint() {
   try {
-    return await Promise.race([
-      logClasseFromFirstLesson({ maxWeeksToCheck: 12 }),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("class detection timeout")), 12000),
-      ),
-    ]);
-  } catch (err) {
-    console.warn("[voti] classe non rilevata in tempo utile:", err);
-    return null;
-  }
-}
-
-async function bootstrapAverageLeaderboardAfterPaint(session) {
-  try {
-    myClassCode = await resolveClassCodeForLeaderboard(session);
     votiPageBootstrapping = false;
     await refreshAverageLeaderboardForCurrentSelection();
   } catch (err) {
@@ -273,7 +256,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       };
     }
 
-    void bootstrapAverageLeaderboardAfterPaint(session);
+    void bootstrapAverageLeaderboardAfterPaint();
 
     if (typeof window.initSiteAnnouncementModal === "function") {
       void window.initSiteAnnouncementModal();
@@ -638,6 +621,8 @@ async function loadAverageLeaderboardPreference() {
     }
 
     const data = await res.json();
+    applySavedAverageLeaderboardProfile(data?.item);
+
     if (data?.item && typeof data.item.visible_in_leaderboard === "boolean") {
       return data.item.visible_in_leaderboard;
     }
@@ -647,6 +632,31 @@ async function loadAverageLeaderboardPreference() {
     console.error("Errore durante il caricamento della preferenza classifica media:", err);
     return true;
   }
+}
+
+function applySavedAverageLeaderboardProfile(item) {
+  if (!item || myClassCode) return;
+
+  const savedClassCode = String(item.class_code || "").trim();
+  if (savedClassCode) {
+    myClassCode = savedClassCode.toUpperCase();
+  }
+
+  const savedSchoolCode = String(item.school_code || "").trim();
+  if (savedSchoolCode && !mySchoolCode) {
+    mySchoolCode = savedSchoolCode.toUpperCase();
+  }
+}
+
+function updateAverageLeaderboardTabsVisibility() {
+  const tabsContainer = document.querySelector(".grade-leaderboard-shell .leaderboard-tabs");
+  if (!myClassCode) {
+    averageLeaderboardType = "global";
+    if (tabsContainer) tabsContainer.hidden = true;
+  } else if (tabsContainer) {
+    tabsContainer.hidden = false;
+  }
+  setActiveAverageLeaderboardTab();
 }
 
 function updateAverageLeaderboardPreferenceUI() {
@@ -698,6 +708,7 @@ async function refreshAverageLeaderboardForCurrentSelection() {
   try {
     averageLeaderboardVisible = await loadAverageLeaderboardPreference();
     updateAverageLeaderboardPreferenceUI();
+    updateAverageLeaderboardTabsVisibility();
     await syncAverageLeaderboardPreference();
     averageLeaderboardPage = 1;
     await loadAndRenderAverageLeaderboard();
@@ -814,21 +825,26 @@ async function saveMyAverage({ classCode, schoolCode, average, fullName, visible
 }
 
 async function loadAndRenderAverageLeaderboard() {
-  const classFallback = averageLeaderboardType === "class" && !myClassCode;
-  const requestType = classFallback ? "global" : averageLeaderboardType;
+  if (averageLeaderboardType === "class" && !myClassCode) {
+    averageLeaderboardType = "global";
+    updateAverageLeaderboardTabsVisibility();
+  }
 
   const params = new URLSearchParams({
-    type: requestType,
+    type: averageLeaderboardType,
     page: String(averageLeaderboardPage),
     page_size: String(averageLeaderboardPageSize),
     subject_name: GENERAL_AVERAGE_LEADERBOARD_SUBJECT,
     period_key: GENERAL_AVERAGE_LEADERBOARD_PERIOD_KEY,
   });
 
-  if (requestType === "class" && myClassCode) {
+  if (averageLeaderboardType === "class" && myClassCode) {
     params.set("class_code", myClassCode);
     if (mySchoolCode) params.set("school_code", mySchoolCode);
   }
+
+  const searchQuery = averageLeaderboardSearchQuery.trim();
+  if (searchQuery) params.set("q", searchQuery);
 
   const res = await fetch(apiUrl(`/api/average-leaderboard?${params.toString()}`), {
     method: "GET",
@@ -841,8 +857,29 @@ async function loadAndRenderAverageLeaderboard() {
   }
 
   const data = await res.json();
-  if (classFallback) data.class_fallback = true;
   renderAverageLeaderboard(data);
+}
+
+function initAverageLeaderboardSearch() {
+  const input = document.getElementById("averageLeaderboardSearchInput");
+  if (!input) return;
+
+  input.addEventListener("input", () => {
+    if (averageLeaderboardSearchDebounceTimer) clearTimeout(averageLeaderboardSearchDebounceTimer);
+    averageLeaderboardSearchDebounceTimer = setTimeout(async () => {
+      averageLeaderboardSearchQuery = input.value.trim();
+      averageLeaderboardPage = 1;
+      showLoading(true);
+      try {
+        await loadAndRenderAverageLeaderboard();
+      } catch (err) {
+        console.error("Errore ricerca classifica media:", err);
+        renderAverageLeaderboardEmpty("Nessun risultato per questa ricerca.");
+      } finally {
+        showLoading(false);
+      }
+    }, 300);
+  });
 }
 
 function initAverageLeaderboardTabs() {
@@ -851,7 +888,10 @@ function initAverageLeaderboardTabs() {
   const prevPageBtn = document.getElementById("averagePrevPageBtn");
   const nextPageBtn = document.getElementById("averageNextPageBtn");
 
+  initAverageLeaderboardSearch();
+
   tabClassBtn?.addEventListener("click", async () => {
+    if (!myClassCode) return;
     averageLeaderboardType = "class";
     averageLeaderboardPage = 1;
     setActiveAverageLeaderboardTab();
@@ -930,14 +970,11 @@ function renderAverageLeaderboard(data) {
   const scope = data?.scope ?? averageLeaderboardType;
   const classCode = data?.class_code ?? myClassCode ?? null;
   if (meta) {
-    if (data?.class_fallback) {
-      meta.textContent = `Media generale · Globale (classe non rilevata) · ${totalItems} studenti`;
-    } else {
-      meta.textContent =
-        scope === "class"
-          ? `Media generale · Classe${classCode ? ` ${classCode}` : ""} · ${totalItems} studenti`
-          : `Media generale · Globale · ${totalItems} studenti`;
-    }
+    const searchSuffix = data?.search_query ? ` · Ricerca: "${data.search_query}"` : "";
+    meta.textContent =
+      scope === "class"
+        ? `Media generale · Classe${classCode ? ` ${classCode}` : ""} · ${totalItems} studenti${searchSuffix}`
+        : `Media generale · Globale · ${totalItems} studenti${searchSuffix}`;
   }
 
   if (pageIndicator) pageIndicator.textContent = `Pagina ${page} di ${totalPages}`;

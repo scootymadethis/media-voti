@@ -4,6 +4,8 @@ const wsUrl = (path) => window.APP_CONFIG?.wsUrl?.(path) ?? path;
 
 let currentLeaderboardType = "class";
 let currentLeaderboardPage = 1;
+let leaderboardSearchQuery = "";
+let leaderboardSearchDebounceTimer = null;
 const leaderboardPageSize = 10;
 
 let myClassCode = null;
@@ -35,16 +37,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     mySchoolCode = session.school_code || localStorage.getItem("schoolCode") || null;
     myClassCode = session.class_code || null;
 
-    if (!myClassCode) {
-      try {
-        myClassCode = await logClasseFromFirstLesson();
-        console.log("Classe rilevata:", myClassCode);
-      } catch (err) {
-        console.error("Errore durante il recupero della classe:", err);
-        myClassCode = null;
-      }
-    }
-
     let assenzeData = [];
     try {
       const res = await fetchAssenze();
@@ -61,6 +53,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     leaderboardVisible = await loadLeaderboardPreference();
     updateLeaderboardPreferenceUI();
+    updateLeaderboardTabsVisibility();
     await syncLeaderboardPreference();
     connectLeaderboardRealtime();
 
@@ -99,6 +92,8 @@ async function loadLeaderboardPreference() {
     }
 
     const data = await res.json();
+    applySavedLeaderboardProfile(data?.item);
+
     if (data?.item && typeof data.item.visible_in_leaderboard === "boolean") {
       return data.item.visible_in_leaderboard;
     }
@@ -392,20 +387,50 @@ async function saveMyAbsenceHours({ classCode, schoolCode, hours, fullName, visi
   return data;
 }
 
+function applySavedLeaderboardProfile(item) {
+  if (!item || myClassCode) return;
+
+  const savedClassCode = String(item.class_code || "").trim();
+  if (savedClassCode) {
+    myClassCode = savedClassCode.toUpperCase();
+  }
+
+  const savedSchoolCode = String(item.school_code || "").trim();
+  if (savedSchoolCode && !mySchoolCode) {
+    mySchoolCode = savedSchoolCode.toUpperCase();
+  }
+}
+
+function updateLeaderboardTabsVisibility() {
+  const tabsContainer = document.querySelector(".leaderboard-tabs");
+  if (!myClassCode) {
+    currentLeaderboardType = "global";
+    if (tabsContainer) tabsContainer.hidden = true;
+  } else if (tabsContainer) {
+    tabsContainer.hidden = false;
+  }
+  setActiveLeaderboardTab();
+}
+
 async function loadAndRenderLeaderboard() {
-  const classFallback = currentLeaderboardType === "class" && !myClassCode;
-  const requestType = classFallback ? "global" : currentLeaderboardType;
+  if (currentLeaderboardType === "class" && !myClassCode) {
+    currentLeaderboardType = "global";
+    updateLeaderboardTabsVisibility();
+  }
 
   const params = new URLSearchParams({
-    type: requestType,
+    type: currentLeaderboardType,
     page: String(currentLeaderboardPage),
     page_size: String(leaderboardPageSize),
   });
 
-  if (requestType === "class" && myClassCode) {
+  if (currentLeaderboardType === "class" && myClassCode) {
     params.set("class_code", myClassCode);
     if (mySchoolCode) params.set("school_code", mySchoolCode);
   }
+
+  const searchQuery = leaderboardSearchQuery.trim();
+  if (searchQuery) params.set("q", searchQuery);
 
   const res = await fetch(apiUrl(`/api/leaderboard?${params.toString()}`), {
     method: "GET",
@@ -418,8 +443,29 @@ async function loadAndRenderLeaderboard() {
   }
 
   const data = await res.json();
-  if (classFallback) data.class_fallback = true;
   renderLeaderboard(data);
+}
+
+function initLeaderboardSearch() {
+  const input = document.getElementById("leaderboardSearchInput");
+  if (!input) return;
+
+  input.addEventListener("input", () => {
+    if (leaderboardSearchDebounceTimer) clearTimeout(leaderboardSearchDebounceTimer);
+    leaderboardSearchDebounceTimer = setTimeout(async () => {
+      leaderboardSearchQuery = input.value.trim();
+      currentLeaderboardPage = 1;
+      showLoading(true);
+      try {
+        await loadAndRenderLeaderboard();
+      } catch (err) {
+        console.error("Errore ricerca classifica:", err);
+        renderLeaderboardEmpty("Nessun risultato per questa ricerca.");
+      } finally {
+        showLoading(false);
+      }
+    }, 300);
+  });
 }
 
 function initLeaderboardTabs() {
@@ -428,7 +474,10 @@ function initLeaderboardTabs() {
   const prevPageBtn = document.getElementById("prevPageBtn");
   const nextPageBtn = document.getElementById("nextPageBtn");
 
+  initLeaderboardSearch();
+
   tabClassBtn?.addEventListener("click", async () => {
+    if (!myClassCode) return;
     currentLeaderboardType = "class";
     currentLeaderboardPage = 1;
     setActiveLeaderboardTab();
@@ -510,14 +559,11 @@ function renderLeaderboard(data) {
   const classCode = data?.class_code ?? myClassCode ?? null;
 
   if (meta) {
-    if (data?.class_fallback) {
-      meta.textContent = `Classifica globale (classe non rilevata) · ${totalItems} studenti`;
-    } else {
-      meta.textContent =
-        scope === "class"
-          ? `Classifica della tua classe${classCode ? ` (${classCode})` : ""} · ${totalItems} studenti`
-          : `Classifica globale · ${totalItems} studenti`;
-    }
+    const searchSuffix = data?.search_query ? ` · Ricerca: "${data.search_query}"` : "";
+    meta.textContent =
+      scope === "class"
+        ? `Classifica della tua classe${classCode ? ` (${classCode})` : ""} · ${totalItems} studenti${searchSuffix}`
+        : `Classifica globale · ${totalItems} studenti${searchSuffix}`;
   }
 
   if (pageIndicator) pageIndicator.textContent = `Pagina ${page} di ${totalPages}`;
