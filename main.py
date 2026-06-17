@@ -1080,7 +1080,7 @@ def create_session(u: Utente) -> str:
             "upstream_skip_until": now + 45,
             "profile": {
                 "username": username,
-                "full_name": None,
+                "full_name": username,
                 "school_code": None,
                 "class_code": None,
                 "is_admin": is_admin_username(username),
@@ -1289,7 +1289,7 @@ def raise_for_upstream_http_status(status_code: int, *, context: str = "upstream
 def raise_for_upstream_exception(exc: Exception, *, context: str = "upstream") -> None:
     message = str(exc or "")
     lowered = message.lower()
-    if "429" in message and "too many requests" in lowered:
+    if "429" in message or "too many requests" in lowered:
         raise HTTPException(
             status_code=429,
             detail="Registro temporaneamente occupato, riprova tra qualche secondo",
@@ -1308,22 +1308,51 @@ def request_upstream_json_or_error(
     *args,
     context: str = "upstream",
 ):
-    try:
-        response = u.request(request_url, *args)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise_for_upstream_exception(exc, context=context)
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = u.request(request_url, *args)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            message = str(exc or "")
+            lowered = message.lower()
+            is_rate_limited = ("429" in message) or ("too many requests" in lowered)
+            if is_rate_limited and attempt < max_attempts:
+                time.sleep(0.35 * attempt)
+                continue
+            raise_for_upstream_exception(exc, context=context)
 
-    if response is None:
-        raise HTTPException(status_code=502, detail=f"Risposta {context} vuota")
+        if response is None:
+            if attempt < max_attempts:
+                time.sleep(0.35 * attempt)
+                continue
+            raise HTTPException(
+                status_code=429,
+                detail="Registro temporaneamente occupato, riprova tra qualche secondo",
+            )
 
-    if hasattr(response, "status_code"):
-        raise_for_upstream_http_status(response.status_code, context=context)
-    try:
-        return response.json()
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"JSON {context} non valido: {exc}")
+        if hasattr(response, "status_code"):
+            try:
+                raise_for_upstream_http_status(response.status_code, context=context)
+            except HTTPException as exc:
+                if exc.status_code == 429 and attempt < max_attempts:
+                    time.sleep(0.35 * attempt)
+                    continue
+                raise
+
+        try:
+            return response.json()
+        except Exception as exc:
+            if attempt < max_attempts:
+                time.sleep(0.35 * attempt)
+                continue
+            raise HTTPException(status_code=502, detail=f"JSON {context} non valido: {exc}")
+
+    raise HTTPException(
+        status_code=429,
+        detail="Registro temporaneamente occupato, riprova tra qualche secondo",
+    )
 
 
 @app.post("/agenda")

@@ -1,4 +1,4 @@
-let studentName;
+let studentName = "Studente";
 const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
 
 const agendaCache = new Map();
@@ -22,12 +22,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   try {
-    const cardData = await fetchCard();
-    studentName = cardData.card.card.firstName;
-    let fullName = studentName + " " + cardData.card.card.lastName;
-    localStorage.setItem("fullName", fullName);
-    const schoolCode = cardData.card.card.schCode || cardData.card.card.miurSchoolCode || null;
-    if (schoolCode) localStorage.setItem("schoolCode", schoolCode);
+    applySessionProfile(session);
+    try {
+      const cardData = await fetchCard();
+      applyCardProfile(cardData);
+    } catch (err) {
+      if (err?.status !== 429) throw err;
+      console.warn("[dashboard] card temporarily rate limited, using cached profile");
+    }
 
     setInterval(() => {
       updateTimeAndDate();
@@ -178,9 +180,50 @@ async function fetchCard() {
 
   if (!res.ok) {
     await handleAuthFail(res);
-    throw new Error(`Failed to fetch card: ${res.status}`);
+    const error = new Error(`Failed to fetch card: ${res.status}`);
+    error.status = res.status;
+    throw error;
   }
   return await res.json();
+}
+
+function applySessionProfile(session) {
+  const fullName = String(session?.full_name || "").trim();
+  const username = String(session?.username || "").trim();
+  const sourceName = fullName || username || "Studente";
+  const firstName = sourceName.split(/\s+/)[0] || "Studente";
+  studentName = firstName;
+
+  if (fullName) {
+    localStorage.setItem("fullName", fullName);
+  } else if (username) {
+    localStorage.setItem("fullName", username);
+  }
+
+  const schoolCode = String(session?.school_code || "").trim();
+  if (schoolCode) {
+    localStorage.setItem("schoolCode", schoolCode);
+  }
+}
+
+function applyCardProfile(cardData) {
+  const card = cardData?.card?.card || cardData?.card || {};
+  const firstName = String(card.firstName || "").trim();
+  const lastName = String(card.lastName || "").trim();
+
+  if (firstName) {
+    studentName = firstName;
+  }
+
+  const fullName = `${firstName} ${lastName}`.trim();
+  if (fullName) {
+    localStorage.setItem("fullName", fullName);
+  }
+
+  const schoolCode = card.schCode || card.miurSchoolCode || null;
+  if (schoolCode) {
+    localStorage.setItem("schoolCode", schoolCode);
+  }
 }
 
 function formatDateYYYYMMDD(d) {
