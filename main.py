@@ -1113,7 +1113,27 @@ def login(
 
 
 @app.get("/session/me")
-def session_me(u: Utente = Depends(current_user)):
+def session_me(
+    response: Response,
+    session_id: Optional[str] = Cookie(default=None),
+):
+    u = get_session_user(session_id)
+    try:
+        # Verifica anche la sessione upstream Spaggiari per evitare loop login/dashboard
+        # quando il cookie locale è ancora valido ma la sessione esterna è scaduta.
+        fetch_student_card_or_401(u)
+    except HTTPException:
+        destroy_session(session_id)
+        response.delete_cookie(
+            key="session_id",
+            httponly=True,
+            samesite="lax",
+            secure=COOKIE_SECURE,
+            path="/",
+        )
+        clear_admin_cookie(response)
+        raise
+
     profile = build_session_profile(u)
     return {"ok": True, "authenticated": True, **profile}
 
@@ -1569,9 +1589,21 @@ def calendario(u: Utente = Depends(current_user)):
 @app.post("/card")
 def card(request: Request, u: Utente = Depends(current_user)):
     try:
-        card_res = u.request(RequestURLs.card).json()
+        card_response = u.request(RequestURLs.card)
+        if card_response is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Sessione Spaggiari non valida, effettua nuovamente il login",
+            )
+
+        if hasattr(card_response, "status_code"):
+            raise_for_upstream_http_status(card_response.status_code, context="card upstream")
+
+        card_res = card_response.json()
 
         return {"ok": True, "card": card_res}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
 

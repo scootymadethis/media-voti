@@ -35,6 +35,27 @@ function loginFailedMessage(status, data) {
   return data?.detail || data?.error || "Login fallito";
 }
 
+function authMessageFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const auth = params.get("auth");
+  if (!auth) return "";
+  if (auth === "session-expired") {
+    return "Sessione scaduta, effettua di nuovo il login.";
+  }
+  if (auth === "auth-required") {
+    return "Devi effettuare il login per continuare.";
+  }
+  return "";
+}
+
+function clearAuthMessageFromUrl() {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("auth")) return;
+  url.searchParams.delete("auth");
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState({}, "", next);
+}
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -42,6 +63,7 @@ form.addEventListener("submit", async (e) => {
   const password = document.getElementById("password").value;
 
   clearClientLoginState();
+  clearAuthMessageFromUrl();
   msg.textContent = "Login in corso...";
   if (submitBtn) submitBtn.disabled = true;
 
@@ -98,7 +120,8 @@ form.addEventListener("submit", async (e) => {
 });
 
 document.addEventListener("DOMContentLoaded", async () => {
-  msg.textContent = "Verifica sessione...";
+  const authMessage = authMessageFromUrl();
+  msg.textContent = authMessage || "Verifica sessione...";
   try {
     const { res, data } = await window.SessionAuth.fetchSession();
     if (res.ok && data?.authenticated) {
@@ -110,7 +133,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   clearClientLoginState();
-  msg.textContent = "";
+  if (!authMessage) {
+    msg.textContent = "";
+  }
+  clearAuthMessageFromUrl();
 });
 
 // --- Modal credenziali ---
