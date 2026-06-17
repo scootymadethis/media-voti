@@ -9,6 +9,17 @@
     localStorage.removeItem("media_generale");
   }
 
+  function redirectWithReason(targetUrl, reason) {
+    if (!targetUrl) return;
+    try {
+      const url = new URL(targetUrl, window.location.origin);
+      if (reason) url.searchParams.set("auth", reason);
+      window.location.href = url.pathname + url.search + url.hash;
+    } catch {
+      window.location.href = targetUrl;
+    }
+  }
+
   async function readJsonSafe(res) {
     try {
       return await res.json();
@@ -88,7 +99,11 @@
     if (!res.ok || !data?.authenticated) {
       clearLegacyClientState();
       if (redirectTo) {
-        window.location.href = redirectTo;
+        const reason =
+          res.status === 401 || res.status === 403
+            ? "session-expired"
+            : "auth-required";
+        redirectWithReason(redirectTo, reason);
       }
       return null;
     }
@@ -140,7 +155,7 @@
 
     console.log("[session] Sessione non valida:", res.status, body);
     clearLegacyClientState();
-    window.location.href = "/";
+    redirectWithReason("/", "session-expired");
     return true;
   }
 
