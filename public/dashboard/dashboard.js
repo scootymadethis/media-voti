@@ -166,7 +166,10 @@ async function fetchCard() {
     credentials: "include",
   });
 
-  if (!res.ok) await handleAuthFail(res);
+  if (!res.ok) {
+    await handleAuthFail(res);
+    throw new Error(`Failed to fetch card: ${res.status}`);
+  }
   return await res.json();
 }
 
