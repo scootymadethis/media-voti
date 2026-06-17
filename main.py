@@ -1070,11 +1070,22 @@ async def broadcast_admin_login(username: str):
 def create_session(u: Utente) -> str:
     sid = secrets.token_urlsafe(32)
     now = time.time()
+    username = get_session_username(u)
     with sessions_lock:
         sessions[sid] = {
             "user": u,
             "created_at": now,
             "expires": now + SESSION_TTL,
+            # Riduce i check upstream immediatamente dopo il login.
+            "upstream_skip_until": now + 45,
+            "profile": {
+                "username": username,
+                "full_name": None,
+                "school_code": None,
+                "class_code": None,
+                "is_admin": is_admin_username(username),
+                "easter_egg_eligible": is_easter_egg_username(username),
+            },
         }
     return sid
 
@@ -1118,11 +1129,44 @@ def session_me(
     session_id: Optional[str] = Cookie(default=None),
 ):
     u = get_session_user(session_id)
+    now = time.time()
+    cached_profile: dict[str, Any] | None = None
+    should_validate_upstream = True
+
+    with sessions_lock:
+        sess = sessions.get(session_id or "")
+        if sess:
+            cached_profile = sess.get("profile") if isinstance(sess.get("profile"), dict) else None
+            should_validate_upstream = now >= float(sess.get("upstream_skip_until", 0))
+
     try:
-        # Verifica anche la sessione upstream Spaggiari per evitare loop login/dashboard
-        # quando il cookie locale è ancora valido ma la sessione esterna è scaduta.
-        fetch_student_card_or_401(u)
-    except HTTPException:
+        # Verifica upstream solo quando necessario per evitare trigger di rate limit.
+        if should_validate_upstream:
+            card_res = fetch_student_card_or_401(u)
+            card_fields = extract_student_card_fields(card_res)
+            full_name = f"{(card_fields.get('firstName') or '').strip()} {(card_fields.get('lastName') or '').strip()}".strip()
+            school_code = (
+                (card_fields.get("schCode") or card_fields.get("miurSchoolCode") or "").strip().upper()
+                or None
+            )
+            refreshed_profile = {
+                "username": get_session_username(u),
+                "full_name": full_name or None,
+                "school_code": school_code,
+                "class_code": cached_profile.get("class_code") if isinstance(cached_profile, dict) else None,
+                "is_admin": is_admin_username(get_session_username(u)),
+                "easter_egg_eligible": is_easter_egg_username(get_session_username(u)),
+            }
+            with sessions_lock:
+                current = sessions.get(session_id or "")
+                if current is not None:
+                    current["profile"] = refreshed_profile
+                    current["upstream_skip_until"] = time.time() + 45
+            cached_profile = refreshed_profile
+    except HTTPException as exc:
+        if exc.status_code == 429:
+            # Rate limit upstream: non invalidare la sessione locale.
+            raise
         destroy_session(session_id)
         response.delete_cookie(
             key="session_id",
@@ -1132,9 +1176,16 @@ def session_me(
             path="/",
         )
         clear_admin_cookie(response)
-        raise
+        raise exc
 
-    profile = build_session_profile(u)
+    profile = cached_profile or {
+        "username": get_session_username(u),
+        "full_name": None,
+        "school_code": None,
+        "class_code": None,
+        "is_admin": is_admin_username(get_session_username(u)),
+        "easter_egg_eligible": is_easter_egg_username(get_session_username(u)),
+    }
     return {"ok": True, "authenticated": True, **profile}
 
 
@@ -1216,11 +1267,8 @@ async def leaderboard_ws(websocket: WebSocket):
 # ---- endpoint che riusano la sessione ----
 @app.post("/assenze")
 def assenze(u: Utente = Depends(current_user)):
-    try:
-        assenze = u.request(RequestURLs.assenze).json()
-        return {"ok": True, "assenze": assenze}
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+    assenze_payload = request_upstream_json_or_error(u, RequestURLs.assenze, context="assenze upstream")
+    return {"ok": True, "assenze": assenze_payload}
 
 
 def raise_for_upstream_http_status(status_code: int, *, context: str = "upstream") -> None:
@@ -1229,8 +1277,53 @@ def raise_for_upstream_http_status(status_code: int, *, context: str = "upstream
             status_code=401,
             detail="Sessione Spaggiari scaduta, effettua nuovamente il login",
         )
+    if status_code == 429:
+        raise HTTPException(
+            status_code=429,
+            detail="Registro temporaneamente occupato, riprova tra qualche secondo",
+        )
     if status_code >= 400:
         raise HTTPException(status_code=502, detail=f"Risultato {context}: {status_code}")
+
+
+def raise_for_upstream_exception(exc: Exception, *, context: str = "upstream") -> None:
+    message = str(exc or "")
+    lowered = message.lower()
+    if "429" in message and "too many requests" in lowered:
+        raise HTTPException(
+            status_code=429,
+            detail="Registro temporaneamente occupato, riprova tra qualche secondo",
+        )
+    if "401" in message or "403" in message or "sessione scaduta" in lowered:
+        raise HTTPException(
+            status_code=401,
+            detail="Sessione Spaggiari scaduta, effettua nuovamente il login",
+        )
+    raise HTTPException(status_code=502, detail=f"Errore {context}: {message or 'upstream non valido'}")
+
+
+def request_upstream_json_or_error(
+    u: Utente,
+    request_url: Any,
+    *args,
+    context: str = "upstream",
+):
+    try:
+        response = u.request(request_url, *args)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise_for_upstream_exception(exc, context=context)
+
+    if response is None:
+        raise HTTPException(status_code=502, detail=f"Risposta {context} vuota")
+
+    if hasattr(response, "status_code"):
+        raise_for_upstream_http_status(response.status_code, context=context)
+    try:
+        return response.json()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"JSON {context} non valido: {exc}")
 
 
 @app.post("/agenda")
@@ -1339,10 +1432,10 @@ def is_marconi_student_card(card_res) -> bool:
 
 
 def fetch_student_card_or_401(u: Utente) -> dict:
-    try:
-        return u.request(RequestURLs.card).json()
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+    payload = request_upstream_json_or_error(u, RequestURLs.card, context="card upstream")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=502, detail="Payload card non valido")
+    return payload
 
 
 def _parse_float_like(value: Any) -> Optional[float]:
@@ -1588,42 +1681,24 @@ def calendario(u: Utente = Depends(current_user)):
 
 @app.post("/card")
 def card(request: Request, u: Utente = Depends(current_user)):
-    try:
-        card_response = u.request(RequestURLs.card)
-        if card_response is None:
-            raise HTTPException(
-                status_code=401,
-                detail="Sessione Spaggiari non valida, effettua nuovamente il login",
-            )
-
-        if hasattr(card_response, "status_code"):
-            raise_for_upstream_http_status(card_response.status_code, context="card upstream")
-
-        card_res = card_response.json()
-
-        return {"ok": True, "card": card_res}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+    card_payload = request_upstream_json_or_error(u, RequestURLs.card, context="card upstream")
+    return {"ok": True, "card": card_payload}
 
 
 @app.post("/voti")
 def voti(u: Utente = Depends(current_user)):
-    try:
-        voti = u.request(RequestURLs.voti).json()
-        return {"ok": True, "voti": voti}
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+    voti_payload = request_upstream_json_or_error(u, RequestURLs.voti, context="voti upstream")
+    return {"ok": True, "voti": voti_payload}
 
 
 @app.post("/lezioni_oggi")
 def lezioni_oggi(u: Utente = Depends(current_user)):
-    try:
-        lezioni_oggi = u.request(RequestURLs.lezioni_oggi).json()
-        return {"ok": True, "lezioni_oggi": lezioni_oggi}
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+    lezioni_payload = request_upstream_json_or_error(
+        u,
+        RequestURLs.lezioni_oggi,
+        context="lezioni_oggi upstream",
+    )
+    return {"ok": True, "lezioni_oggi": lezioni_payload}
 
 
 @app.post("/lezioni_giorno")

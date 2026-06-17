@@ -32,6 +32,7 @@ async function verifyLoginWithCard() {
 
 function loginFailedMessage(status, data) {
   if (status === 401) return "Password errata";
+  if (status === 429) return "Registro temporaneamente occupato, riprova tra qualche secondo.";
   return data?.detail || data?.error || "Login fallito";
 }
 

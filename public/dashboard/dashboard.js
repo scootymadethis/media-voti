@@ -10,6 +10,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const session = await window.SessionAuth?.requireAuth();
   if (!session) return;
+  if (session?.transient_error) {
+    console.warn(
+      "[dashboard] session check temporary failure:",
+      session.status,
+      session.detail,
+    );
+    window.LoadingScreen?.hide();
+    setTimeout(() => window.location.reload(), 3000);
+    return;
+  }
 
   try {
     const cardData = await fetchCard();

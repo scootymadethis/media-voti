@@ -97,15 +97,22 @@
   async function requireAuth({ redirectTo = "/" } = {}) {
     const { res, data } = await fetchSession();
     if (!res.ok || !data?.authenticated) {
-      clearLegacyClientState();
-      if (redirectTo) {
-        const reason =
-          res.status === 401 || res.status === 403
-            ? "session-expired"
-            : "auth-required";
-        redirectWithReason(redirectTo, reason);
+      if (res.status === 401 || res.status === 403 || data?.authenticated === false) {
+        clearLegacyClientState();
+        if (redirectTo) {
+          const reason =
+            res.status === 401 || res.status === 403
+              ? "session-expired"
+              : "auth-required";
+          redirectWithReason(redirectTo, reason);
+        }
+        return null;
       }
-      return null;
+      return {
+        transient_error: true,
+        status: res.status,
+        detail: data?.detail || data?.error || null,
+      };
     }
 
     if (data.username) {
