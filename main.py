@@ -223,6 +223,26 @@ class AnnouncementUpdateBody(BaseModel):
     enabled: bool = True
 
 
+class BadgeCreateBody(BaseModel):
+    label: str = Field(..., min_length=1, max_length=32)
+    text_color: str = Field(default="#ffffff", max_length=32)
+    background_color: str = Field(default="rgba(59, 130, 246, 0.16)", max_length=64)
+    border_color: str = Field(default="rgba(59, 130, 246, 0.35)", max_length=64)
+
+
+class BadgeUpdateBody(BaseModel):
+    label: Optional[str] = Field(default=None, min_length=1, max_length=32)
+    text_color: Optional[str] = Field(default=None, max_length=32)
+    background_color: Optional[str] = Field(default=None, max_length=64)
+    border_color: Optional[str] = Field(default=None, max_length=64)
+
+
+class BadgeBatchBody(BaseModel):
+    badge_id: int
+    usernames: list[str] = Field(default_factory=list)
+    action: str = Field(..., regex="^(assign|remove)$")
+
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: set[WebSocket] = set()
@@ -346,6 +366,31 @@ def init_db():
                 )
                 """
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_badges (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    label TEXT NOT NULL UNIQUE,
+                    text_color TEXT NOT NULL DEFAULT '#ffffff',
+                    background_color TEXT NOT NULL DEFAULT 'rgba(59, 130, 246, 0.16)',
+                    border_color TEXT NOT NULL DEFAULT 'rgba(59, 130, 246, 0.35)',
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_badge_assignments (
+                    username TEXT NOT NULL,
+                    badge_id INTEGER NOT NULL,
+                    assigned_at REAL NOT NULL,
+                    PRIMARY KEY (username, badge_id),
+                    FOREIGN KEY (badge_id) REFERENCES user_badges(id) ON DELETE CASCADE
+                )
+                """
+            )
+
             existing = conn.execute("SELECT id FROM site_announcement WHERE id = 1").fetchone()
             if not existing:
                 conn.execute(
@@ -847,6 +892,270 @@ def list_average_leaderboard_entries(subject_name: str, period_key: str):
     return [row_to_average_entry(row) for row in rows]
 
 
+def _normalize_badge_color(value: Optional[str], fallback: str) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return fallback
+    # Accetta hex, rgb/rgba/hsl/hsla o CSS var(). Evita caratteri pericolosi.
+    if re.fullmatch(r"#[0-9A-Fa-f]{3,8}", raw):
+        return raw
+    if re.fullmatch(r"rgba?\([0-9.,%\s]+\)", raw):
+        return raw
+    if re.fullmatch(r"hsla?\([0-9.,%\s]+\)", raw):
+        return raw
+    if re.fullmatch(r"var\(--[A-Za-z0-9_-]+\)", raw):
+        return raw
+    return fallback
+
+
+def row_to_badge(row: sqlite3.Row | None) -> Optional[dict]:
+    if not row:
+        return None
+    return {
+        "id": int(row["id"]),
+        "label": row["label"],
+        "text_color": row["text_color"],
+        "background_color": row["background_color"],
+        "border_color": row["border_color"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def list_badges() -> list[dict]:
+    with get_db_connection() as conn:
+        rows = conn.execute(
+            "SELECT id, label, text_color, background_color, border_color, created_at, updated_at FROM user_badges ORDER BY lower(label)"
+        ).fetchall()
+    return [row_to_badge(row) for row in rows if row]
+
+
+def create_badge(*, label: str, text_color: str, background_color: str, border_color: str) -> dict:
+    clean_label = label.strip()
+    if not clean_label:
+        raise HTTPException(status_code=400, detail="Nome badge richiesto")
+    now = time.time()
+    with db_lock:
+        with get_db_connection() as conn:
+            try:
+                cur = conn.execute(
+                    """
+                    INSERT INTO user_badges (label, text_color, background_color, border_color, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        clean_label,
+                        _normalize_badge_color(text_color, "#ffffff"),
+                        _normalize_badge_color(background_color, "rgba(59, 130, 246, 0.16)"),
+                        _normalize_badge_color(border_color, "rgba(59, 130, 246, 0.35)"),
+                        now,
+                        now,
+                    ),
+                )
+                conn.commit()
+            except sqlite3.IntegrityError:
+                raise HTTPException(status_code=409, detail="Badge già esistente")
+            row = conn.execute(
+                "SELECT id, label, text_color, background_color, border_color, created_at, updated_at FROM user_badges WHERE id = ?",
+                (cur.lastrowid,),
+            ).fetchone()
+    badge = row_to_badge(row)
+    if not badge:
+        raise HTTPException(status_code=500, detail="Badge non creato")
+    return badge
+
+
+def update_badge(badge_id: int, body: BadgeUpdateBody) -> dict:
+    fields = []
+    values: list[Any] = []
+    if body.label is not None:
+        label = body.label.strip()
+        if not label:
+            raise HTTPException(status_code=400, detail="Nome badge richiesto")
+        fields.append("label = ?")
+        values.append(label)
+    if body.text_color is not None:
+        fields.append("text_color = ?")
+        values.append(_normalize_badge_color(body.text_color, "#ffffff"))
+    if body.background_color is not None:
+        fields.append("background_color = ?")
+        values.append(_normalize_badge_color(body.background_color, "rgba(59, 130, 246, 0.16)"))
+    if body.border_color is not None:
+        fields.append("border_color = ?")
+        values.append(_normalize_badge_color(body.border_color, "rgba(59, 130, 246, 0.35)"))
+    if not fields:
+        raise HTTPException(status_code=400, detail="Nessuna modifica")
+    fields.append("updated_at = ?")
+    values.append(time.time())
+    values.append(int(badge_id))
+    with db_lock:
+        with get_db_connection() as conn:
+            try:
+                cur = conn.execute(f"UPDATE user_badges SET {', '.join(fields)} WHERE id = ?", values)
+                conn.commit()
+            except sqlite3.IntegrityError:
+                raise HTTPException(status_code=409, detail="Badge già esistente")
+            if cur.rowcount <= 0:
+                raise HTTPException(status_code=404, detail="Badge non trovato")
+            row = conn.execute(
+                "SELECT id, label, text_color, background_color, border_color, created_at, updated_at FROM user_badges WHERE id = ?",
+                (int(badge_id),),
+            ).fetchone()
+    badge = row_to_badge(row)
+    if not badge:
+        raise HTTPException(status_code=404, detail="Badge non trovato")
+    return badge
+
+
+def delete_badge(badge_id: int) -> bool:
+    with db_lock:
+        with get_db_connection() as conn:
+            conn.execute("DELETE FROM user_badge_assignments WHERE badge_id = ?", (int(badge_id),))
+            cur = conn.execute("DELETE FROM user_badges WHERE id = ?", (int(badge_id),))
+            conn.commit()
+            return cur.rowcount > 0
+
+
+def list_user_badges(username: Optional[str], ident: Optional[Any] = None) -> list[dict]:
+    aliases = username_aliases(username, ident)
+    if not aliases:
+        return []
+    placeholders = ",".join("?" for _ in aliases)
+    with get_db_connection() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT DISTINCT b.id, b.label, b.text_color, b.background_color, b.border_color, b.created_at, b.updated_at
+            FROM user_badges b
+            JOIN user_badge_assignments a ON a.badge_id = b.id
+            WHERE upper(trim(a.username)) IN ({placeholders})
+            ORDER BY lower(b.label)
+            """,
+            tuple(aliases),
+        ).fetchall()
+    return [row_to_badge(row) for row in rows if row]
+
+
+def _canonical_badge_username(username: str) -> str:
+    return str(username or "").strip()
+
+
+def apply_badge_batch(*, badge_id: int, usernames: list[str], action: str) -> dict:
+    clean_usernames = []
+    seen = set()
+    for username in usernames:
+        clean = _canonical_badge_username(username)
+        if not clean:
+            continue
+        key = normalize_username(clean)
+        if key in seen:
+            continue
+        seen.add(key)
+        clean_usernames.append(clean)
+    if not clean_usernames:
+        raise HTTPException(status_code=400, detail="Nessun utente selezionato")
+    with db_lock:
+        with get_db_connection() as conn:
+            badge = conn.execute("SELECT id FROM user_badges WHERE id = ?", (int(badge_id),)).fetchone()
+            if not badge:
+                raise HTTPException(status_code=404, detail="Badge non trovato")
+            now = time.time()
+            changed = 0
+            if action == "assign":
+                for username in clean_usernames:
+                    cur = conn.execute(
+                        """
+                        INSERT OR IGNORE INTO user_badge_assignments (username, badge_id, assigned_at)
+                        VALUES (?, ?, ?)
+                        """,
+                        (username, int(badge_id), now),
+                    )
+                    changed += cur.rowcount
+            elif action == "remove":
+                for username in clean_usernames:
+                    alias_set = username_aliases(username)
+                    placeholders = ",".join("?" for _ in alias_set)
+                    cur = conn.execute(
+                        f"DELETE FROM user_badge_assignments WHERE badge_id = ? AND upper(trim(username)) IN ({placeholders})",
+                        (int(badge_id), *tuple(alias_set)),
+                    )
+                    changed += cur.rowcount
+            else:
+                raise HTTPException(status_code=400, detail="Azione non valida")
+            conn.commit()
+    return {"requested": len(clean_usernames), "changed": changed, "usernames": clean_usernames}
+
+
+def collect_known_users(query: Optional[str] = None, limit: int = 80) -> list[dict]:
+    users: dict[str, dict] = {}
+
+    def add_user(username: Any, full_name: Any = None, class_code: Any = None, school_code: Any = None, source: str = "db"):
+        raw_username = str(username or "").strip()
+        if not raw_username:
+            return
+        key = normalize_username(raw_username)
+        existing = users.get(key, {})
+        users[key] = {
+            "username": existing.get("username") or raw_username,
+            "full_name": existing.get("full_name") or (str(full_name).strip() if full_name else None),
+            "class_code": existing.get("class_code") or (str(class_code).strip().upper() if class_code else None),
+            "school_code": existing.get("school_code") or (str(school_code).strip().upper() if school_code else None),
+            "sources": sorted(set(existing.get("sources", [])) | {source}),
+        }
+
+    for row in list_leaderboard_entries():
+        add_user(row.get("username"), row.get("full_name"), row.get("class_code"), row.get("school_code"), "assenze")
+    for row in list_all_average_leaderboard_entries():
+        add_user(row.get("username"), row.get("full_name"), row.get("class_code"), row.get("school_code"), "voti")
+    with sessions_lock:
+        for sess in sessions.values():
+            if sess.get("expires", 0) < time.time():
+                continue
+            profile = sess.get("profile") if isinstance(sess.get("profile"), dict) else {}
+            add_user(
+                sess.get("username") or getattr(sess.get("user"), "uid", None),
+                profile.get("full_name"),
+                profile.get("class_code"),
+                profile.get("school_code"),
+                "sessione",
+            )
+    with get_db_connection() as conn:
+        rows = conn.execute("SELECT DISTINCT username FROM user_badge_assignments").fetchall()
+    for row in rows:
+        add_user(row["username"], source="badge")
+
+    needle = (query or "").strip().lower()
+    result = []
+    for item in users.values():
+        haystack = " ".join([
+            str(item.get("username") or ""),
+            str(item.get("full_name") or ""),
+            str(item.get("class_code") or ""),
+            str(item.get("school_code") or ""),
+        ]).lower()
+        if needle and needle not in haystack:
+            continue
+        item["badges"] = list_user_badges(item.get("username"))
+        result.append(item)
+    result.sort(key=lambda item: ((item.get("full_name") or item.get("username") or "").lower()))
+    return result[: max(1, min(int(limit), 200))]
+
+
+def invalidate_session_me_caches_for_badges() -> None:
+    with sessions_lock:
+        for sess in sessions.values():
+            sess["me_cache"] = None
+            profile = sess.get("profile")
+            if isinstance(profile, dict):
+                profile.pop("badges", None)
+
+
+
+def enrich_entry_with_badges(entry: dict) -> dict:
+    enriched = dict(entry)
+    enriched["badges"] = list_user_badges(enriched.get("username"))
+    return enriched
+
+
 async def broadcast_leaderboard_change(action: str, username: str):
     await ws_manager.broadcast(
         {
@@ -1295,6 +1604,8 @@ def build_active_sessions_snapshot() -> list[dict]:
             items.append(
                 {
                     "username": str(uid).strip(),
+                    "full_name": (sess.get("profile") or {}).get("full_name") if isinstance(sess.get("profile"), dict) else None,
+                    "badges": list_user_badges(str(uid).strip(), getattr(sess.get("user"), "ident", None)),
                     "logged_at": sess.get("created_at", now),
                 }
             )
@@ -1306,6 +1617,7 @@ def record_admin_login_event(username: str) -> dict:
     event = {
         "type": "user_login",
         "username": username.strip(),
+        "badges": list_user_badges(username),
         "timestamp": time.time(),
     }
     with admin_events_lock:
@@ -1426,6 +1738,7 @@ def session_me(
         profile = build_session_profile(u, card_res=card_res)
         _store_session_profile(sess, profile)
         result = {"ok": True, "authenticated": True, **profile}
+        result["badges"] = list_user_badges(profile.get("username"), getattr(u, "ident", None))
         sess["me_cache"] = (time.time() + SESSION_ME_CACHE_TTL, result)
         return result
 
@@ -1795,6 +2108,7 @@ def _session_profile_from_cache(sess: dict) -> dict:
             "class_code": data.get("class_code"),
             "is_admin": data.get("is_admin"),
             "easter_egg_eligible": data.get("easter_egg_eligible"),
+            "badges": data.get("badges") or [],
         }
 
     profile = sess.get("profile")
@@ -1813,6 +2127,7 @@ def _store_session_profile(sess: dict, profile: dict) -> None:
         "class_code": profile.get("class_code"),
         "is_admin": profile.get("is_admin"),
         "easter_egg_eligible": profile.get("easter_egg_eligible"),
+        "badges": profile.get("badges") or [],
     }
 
 
@@ -2192,6 +2507,7 @@ def get_leaderboard(
                     "visible_in_leaderboard": item.get("visible_in_leaderboard", True),
                     "updated_at": item.get("updated_at"),
                     "is_me": item_is_me,
+                    "badges": list_user_badges(item.get("username")),
                 }
             )
 
@@ -2379,6 +2695,7 @@ def get_average_leaderboard(
                     "visible_in_leaderboard": item.get("visible_in_leaderboard", True),
                     "updated_at": item.get("updated_at"),
                     "is_me": item_is_me,
+                    "badges": list_user_badges(item.get("username")),
                 }
             )
 
@@ -2688,7 +3005,7 @@ def admin_overview(_: Utente = Depends(current_admin)):
 
 @app.get("/admin/leaderboard")
 def admin_leaderboard(_: Utente = Depends(current_admin)):
-    entries = list_leaderboard_entries()
+    entries = [enrich_entry_with_badges(item) for item in list_leaderboard_entries()]
     return {"ok": True, "items": entries}
 
 
@@ -2716,7 +3033,7 @@ async def admin_delete_leaderboard(username: str, _: Utente = Depends(current_ad
 
 @app.get("/admin/average-leaderboard")
 def admin_average_leaderboard(_: Utente = Depends(current_admin)):
-    entries = list_average_leaderboard_users_for_admin()
+    entries = [enrich_entry_with_badges(item) for item in list_average_leaderboard_users_for_admin()]
     return {"ok": True, "items": entries}
 
 
@@ -2760,6 +3077,62 @@ async def admin_delete_average_leaderboard(
         await broadcast_average_leaderboard_change("delete", username.strip())
     return {"ok": True, "removed": removed}
 
+
+
+
+@app.get("/admin/users/search")
+def admin_search_users(
+    q: Optional[str] = Query(default=None),
+    limit: int = Query(default=80, ge=1, le=200),
+    _: Utente = Depends(current_admin),
+):
+    return {"ok": True, "items": collect_known_users(q, limit)}
+
+
+@app.get("/admin/badges")
+def admin_list_badges(_: Utente = Depends(current_admin)):
+    return {"ok": True, "items": list_badges()}
+
+
+@app.post("/admin/badges")
+async def admin_create_badge(body: BadgeCreateBody, _: Utente = Depends(current_admin)):
+    badge = create_badge(
+        label=body.label,
+        text_color=body.text_color,
+        background_color=body.background_color,
+        border_color=body.border_color,
+    )
+    invalidate_session_me_caches_for_badges()
+    await broadcast_leaderboard_change("badge", "*")
+    await broadcast_average_leaderboard_change("badge", "*")
+    return {"ok": True, "badge": badge}
+
+
+@app.patch("/admin/badges/{badge_id}")
+async def admin_update_badge(badge_id: int, body: BadgeUpdateBody, _: Utente = Depends(current_admin)):
+    badge = update_badge(badge_id, body)
+    invalidate_session_me_caches_for_badges()
+    await broadcast_leaderboard_change("badge", "*")
+    await broadcast_average_leaderboard_change("badge", "*")
+    return {"ok": True, "badge": badge}
+
+
+@app.delete("/admin/badges/{badge_id}")
+async def admin_delete_badge(badge_id: int, _: Utente = Depends(current_admin)):
+    removed = delete_badge(badge_id)
+    invalidate_session_me_caches_for_badges()
+    await broadcast_leaderboard_change("badge", "*")
+    await broadcast_average_leaderboard_change("badge", "*")
+    return {"ok": True, "removed": removed}
+
+
+@app.post("/admin/badges/batch")
+async def admin_badge_batch(body: BadgeBatchBody, _: Utente = Depends(current_admin)):
+    result = apply_badge_batch(badge_id=body.badge_id, usernames=body.usernames, action=body.action)
+    invalidate_session_me_caches_for_badges()
+    await broadcast_leaderboard_change("badge", "*")
+    await broadcast_average_leaderboard_change("badge", "*")
+    return {"ok": True, **result}
 
 if DEV_MODE and os.path.isdir(PUBLIC_DIR):
     app.mount("/", StaticFiles(directory=PUBLIC_DIR, html=True), name="public")

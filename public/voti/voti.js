@@ -996,6 +996,7 @@ function renderAverageLeaderboard(data) {
           <div class="leaderboard-user-main">
             <div class="leaderboard-username">${escapeHtml(item.full_name || item.username)}</div>
             ${isMe ? '<span class="leaderboard-you">Tu</span>' : ""}
+            ${renderLeaderboardBadges(item.badges)}
           </div>
           <div class="leaderboard-class">Classe: ${escapeHtml(item.class_code || "N/D")}</div>
         </div>
@@ -1219,6 +1220,20 @@ function initMobileMenu() {
   drawer
     .querySelectorAll("button")
     .forEach((btn) => btn.addEventListener("click", closeMenu));
+}
+
+function renderLeaderboardBadges(badges = []) {
+  if (!Array.isArray(badges) || !badges.length) return "";
+  return badges
+    .map((badge) => {
+      const style = [
+        `color:${escapeHtml(badge.text_color || '#fff')}`,
+        `background:${escapeHtml(badge.background_color || 'rgba(59,130,246,.16)')}`,
+        `border-color:${escapeHtml(badge.border_color || 'rgba(59,130,246,.35)')}`,
+      ].join(';');
+      return `<span class="leaderboard-user-badge" style="${style}">${escapeHtml(badge.label)}</span>`;
+    })
+    .join("");
 }
 
 function escapeHtml(value) {

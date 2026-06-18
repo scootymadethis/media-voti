@@ -6,7 +6,7 @@
     <title>Spaggiari 2 - Admin</title>
     <link rel="stylesheet" href="/common.css?v=8" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
-    <link rel="stylesheet" href="admin.css?v=3" />
+    <link rel="stylesheet" href="admin.css?v=4" />
   </head>
   <body>
     <div class="navbar">
@@ -148,6 +148,7 @@
           Classifica assenze
         </button>
         <button class="admin-tab" data-tab="voti" type="button">Classifica voti</button>
+        <button class="admin-tab" data-tab="badges" type="button">Badge utenti</button>
         <button class="admin-tab" data-tab="annunci" type="button">Annunci</button>
       </div>
 
@@ -177,6 +178,7 @@
                 <th>Classe</th>
                 <th>Ore</th>
                 <th>Visibilità</th>
+                <th>Badge</th>
                 <th>Azioni</th>
               </tr>
             </thead>
@@ -222,6 +224,59 @@
         </form>
       </section>
 
+
+      <section class="admin-panel" data-panel="badges">
+        <div class="admin-panel-header">
+          <div>
+            <h2>Badge utenti</h2>
+            <p class="admin-panel-note">Crea pill colorate, cerca utenti e assegna/rimuovi badge in batch. Usa solo utenti già presenti in sessione/cache/DB.</p>
+          </div>
+          <button type="button" class="btn-secondary" onclick="reloadBadgesAdmin()">Aggiorna</button>
+        </div>
+
+        <div class="admin-badge-layout">
+          <section class="admin-badge-card">
+            <h3>Crea badge</h3>
+            <form id="adminBadgeForm" class="admin-badge-form">
+              <label>
+                Testo badge
+                <input id="badgeLabel" type="text" maxlength="32" placeholder="Es. Admin, Beta, VIP" required />
+              </label>
+              <label>
+                Colore testo
+                <input id="badgeTextColor" type="text" value="#ffffff" placeholder="#ffffff" />
+              </label>
+              <label>
+                Sfondo
+                <input id="badgeBackgroundColor" type="text" value="rgba(59, 130, 246, 0.16)" placeholder="#7c3aed oppure rgba(...)" />
+              </label>
+              <label>
+                Bordo
+                <input id="badgeBorderColor" type="text" value="rgba(59, 130, 246, 0.35)" placeholder="#7c3aed oppure rgba(...)" />
+              </label>
+              <button type="submit" class="login-btn">Crea badge</button>
+            </form>
+            <p id="badgeAdminMsg" class="admin-msg"></p>
+            <div id="adminBadgeList" class="admin-badge-list"></div>
+          </section>
+
+          <section class="admin-badge-card">
+            <h3>Cerca utenti</h3>
+            <div class="admin-badge-toolbar">
+              <input id="badgeUserSearch" type="search" placeholder="Cerca per nome, username o classe" />
+              <select id="badgeBatchSelect" aria-label="Badge da applicare"></select>
+            </div>
+            <div class="admin-badge-toolbar">
+              <button type="button" class="btn-secondary" onclick="selectAllBadgeUsers(true)">Seleziona tutti</button>
+              <button type="button" class="btn-secondary" onclick="selectAllBadgeUsers(false)">Deseleziona</button>
+              <button type="button" onclick="applySelectedBadge('assign')">Assegna badge</button>
+              <button type="button" class="danger" onclick="applySelectedBadge('remove')">Rimuovi badge</button>
+            </div>
+            <div id="badgeUserResults" class="admin-user-results"></div>
+          </section>
+        </div>
+      </section>
+
       <section class="admin-panel" data-panel="voti">
         <div class="admin-panel-header">
           <h2>Leaderboard medie</h2>
@@ -237,6 +292,7 @@
                 <th>Username</th>
                 <th>Media</th>
                 <th>Visibilità</th>
+                <th>Badge</th>
                 <th>Azioni</th>
               </tr>
             </thead>
@@ -280,6 +336,6 @@
     <script src="/nav.js?v=2"></script>
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
-    <script src="admin.js?v=6"></script>
+    <script src="admin.js?v=7"></script>
   </body>
 </html>

@@ -5,6 +5,9 @@ let assenzeItems = [];
 let votiItems = [];
 let adminRealtimeSocket = null;
 let adminRealtimeReconnectTimer = null;
+let badgeItems = [];
+let badgeUserItems = [];
+let badgeSearchTimer = null;
 const MAX_LOGIN_FEED_ITEMS = 40;
 
 async function readJsonSafe(res) {
@@ -151,7 +154,7 @@ function setAdminWsStatus(text, state = "") {
   el.className = "admin-ws-status" + (state ? ` ${state}` : "");
 }
 
-function prependLoginFeedItem(username, timestamp) {
+function prependLoginFeedItem(username, timestamp, badges = []) {
   const feed = document.getElementById("adminLoginFeed");
   if (!feed) return;
 
@@ -164,6 +167,7 @@ function prependLoginFeedItem(username, timestamp) {
     <div>
       <strong>${escapeHtml(username)}</strong>
       <div style="color: var(--secondary); font-size: 0.84rem;">Nuovo accesso</div>
+      ${renderUserBadges(badges)}
     </div>
     <time datetime="${timestamp}">${formatDateTime(timestamp)}</time>
   `;
@@ -190,6 +194,7 @@ function renderLoginFeed(events) {
         <div>
           <strong>${escapeHtml(event.username)}</strong>
           <div style="color: var(--secondary); font-size: 0.84rem;">Accesso registrato</div>
+          ${renderUserBadges(event.badges)}
         </div>
         <time datetime="${event.timestamp}">${formatDateTime(event.timestamp)}</time>
       </article>
@@ -219,7 +224,7 @@ function handleAdminRealtimeMessage(payload) {
   }
 
   if (payload.type === "user_login") {
-    prependLoginFeedItem(payload.username, payload.timestamp);
+    prependLoginFeedItem(payload.username, payload.timestamp, payload.badges || []);
     syncActiveSessionsFromPayload(payload);
   }
 }
@@ -281,13 +286,27 @@ function visibilityBadge(visible) {
     : '<span class="admin-badge hidden">Nascosto</span>';
 }
 
+function renderUserBadges(badges = []) {
+  if (!Array.isArray(badges) || !badges.length) return '<span class="admin-muted">-</span>';
+  return `<span class="admin-user-badges">${badges
+    .map((badge) => {
+      const style = [
+        `color:${escapeHtml(badge.text_color || '#fff')}`,
+        `background:${escapeHtml(badge.background_color || 'rgba(59,130,246,.16)')}`,
+        `border-color:${escapeHtml(badge.border_color || 'rgba(59,130,246,.35)')}`,
+      ].join(';');
+      return `<span class="user-badge-pill" style="${style}">${escapeHtml(badge.label)}</span>`;
+    })
+    .join('')}</span>`;
+}
+
 function renderAssenzeTable() {
   const body = document.getElementById("assenzeTableBody");
   if (!body) return;
 
   if (!assenzeItems.length) {
     body.innerHTML =
-      '<tr><td colspan="6" class="admin-empty">Nessuna voce in classifica assenze.</td></tr>';
+      '<tr><td colspan="7" class="admin-empty">Nessuna voce in classifica assenze.</td></tr>';
     return;
   }
 
@@ -303,6 +322,7 @@ function renderAssenzeTable() {
           <td>${escapeHtml(item.class_code || "-")}</td>
           <td>${Number(item.hours || 0).toFixed(2)}</td>
           <td>${visibilityBadge(visible)}</td>
+          <td>${renderUserBadges(item.badges)}</td>
           <td>
             <div class="admin-actions">
               <button type="button" class="js-toggle-assenze" data-username="${escapeHtml(rawUsername)}">
@@ -337,7 +357,7 @@ function renderVotiTable() {
 
   if (!votiItems.length) {
     body.innerHTML =
-      '<tr><td colspan="5" class="admin-empty">Nessuna voce in classifica medie.</td></tr>';
+      '<tr><td colspan="6" class="admin-empty">Nessuna voce in classifica medie.</td></tr>';
     return;
   }
 
@@ -358,6 +378,7 @@ function renderVotiTable() {
           <td>${username}</td>
           <td>${Number(item.average || 0).toFixed(2)}${entriesHint}</td>
           <td>${visibilityBadge(visible)}</td>
+          <td>${renderUserBadges(item.badges)}</td>
           <td>
             <div class="admin-actions">
               <button type="button" data-username="${escapeHtml(rawUsername)}" class="js-toggle-voti">
@@ -417,7 +438,7 @@ async function loadDashboardData() {
       welcome.textContent = `Connesso come ${overviewRes.data.admin_username}. Gestione classifiche e monitoraggio sistema.`;
     }
 
-    await loadAdminAnnouncement();
+    await Promise.all([loadAdminAnnouncement(), loadBadgesAdmin({ silent: true })]);
   } catch (err) {
     console.error(err);
     disconnectAdminRealtime();
@@ -490,6 +511,166 @@ window.deleteVotiEntry = async function deleteVotiEntry(username) {
   if (!res.ok) return;
   await reloadVotiTable();
 };
+
+
+function setBadgeAdminMsg(text, type = "") {
+  const el = document.getElementById("badgeAdminMsg");
+  if (!el) return;
+  el.textContent = text || "";
+  el.className = "admin-msg" + (type ? ` ${type}` : "");
+}
+
+function badgeStyle(badge) {
+  return [
+    `color:${escapeHtml(badge.text_color || '#fff')}`,
+    `background:${escapeHtml(badge.background_color || 'rgba(59,130,246,.16)')}`,
+    `border-color:${escapeHtml(badge.border_color || 'rgba(59,130,246,.35)')}`,
+  ].join(';');
+}
+
+function renderBadgeList() {
+  const list = document.getElementById("adminBadgeList");
+  const select = document.getElementById("badgeBatchSelect");
+  if (select) {
+    select.innerHTML = badgeItems.length
+      ? badgeItems.map((badge) => `<option value="${badge.id}">${escapeHtml(badge.label)}</option>`).join("")
+      : '<option value="">Nessun badge</option>';
+  }
+  if (!list) return;
+  if (!badgeItems.length) {
+    list.innerHTML = '<p class="admin-empty compact">Nessun badge creato.</p>';
+    return;
+  }
+  list.innerHTML = badgeItems.map((badge) => `
+    <article class="admin-badge-row">
+      <span class="user-badge-pill" style="${badgeStyle(badge)}">${escapeHtml(badge.label)}</span>
+      <button type="button" class="danger" data-delete-badge="${badge.id}">Elimina</button>
+    </article>
+  `).join("");
+  list.querySelectorAll("[data-delete-badge]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteBadge(Number(btn.dataset.deleteBadge)));
+  });
+}
+
+function selectedBadgeUsernames() {
+  return Array.from(document.querySelectorAll(".js-badge-user-check:checked"))
+    .map((input) => input.value)
+    .filter(Boolean);
+}
+
+function renderBadgeUsers() {
+  const root = document.getElementById("badgeUserResults");
+  if (!root) return;
+  if (!badgeUserItems.length) {
+    root.innerHTML = '<p class="admin-empty compact">Nessun utente trovato. Gli utenti arrivano da sessioni, classifiche e assegnazioni badge già salvate.</p>';
+    return;
+  }
+  root.innerHTML = badgeUserItems.map((user) => `
+    <label class="admin-user-result">
+      <input class="js-badge-user-check" type="checkbox" value="${escapeHtml(user.username)}" />
+      <span class="admin-user-result-main">
+        <strong>${escapeHtml(user.full_name || user.username)}</strong>
+        <small>${escapeHtml(user.username)}${user.class_code ? ` · ${escapeHtml(user.class_code)}` : ""}${user.school_code ? ` · ${escapeHtml(user.school_code)}` : ""}</small>
+        <span>${renderUserBadges(user.badges)}</span>
+      </span>
+    </label>
+  `).join("");
+}
+
+async function loadBadgesAdmin({ silent = false } = {}) {
+  try {
+    const [badgesRes, usersRes] = await Promise.all([
+      fetchAdmin("/api/admin/badges"),
+      fetchAdmin(`/api/admin/users/search?q=${encodeURIComponent(document.getElementById("badgeUserSearch")?.value || "")}`),
+    ]);
+    if (badgesRes.res.ok) badgeItems = badgesRes.data?.items || [];
+    if (usersRes.res.ok) badgeUserItems = usersRes.data?.items || [];
+    renderBadgeList();
+    renderBadgeUsers();
+    if (!silent) setBadgeAdminMsg("Badge aggiornati.", "ok");
+  } catch (err) {
+    console.error(err);
+    if (!silent) setBadgeAdminMsg("Errore caricando badge/utenti.", "error");
+  }
+}
+
+window.reloadBadgesAdmin = loadBadgesAdmin;
+
+async function deleteBadge(badgeId) {
+  const badge = badgeItems.find((item) => Number(item.id) === Number(badgeId));
+  if (!confirm(`Eliminare il badge ${badge?.label || badgeId}? Verrà rimosso da tutti gli utenti.`)) return;
+  const { res, data } = await fetchAdmin(`/api/admin/badges/${encodeURIComponent(badgeId)}`, { method: "DELETE" });
+  if (!res.ok) {
+    setBadgeAdminMsg(data?.detail || "Errore eliminando badge.", "error");
+    return;
+  }
+  setBadgeAdminMsg("Badge eliminato.", "ok");
+  await Promise.all([loadBadgesAdmin({ silent: true }), reloadAssenzeTable(), reloadVotiTable()]);
+}
+
+window.selectAllBadgeUsers = function selectAllBadgeUsers(checked) {
+  document.querySelectorAll(".js-badge-user-check").forEach((input) => {
+    input.checked = Boolean(checked);
+  });
+};
+
+window.applySelectedBadge = async function applySelectedBadge(action) {
+  const badgeId = Number(document.getElementById("badgeBatchSelect")?.value || 0);
+  const usernames = selectedBadgeUsernames();
+  if (!badgeId) {
+    setBadgeAdminMsg("Seleziona un badge.", "error");
+    return;
+  }
+  if (!usernames.length) {
+    setBadgeAdminMsg("Seleziona almeno un utente.", "error");
+    return;
+  }
+  const { res, data } = await fetchAdmin("/api/admin/badges/batch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ badge_id: badgeId, usernames, action }),
+  });
+  if (!res.ok) {
+    setBadgeAdminMsg(data?.detail || "Operazione badge fallita.", "error");
+    return;
+  }
+  setBadgeAdminMsg(`${action === "assign" ? "Assegnati" : "Rimossi"} badge per ${data.changed ?? 0} associazioni.`, "ok");
+  await Promise.all([loadBadgesAdmin({ silent: true }), reloadAssenzeTable(), reloadVotiTable()]);
+};
+
+function initBadgeAdmin() {
+  const form = document.getElementById("adminBadgeForm");
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const body = {
+      label: document.getElementById("badgeLabel")?.value || "",
+      text_color: document.getElementById("badgeTextColor")?.value || "#ffffff",
+      background_color: document.getElementById("badgeBackgroundColor")?.value || "rgba(59, 130, 246, 0.16)",
+      border_color: document.getElementById("badgeBorderColor")?.value || "rgba(59, 130, 246, 0.35)",
+    };
+    const { res, data } = await fetchAdmin("/api/admin/badges", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      setBadgeAdminMsg(data?.detail || "Errore creando badge.", "error");
+      return;
+    }
+    form.reset();
+    document.getElementById("badgeTextColor").value = "#ffffff";
+    document.getElementById("badgeBackgroundColor").value = "rgba(59, 130, 246, 0.16)";
+    document.getElementById("badgeBorderColor").value = "rgba(59, 130, 246, 0.35)";
+    setBadgeAdminMsg("Badge creato.", "ok");
+    await loadBadgesAdmin({ silent: true });
+  });
+
+  const search = document.getElementById("badgeUserSearch");
+  search?.addEventListener("input", () => {
+    if (badgeSearchTimer) window.clearTimeout(badgeSearchTimer);
+    badgeSearchTimer = window.setTimeout(() => loadBadgesAdmin({ silent: true }), 250);
+  });
+}
 
 window.adminPanelLogout = async function adminPanelLogout() {
   disconnectAdminRealtime();
@@ -688,6 +869,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
   initAdminTabs();
   initAdminLoginForm();
+  initBadgeAdmin();
   initAdminAnnouncementForm();
 
   const ok = await ensureMainLogin();
