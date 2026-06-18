@@ -23,6 +23,7 @@ import time
 import secrets
 import json
 import hashlib
+import copy
 import requests
 from math import ceil
 from threading import Lock
@@ -104,6 +105,9 @@ SESSION_TTL = 60 * 30  # 30 minuti
 SESSION_ME_CACHE_TTL = int(os.getenv("SESSION_ME_CACHE_TTL", "60"))
 # Cache per-sessione della student card (condivisa tra /session/me e /card).
 CARD_CACHE_TTL = int(os.getenv("CARD_CACHE_TTL", "300"))
+# Cache globale per ogni chiamata upstream ClasseViva: ogni endpoint viene chiamato
+# al massimo una volta ogni 5 minuti per utente/argomenti.
+UPSTREAM_ENDPOINT_CACHE_TTL = int(os.getenv("UPSTREAM_ENDPOINT_CACHE_TTL", "300"))
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").strip().lower() not in {"0", "false", "no"}
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "S10371278X").strip()
 ADMIN_SESSION_TTL = 60 * 30  # allineato alla sessione principale
@@ -131,6 +135,9 @@ sessions_lock = Lock()
 db_lock = Lock()
 login_attempts_lock = Lock()
 login_attempts: dict[str, list[float]] = {}
+upstream_cache_lock = Lock()
+upstream_cache_locks: dict[str, Lock] = {}
+upstream_cache: dict[str, tuple[float, Any]] = {}
 
 
 class LoginBody(BaseModel):
@@ -935,6 +942,160 @@ def get_session_username(user: Utente) -> str:
     return str(username).strip()
 
 
+# ---- cache upstream ClasseViva: 1 call / 5 minuti / utente / endpoint ----
+def _cache_user_key_from_values(uid: Optional[str], ident: Optional[str] = None) -> str:
+    raw = str(uid or ident or "unknown").strip().lower()
+    return hashlib.sha256(raw.encode("utf-8", errors="ignore")).hexdigest()
+
+
+def _cache_user_key(u: Utente) -> str:
+    return _cache_user_key_from_values(
+        getattr(u, "uid", None),
+        getattr(u, "ident", None),
+    )
+
+
+def _cache_key(parts: list[Any]) -> str:
+    payload = json.dumps(parts, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(payload.encode("utf-8", errors="ignore")).hexdigest()
+
+
+def _get_cache_lock(key: str) -> Lock:
+    with upstream_cache_lock:
+        lock = upstream_cache_locks.get(key)
+        if lock is None:
+            lock = upstream_cache_locks[key] = Lock()
+        return lock
+
+
+def _get_cached_value(key: str, *, clone: bool = True) -> Optional[Any]:
+    now = time.time()
+    with upstream_cache_lock:
+        cached = upstream_cache.get(key)
+        if not cached:
+            return None
+        expires, value = cached
+        if expires <= now:
+            upstream_cache.pop(key, None)
+            return None
+        return copy.deepcopy(value) if clone else value
+
+
+def _set_cached_value(key: str, value: Any, *, ttl: int = UPSTREAM_ENDPOINT_CACHE_TTL, clone: bool = True) -> None:
+    stored = copy.deepcopy(value) if clone else value
+    with upstream_cache_lock:
+        upstream_cache[key] = (time.time() + ttl, stored)
+
+
+def cached_call(key: str, fetcher, *, ttl: int = UPSTREAM_ENDPOINT_CACHE_TTL, clone: bool = True) -> Any:
+    cached = _get_cached_value(key, clone=clone)
+    if cached is not None:
+        return cached
+
+    lock = _get_cache_lock(key)
+    with lock:
+        cached = _get_cached_value(key, clone=clone)
+        if cached is not None:
+            return cached
+        value = fetcher()
+        # Gli errori non vengono cachati: solo una risposta valida popola la cache.
+        _set_cached_value(key, value, ttl=ttl, clone=clone)
+        return copy.deepcopy(value) if clone else value
+
+
+def cached_login_user(username: str, password: str) -> Utente:
+    normalized_username = username.strip()
+    # Include la password hashata: evita di accettare una password errata solo perché
+    # lo stesso utente ha fatto login correttamente nei 5 minuti precedenti.
+    password_hash = hashlib.sha256(password.encode("utf-8", errors="ignore")).hexdigest()
+    user_key = _cache_user_key_from_values(normalized_username)
+    key = _cache_key(["cvv-login", user_key, password_hash])
+
+    def fetch_login() -> Utente:
+        user = Utente(uid=normalized_username, pwd=password)
+        user.login()
+        return user
+
+    return cached_call(key, fetch_login, ttl=UPSTREAM_ENDPOINT_CACHE_TTL, clone=False)
+
+
+def _response_json_or_error(resp: Any, *, context: str) -> Any:
+    if hasattr(resp, "status_code"):
+        raise_for_upstream_http_status(resp.status_code, context=context)
+        try:
+            return resp.json()
+        except ValueError:
+            return {}
+    if hasattr(resp, "json"):
+        try:
+            return resp.json()
+        except ValueError:
+            return {}
+    return resp
+
+
+def cached_cvv_request_json(u: Utente, endpoint_name: str, request_url: Any, *args: Any) -> Any:
+    key = _cache_key(["cvv-request", _cache_user_key(u), endpoint_name, list(args)])
+
+    def fetch() -> Any:
+        resp = u.request(request_url, *args)
+        return _response_json_or_error(resp, context=f"{endpoint_name} upstream")
+
+    return cached_call(key, fetch)
+
+
+def _format_request_url(request_url: Any, *args: Any) -> str:
+    template = request_url[0] if isinstance(request_url, (list, tuple)) else str(request_url)
+    return template.format(*args)
+
+
+def cached_cvv_direct_json(u: Utente, endpoint_name: str, request_url: Any, *args: Any, timeout: int = 20) -> Any:
+    url = _format_request_url(request_url, *args)
+    key = _cache_key(["cvv-direct", _cache_user_key(u), endpoint_name, url])
+
+    def fetch() -> Any:
+        try:
+            resp = requests.get(url, headers=u.get_headers(), timeout=timeout)
+        except requests.RequestException as e:
+            raise UpstreamUnavailable(f"Spaggiari irraggiungibile: {e}")
+        raise_for_upstream_http_status(resp.status_code, context=f"{endpoint_name} upstream")
+        try:
+            return resp.json()
+        except ValueError:
+            return {}
+
+    return cached_call(key, fetch)
+
+
+def cached_agenda_json(u: Utente, start: str, end: str) -> Any:
+    user_ident = getattr(u, "ident", None) or getattr(u, "uid", None)
+    if not user_ident:
+        raise HTTPException(status_code=500, detail="Impossibile determinare ident utente")
+    return cached_cvv_direct_json(u, "agenda", RequestURLs.agenda, user_ident, start, end, timeout=20)
+
+def cached_external_get_json_for_user(
+    u: Utente,
+    endpoint_name: str,
+    url: str,
+    *,
+    params: Optional[dict[str, Any]] = None,
+    timeout: int = 20,
+) -> Any:
+    normalized_params = params or {}
+    key = _cache_key(["external-get", _cache_user_key(u), endpoint_name, url, normalized_params])
+
+    def fetch() -> Any:
+        resp = requests.get(url, params=normalized_params, timeout=timeout)
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=502, detail=f"{endpoint_name}: {resp.status_code}")
+        try:
+            return resp.json()
+        except ValueError:
+            return {}
+
+    return cached_call(key, fetch)
+
+
 def is_admin_username(username: str) -> bool:
     return username.strip() == ADMIN_USERNAME
 
@@ -1101,8 +1262,7 @@ def login(
     client_ip = get_client_ip(request)
     check_login_rate_limit(client_ip)
     try:
-        u = Utente(uid=body.username, pwd=body.password)
-        u.login()
+        u = cached_login_user(body.username, body.password)
 
         sid = create_session(u)
         username = body.username.strip()
@@ -1253,10 +1413,12 @@ async def leaderboard_ws(websocket: WebSocket):
 @app.post("/assenze")
 def assenze(u: Utente = Depends(current_user)):
     try:
-        assenze = u.request(RequestURLs.assenze).json()
+        assenze = cached_cvv_request_json(u, "assenze", RequestURLs.assenze)
         return {"ok": True, "assenze": assenze}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 def raise_for_upstream_http_status(status_code: int, *, context: str = "upstream") -> None:
@@ -1274,105 +1436,12 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
     try:
         start = body.start or time.strftime("%Y%m%d")
         end = body.end or start
-
-        user_ident = getattr(u, "ident", None) or getattr(u, "uid", None)
-        if not user_ident:
-            raise HTTPException(status_code=500, detail="Impossibile determinare ident utente")
-
-        try:
-            url_template = RequestURLs.agenda[0]
-            formatted_url = url_template.format(user_ident, start, end)
-        except Exception as e:
-            print("Errore nella formattazione url agenda:", e)
-            formatted_url = None
-
-        try:
-            resp = u.request(RequestURLs.agenda, start, end)
-            if hasattr(resp, "status_code"):
-                if resp.status_code in {401, 403}:
-                    raise_for_upstream_http_status(resp.status_code, context="agenda upstream")
-                if resp.status_code >= 400:
-                    print(f"u.request returned status {resp.status_code}, falling back to direct request")
-                else:
-                    try:
-                        agenda = resp.json()
-                    except Exception:
-                        agenda = {}
-                    return {"ok": True, "agenda": agenda}
-            else:
-                try:
-                    agenda = resp.json()
-                except Exception:
-                    agenda = resp
-                return {"ok": True, "agenda": agenda}
-        except Exception as lib_exc:
-            print("u.request error:", repr(lib_exc))
-
-        if formatted_url:
-            try:
-                headers = {}
-                try:
-                    headers = u.get_headers()
-                except Exception:
-                    pass
-                upstream = requests.get(formatted_url, headers=headers, timeout=20)
-                raise_for_upstream_http_status(upstream.status_code, context="agenda upstream")
-                try:
-                    data = upstream.json()
-                except Exception:
-                    data = {}
-                return {"ok": True, "agenda": data}
-            except HTTPException:
-                raise
-            except Exception as e:
-                print("Richiesta diretta upstream ha failato:", repr(e))
-                raise HTTPException(status_code=502, detail="Upstream non raggiungibile, fai un check ai log")
-        else:
-            raise HTTPException(status_code=502, detail="Formattazione upstream url agenda fallita")
-
+        data = cached_agenda_json(u, start, end)
+        return {"ok": True, "agenda": data}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
-
-
-MARCONI_ORARIO_API = "https://apps.marconivr.it/orario/api.php"
-MARCONI_ORARIO_CVERS = "-1"
-MARCONI_MIUR_SCHOOL_CODE = "VRTF03000V"
-ORARIO_ACCESS_DENIED_DETAIL = (
-    "Al momento la funzione orario è disponibile solo per gli studenti dell'Istituto Marconi."
-)
-
-
-def extract_student_card_fields(card_res) -> dict:
-    if not isinstance(card_res, dict):
-        return {}
-    inner = card_res.get("card") if isinstance(card_res.get("card"), dict) else card_res
-    if isinstance(inner, dict) and isinstance(inner.get("card"), dict):
-        inner = inner["card"]
-    return inner if isinstance(inner, dict) else {}
-
-
-def is_marconi_student_card(card_res) -> bool:
-    fields = extract_student_card_fields(card_res)
-    miur = (
-        (fields.get("miurSchoolCode") or fields.get("miurDivisionCode") or "")
-        .strip()
-        .upper()
-    )
-    label = " ".join(
-        str(fields.get(key) or "")
-        for key in ("schName", "schDedication", "schCity", "schProv", "schCode")
-    ).lower()
-    name_ok = "marconi" in label
-    miur_ok = miur == MARCONI_MIUR_SCHOOL_CODE
-
-    if miur and not miur_ok:
-        return False
-    if miur_ok:
-        return True
-    return name_ok
-
 
 class UpstreamUnavailable(HTTPException):
     """Spaggiari ha risposto male (429/5xx) o irraggiungibile: NON è logout."""
@@ -1382,29 +1451,20 @@ class UpstreamUnavailable(HTTPException):
 
 
 def _fetch_student_card_raw(u: Utente) -> dict:
-    """Chiama /card leggendo lo status reale.
+    """Chiama /card tramite cache globale per utente/endpoint.
 
-    La libreria ClasseVivaAPI collassa ogni non-200 a None, quindi non distingue
-    un 401 (sessione scaduta → logout) da un 429 (rate limit → riprova).
-    Qui facciamo la GET direttamente per leggere response.status_code.
+    La cache evita più di una chiamata upstream /card ogni 5 minuti per utente,
+    condividendo il risultato tra /session/me, /card e controlli leaderboard.
     """
     if not getattr(u, "is_logged_in", False):
         raise HTTPException(status_code=401, detail="Utente non loggato")
-    url = RequestURLs.card[0].format(u.ident)
     try:
-        resp = requests.get(url, headers=u.get_headers(), timeout=15)
-    except requests.RequestException as e:
-        raise UpstreamUnavailable(f"Spaggiari irraggiungibile: {e}")
-
-    if resp.status_code in {401, 403}:
-        raise HTTPException(status_code=401, detail="Sessione Spaggiari scaduta")
-    if resp.status_code != 200:
-        # 429 rate limit, 5xx, ecc.: NON è logout, l'utente resta loggato.
-        raise UpstreamUnavailable(f"Spaggiari status {resp.status_code}")
-    try:
-        return resp.json()
-    except ValueError as e:
+        data = cached_cvv_direct_json(u, "card", RequestURLs.card, u.ident, timeout=15)
+    except HTTPException:
+        raise
+    except Exception as e:
         raise UpstreamUnavailable(f"Card non valida: {e}")
+    return data if isinstance(data, dict) else {}
 
 
 def fetch_student_card_or_401(u: Utente) -> dict:
@@ -1505,7 +1565,7 @@ def get_user_profile_for_leaderboards(u: Utente, card_res: Optional[dict] = None
     class_code = None
     today = time.strftime("%Y%m%d")
     try:
-        agenda_res = u.request(RequestURLs.agenda, today, today).json()
+        agenda_res = cached_agenda_json(u, today, today)
         class_code = _extract_first_lesson_class_code(agenda_res)
     except Exception:
         class_code = None
@@ -1610,14 +1670,14 @@ def orario_eligible(u: Utente = Depends(current_user)):
 def orario_meta(u: Utente = Depends(current_user)):
     require_marconi_orario_access(u)
     try:
-        upstream = requests.get(
+        payload = cached_external_get_json_for_user(
+            u,
+            "orario_meta",
             MARCONI_ORARIO_API,
             params={"CVers": MARCONI_ORARIO_CVERS},
             timeout=20,
         )
-        if upstream.status_code >= 400:
-            raise HTTPException(status_code=502, detail=f"Orario Marconi: {upstream.status_code}")
-        return {"ok": True, "meta": upstream.json()}
+        return {"ok": True, "meta": payload}
     except HTTPException:
         raise
     except Exception as e:
@@ -1634,14 +1694,13 @@ def orario_class(
     if not ORARIO_CLASS_PATTERN.match(code):
         raise HTTPException(status_code=400, detail="Codice classe non valido")
     try:
-        upstream = requests.get(
+        payload = cached_external_get_json_for_user(
+            u,
+            "orario_class",
             MARCONI_ORARIO_API,
             params={"class": code, "CVers": MARCONI_ORARIO_CVERS},
             timeout=20,
         )
-        if upstream.status_code >= 400:
-            raise HTTPException(status_code=502, detail=f"Orario Marconi: {upstream.status_code}")
-        payload = upstream.json()
         entries = payload if isinstance(payload, list) else []
         return {"ok": True, "class": code, "entries": entries}
     except HTTPException:
@@ -1653,28 +1712,34 @@ def orario_class(
 @app.post("/didattica")
 def didattica(u: Utente = Depends(current_user)):
     try:
-        didattica = u.request(RequestURLs.didattica).json()
+        didattica = cached_cvv_request_json(u, "didattica", RequestURLs.didattica)
         return {"ok": True, "didattica": didattica}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.post("/libri")
 def libri(u: Utente = Depends(current_user)):
     try:
-        libri = u.request(RequestURLs.libri).json()
+        libri = cached_cvv_request_json(u, "libri", RequestURLs.libri)
         return {"ok": True, "libri": libri}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.post("/calendario")
 def calendario(u: Utente = Depends(current_user)):
     try:
-        calendario = u.request(RequestURLs.calendario).json()
+        calendario = cached_cvv_request_json(u, "calendario", RequestURLs.calendario)
         return {"ok": True, "calendario": calendario}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.post("/card")
@@ -1690,73 +1755,89 @@ def card(
 @app.post("/voti")
 def voti(u: Utente = Depends(current_user)):
     try:
-        voti = u.request(RequestURLs.voti).json()
+        voti = cached_cvv_request_json(u, "voti", RequestURLs.voti)
         return {"ok": True, "voti": voti}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.post("/lezioni_oggi")
 def lezioni_oggi(u: Utente = Depends(current_user)):
     try:
-        lezioni_oggi = u.request(RequestURLs.lezioni_oggi).json()
+        lezioni_oggi = cached_cvv_request_json(u, "lezioni_oggi", RequestURLs.lezioni_oggi)
         return {"ok": True, "lezioni_oggi": lezioni_oggi}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.post("/lezioni_giorno")
 def lezioni_giorno(u: Utente = Depends(current_user)):
     try:
-        lezioni_giorno = u.request(RequestURLs.lezioni_giorno).json()
+        lezioni_giorno = cached_cvv_request_json(u, "lezioni_giorno", RequestURLs.lezioni_giorno)
         return {"ok": True, "lezioni_giorno": lezioni_giorno}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.post("/note")
 def note(u: Utente = Depends(current_user)):
     try:
-        note = u.request(RequestURLs.note).json()
+        note = cached_cvv_request_json(u, "note", RequestURLs.note)
         return {"ok": True, "note": note}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.post("/periods")
 def periods(u: Utente = Depends(current_user)):
     try:
-        periods = u.request(RequestURLs.periods).json()
+        periods = cached_cvv_request_json(u, "periods", RequestURLs.periods)
         return {"ok": True, "periods": periods}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.post("/materie")
 def materie(u: Utente = Depends(current_user)):
     try:
-        materie = u.request(RequestURLs.materie).json()
+        materie = cached_cvv_request_json(u, "materie", RequestURLs.materie)
         return {"ok": True, "materie": materie}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.post("/noticeboard")
 def noticeboard(u: Utente = Depends(current_user)):
     try:
-        noticeboard = u.request(RequestURLs.noticeboard).json()
+        noticeboard = cached_cvv_request_json(u, "noticeboard", RequestURLs.noticeboard)
         return {"ok": True, "noticeboard": noticeboard}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.post("/documenti")
 def documenti(u: Utente = Depends(current_user)):
     try:
-        documenti = u.request(RequestURLs.documenti).json()
+        documenti = cached_cvv_request_json(u, "documenti", RequestURLs.documenti)
         return {"ok": True, "documenti": documenti}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.get("/leaderboard/me")
@@ -1789,7 +1870,7 @@ async def update_leaderboard(
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
         profile = get_user_profile_for_leaderboards(u)
-        assenze_payload = u.request(RequestURLs.assenze).json()
+        assenze_payload = cached_cvv_request_json(u, "assenze", RequestURLs.assenze)
         computed_hours = calculate_absence_hours_from_payload(assenze_payload)
 
         existing = get_leaderboard_entry(session_username)
@@ -1967,7 +2048,7 @@ async def update_average_leaderboard(
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
         profile = get_user_profile_for_leaderboards(u)
-        voti_payload = u.request(RequestURLs.voti).json()
+        voti_payload = cached_cvv_request_json(u, "voti", RequestURLs.voti)
         computed_average = calculate_general_average_from_payload(voti_payload)
 
         normalized_subject = body.subject_name.strip()
@@ -2358,8 +2439,7 @@ def admin_login(
         raise HTTPException(status_code=401, detail="Sessione non valida")
 
     try:
-        verify_user = Utente(uid=username, pwd=body.password)
-        verify_user.login()
+        cached_login_user(username, body.password)
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
 
