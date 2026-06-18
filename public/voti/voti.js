@@ -988,7 +988,7 @@ function renderAverageLeaderboard(data) {
 
   list.innerHTML = items.map((item) => {
     const rankClass = item.rank === 1 ? "rank-1" : item.rank === 2 ? "rank-2" : item.rank === 3 ? "rank-3" : "";
-    const isMe = myUsername && item.username === myUsername;
+    const isMe = Boolean(item.is_me) || (myUsername && String(item.username || "").toUpperCase() === String(myUsername).toUpperCase());
     return `
       <div class="leaderboard-row ${isMe ? "is-me" : ""}">
         <div class="rank-pill ${rankClass}">#${item.rank}</div>

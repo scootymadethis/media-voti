@@ -25,6 +25,7 @@ const LESSON_SLOTS = [
 
 let allClasses = [];
 let selectedClass = null;
+let currentSessionProfile = null;
 let currentHighlight = { day: null, ora: null };
 let highlightTimer = null;
 let comboboxOpen = false;
@@ -673,12 +674,20 @@ function bindClassPicker() {
 }
 
 async function resolveInitialClass() {
-  const saved = localStorage.getItem(ORARIO_CLASS_STORAGE_KEY);
-  if (saved && allClasses.includes(saved.toUpperCase())) {
-    return saved.toUpperCase();
+  const candidates = [
+    localStorage.getItem(ORARIO_CLASS_STORAGE_KEY),
+    currentSessionProfile?.class_code,
+    localStorage.getItem("classCode"),
+  ];
+
+  for (const value of candidates) {
+    const matched = matchMarconiClass(value, allClasses);
+    if (matched) return matched;
   }
-  setStatus("Rilevo la tua classe dall'agenda…");
-  return detectClassFromAgenda(allClasses);
+
+  // Non facciamo più scansioni agenda qui: la pagina orario usa solo dati già
+  // salvati/cachati. Se la classe non è in cache, l'utente la sceglie dal menu.
+  return null;
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -686,6 +695,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const session = await window.SessionAuth?.requireAuth();
   if (!session) return;
+  currentSessionProfile = session;
+  if (session.class_code) localStorage.setItem("classCode", String(session.class_code).toUpperCase());
+  if (session.school_code) localStorage.setItem("schoolCode", String(session.school_code).toUpperCase());
 
   setLoading(true, "Verifica scuola…");
   try {
@@ -694,6 +706,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       showOrarioSchoolGate(access.detail);
       return;
     }
+    if (access.class_code) localStorage.setItem("classCode", String(access.class_code).toUpperCase());
+    if (access.school_code) localStorage.setItem("schoolCode", String(access.school_code).toUpperCase());
     hideOrarioSchoolGate();
 
     bindClassPicker();

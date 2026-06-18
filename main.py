@@ -128,6 +128,46 @@ def parse_easter_egg_usernames() -> set[str]:
 
 EASTER_EGG_USERNAMES = parse_easter_egg_usernames()
 
+
+def normalize_username(value: Any) -> str:
+    """Username canonico per confronti locali (admin, easter egg, evidenziazione)."""
+    return str(value or "").strip().upper()
+
+
+def username_aliases(value: Any, ident: Optional[Any] = None) -> set[str]:
+    """Varianti locali dello stesso account, senza chiamate upstream.
+
+    CVV-API espone spesso uid completo (es. S10371278X) e ident numerico
+    (es. 10371278). Per permessi/admin/classifiche li consideriamo alias.
+    """
+    aliases: set[str] = set()
+    for raw in (value, ident):
+        s = normalize_username(raw)
+        if not s:
+            continue
+        aliases.add(s)
+        if s[0:1] in {"S", "G"}:
+            no_prefix = s[1:]
+            aliases.add(no_prefix)
+            digits = "".join(ch for ch in no_prefix if ch.isdigit())
+            if digits:
+                aliases.add(digits)
+                aliases.add(f"S{digits}")
+                aliases.add(f"G{digits}")
+        digits = "".join(ch for ch in s if ch.isdigit())
+        if digits:
+            aliases.add(digits)
+            aliases.add(f"S{digits}")
+            aliases.add(f"G{digits}")
+    return {item for item in aliases if item}
+
+
+ADMIN_USERNAME_ALIASES = username_aliases(ADMIN_USERNAME)
+EASTER_EGG_USERNAME_ALIASES = set()
+for _egg_username in EASTER_EGG_USERNAMES:
+    EASTER_EGG_USERNAME_ALIASES.update(username_aliases(_egg_username))
+
+
 # ---- session store in memoria ----
 sessions: dict[str, dict] = {}
 admin_sessions: dict[str, dict] = {}
@@ -875,6 +915,38 @@ def destroy_session(session_id: Optional[str], admin_session_id: Optional[str] =
             admin_sessions.pop(admin_session_id, None)
 
 
+def _first_saved_profile_for_user(username: str, ident: Optional[Any] = None) -> dict:
+    """Recupera nome/classe/scuola già salvati nel DB locale, senza upstream."""
+    aliases = username_aliases(username, ident)
+    for alias in aliases:
+        item = get_leaderboard_entry(alias)
+        if item:
+            return {
+                "full_name": item.get("full_name"),
+                "class_code": item.get("class_code"),
+                "school_code": item.get("school_code"),
+            }
+    for row in list_all_average_leaderboard_entries():
+        if normalize_username(row.get("username")) in aliases:
+            return {
+                "full_name": row.get("full_name"),
+                "class_code": row.get("class_code"),
+                "school_code": row.get("school_code"),
+            }
+    return {"full_name": None, "class_code": None, "school_code": None}
+
+
+def _extract_class_code_from_card_fields(fields: dict) -> Optional[str]:
+    for key in ("classDesc", "classCode", "classe", "clsDesc", "clsCode", "className"):
+        raw = str(fields.get(key) or "").strip().upper()
+        if not raw:
+            continue
+        raw = raw.replace(" ", "")
+        match = re.search(r"(\\d{1,2}[A-Z]{1,4})", raw)
+        return match.group(1) if match else raw[:16]
+    return None
+
+
 def build_session_profile(u: Utente, card_res: Optional[dict] = None) -> dict:
     username = get_session_username(u)
     profile = {
@@ -885,15 +957,31 @@ def build_session_profile(u: Utente, card_res: Optional[dict] = None) -> dict:
         "is_admin": is_admin_username(username),
         "easter_egg_eligible": is_easter_egg_username(username),
     }
-    try:
-        lb_profile = get_user_profile_for_leaderboards(u, card_res=card_res)
-        profile["full_name"] = lb_profile.get("full_name")
-        profile["school_code"] = lb_profile.get("school_code")
-        profile["class_code"] = lb_profile.get("class_code")
-    except HTTPException:
-        pass
-    return profile
 
+    # 1) Dati locali già salvati (zero richieste upstream).
+    saved = _first_saved_profile_for_user(username, getattr(u, "ident", None))
+    profile.update({k: v for k, v in saved.items() if v})
+
+    # 2) Card già disponibile in cache/sessione: arricchisce senza nuove chiamate.
+    if isinstance(card_res, dict):
+        try:
+            fields = extract_student_card_fields(card_res)
+            full_name = f"{(fields.get('firstName') or '').strip()} {(fields.get('lastName') or '').strip()}".strip()
+            if full_name:
+                profile["full_name"] = full_name
+            school_code = (
+                str(fields.get("schCode") or fields.get("miurSchoolCode") or "").strip().upper()
+                or None
+            )
+            if school_code:
+                profile["school_code"] = school_code
+            class_code = _extract_class_code_from_card_fields(fields)
+            if class_code:
+                profile["class_code"] = class_code
+        except Exception:
+            pass
+
+    return profile
 
 def get_session_record(session_id: Optional[str]) -> dict:
     purge_expired_sessions()
@@ -936,7 +1024,7 @@ def current_user(request: Request, session_id: Optional[str] = Cookie(default=No
 
 
 def get_session_username(user: Utente) -> str:
-    username = getattr(user, "uid", None)
+    username = getattr(user, "_app_username", None) or getattr(user, "uid", None)
     if not username:
         raise HTTPException(status_code=401, detail="Utente non valido")
     return str(username).strip()
@@ -1014,6 +1102,9 @@ def cached_login_user(username: str, password: str) -> Utente:
     def fetch_login() -> Utente:
         user = Utente(uid=normalized_username, pwd=password)
         user.login()
+        # Mantiene l'username digitato come identità app: niente round-trip extra.
+        user._app_username = normalized_username
+        user.uid = normalized_username
         return user
 
     return cached_call(key, fetch_login, ttl=UPSTREAM_ENDPOINT_CACHE_TTL, clone=False)
@@ -1097,11 +1188,11 @@ def cached_external_get_json_for_user(
 
 
 def is_admin_username(username: str) -> bool:
-    return username.strip() == ADMIN_USERNAME
+    return bool(username_aliases(username) & ADMIN_USERNAME_ALIASES)
 
 
 def is_easter_egg_username(username: str) -> bool:
-    return username.strip() in EASTER_EGG_USERNAMES
+    return bool(username_aliases(username) & EASTER_EGG_USERNAME_ALIASES)
 
 
 def godot_export_available() -> bool:
@@ -1236,12 +1327,16 @@ async def broadcast_admin_login(username: str):
 
 
 # ---- LOGIN UNA VOLTA ----
-def create_session(u: Utente) -> str:
+def create_session(u: Utente, username: Optional[str] = None) -> str:
+    if username:
+        u._app_username = username.strip()
+        u.uid = username.strip()
     sid = secrets.token_urlsafe(32)
     now = time.time()
     with sessions_lock:
         sessions[sid] = {
             "user": u,
+            "username": get_session_username(u),
             "created_at": now,
             "expires": now + SESSION_TTL,
             "me_lock": Lock(),  # anti-burst: serializza /session/me della stessa sessione
@@ -1264,7 +1359,7 @@ def login(
     try:
         u = cached_login_user(body.username, body.password)
 
-        sid = create_session(u)
+        sid = create_session(u, body.username.strip())
         username = body.username.strip()
         background_tasks.add_task(broadcast_admin_login, username)
 
@@ -1443,6 +1538,39 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
 
+MARCONI_ORARIO_API = "https://apps.marconivr.it/orario/api.php"
+MARCONI_ORARIO_CVERS = "-1"
+MARCONI_MIUR_SCHOOL_CODE = "VRTF03000V"
+ORARIO_ACCESS_DENIED_DETAIL = (
+    "Al momento la funzione orario è disponibile solo per gli studenti dell'Istituto Marconi."
+)
+
+
+def extract_student_card_fields(card_res) -> dict:
+    if not isinstance(card_res, dict):
+        return {}
+    inner = card_res.get("card") if isinstance(card_res.get("card"), dict) else card_res
+    if isinstance(inner, dict) and isinstance(inner.get("card"), dict):
+        inner = inner["card"]
+    return inner if isinstance(inner, dict) else {}
+
+
+def is_marconi_student_card(card_res) -> bool:
+    fields = extract_student_card_fields(card_res)
+    miur = str(fields.get("miurSchoolCode") or fields.get("miurDivisionCode") or "").strip().upper()
+    label = " ".join(
+        str(fields.get(key) or "")
+        for key in ("schName", "schDedication", "schCity", "schProv", "schCode")
+    ).lower()
+    name_ok = "marconi" in label
+    miur_ok = miur == MARCONI_MIUR_SCHOOL_CODE
+    if miur and not miur_ok:
+        return False
+    if miur_ok:
+        return True
+    return name_ok
+
+
 class UpstreamUnavailable(HTTPException):
     """Spaggiari ha risposto male (429/5xx) o irraggiungibile: NON è logout."""
 
@@ -1554,28 +1682,32 @@ def _extract_first_lesson_class_code(agenda_res: Any) -> Optional[str]:
 
 
 def get_user_profile_for_leaderboards(u: Utente, card_res: Optional[dict] = None) -> dict:
-    card_res = card_res if card_res is not None else fetch_student_card_or_401(u)
-    card_fields = extract_student_card_fields(card_res)
-    full_name = f"{(card_fields.get('firstName') or '').strip()} {(card_fields.get('lastName') or '').strip()}".strip()
-    school_code = (
-        (card_fields.get("schCode") or card_fields.get("miurSchoolCode") or "").strip().upper()
-        or None
-    )
+    """Profilo per classifiche usando prima cache/sessione/DB.
 
-    class_code = None
-    today = time.strftime("%Y%m%d")
-    try:
-        agenda_res = cached_agenda_json(u, today, today)
-        class_code = _extract_first_lesson_class_code(agenda_res)
-    except Exception:
-        class_code = None
+    Non chiama agenda/card se non viene passato card_res: così gli update non
+    generano richieste extra solo per capire chi è l'utente.
+    """
+    username = get_session_username(u)
+    saved = _first_saved_profile_for_user(username, getattr(u, "ident", None))
+    full_name = saved.get("full_name")
+    school_code = saved.get("school_code")
+    class_code = saved.get("class_code")
+
+    if isinstance(card_res, dict):
+        card_fields = extract_student_card_fields(card_res)
+        card_full_name = f"{(card_fields.get('firstName') or '').strip()} {(card_fields.get('lastName') or '').strip()}".strip()
+        full_name = card_full_name or full_name
+        school_code = (
+            str(card_fields.get("schCode") or card_fields.get("miurSchoolCode") or "").strip().upper()
+            or school_code
+        )
+        class_code = _extract_class_code_from_card_fields(card_fields) or class_code
 
     return {
         "full_name": full_name or None,
-        "school_code": school_code,
-        "class_code": class_code,
+        "school_code": (school_code or None),
+        "class_code": (class_code or None),
     }
-
 
 def calculate_absence_hours_from_payload(assenze_payload: Any) -> float:
     events: list[Any] = []
@@ -1643,7 +1775,16 @@ def calculate_general_average_from_payload(voti_payload: Any) -> float:
     return sum(values) / len(values)
 
 
+def require_marconi_orario_access_from_session(session_id: Optional[str]) -> tuple[dict, dict]:
+    sess = get_session_record(session_id)
+    card_res = fetch_card_cached(sess)
+    if not is_marconi_student_card(card_res):
+        raise HTTPException(status_code=403, detail=ORARIO_ACCESS_DENIED_DETAIL)
+    return sess, card_res
+
+
 def require_marconi_orario_access(u: Utente) -> dict:
+    # Backward-compatible fallback: usa comunque la cache globale per /card.
     card_res = fetch_student_card_or_401(u)
     if not is_marconi_student_card(card_res):
         raise HTTPException(status_code=403, detail=ORARIO_ACCESS_DENIED_DETAIL)
@@ -1651,14 +1792,18 @@ def require_marconi_orario_access(u: Utente) -> dict:
 
 
 @app.get("/orario/eligible")
-def orario_eligible(u: Utente = Depends(current_user)):
+def orario_eligible(session_id: Optional[str] = Cookie(default=None)):
     try:
-        card_res = fetch_student_card_or_401(u)
+        sess = get_session_record(session_id)
+        card_res = fetch_card_cached(sess)
         eligible = is_marconi_student_card(card_res)
+        profile = build_session_profile(sess["user"], card_res=card_res)
         return {
             "ok": True,
             "eligible": eligible,
             "detail": None if eligible else ORARIO_ACCESS_DENIED_DETAIL,
+            "class_code": profile.get("class_code"),
+            "school_code": profile.get("school_code"),
         }
     except HTTPException:
         raise
@@ -1667,8 +1812,9 @@ def orario_eligible(u: Utente = Depends(current_user)):
 
 
 @app.get("/orario/meta")
-def orario_meta(u: Utente = Depends(current_user)):
-    require_marconi_orario_access(u)
+def orario_meta(session_id: Optional[str] = Cookie(default=None)):
+    sess, _card_res = require_marconi_orario_access_from_session(session_id)
+    u = sess["user"]
     try:
         payload = cached_external_get_json_for_user(
             u,
@@ -1687,9 +1833,10 @@ def orario_meta(u: Utente = Depends(current_user)):
 @app.get("/orario/class")
 def orario_class(
     class_name: str = Query(..., min_length=1, max_length=16, alias="class"),
-    u: Utente = Depends(current_user),
+    session_id: Optional[str] = Cookie(default=None),
 ):
-    require_marconi_orario_access(u)
+    sess, _card_res = require_marconi_orario_access_from_session(session_id)
+    u = sess["user"]
     code = class_name.strip().upper()
     if not ORARIO_CLASS_PATTERN.match(code):
         raise HTTPException(status_code=400, detail="Codice classe non valido")
@@ -1848,6 +1995,11 @@ def get_my_leaderboard_entry(u: Utente = Depends(current_user)):
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
         item = get_leaderboard_entry(session_username)
+        if not item:
+            for alias in username_aliases(session_username, getattr(u, "ident", None)):
+                item = get_leaderboard_entry(alias)
+                if item:
+                    break
         return {
             "ok": True,
             "item": item,
@@ -1876,9 +2028,9 @@ async def update_leaderboard(
         existing = get_leaderboard_entry(session_username)
         saved = upsert_leaderboard_entry(
             username=session_username,
-            full_name=profile.get("full_name") or existing.get("full_name") if existing else None,
-            class_code=profile.get("class_code") or existing.get("class_code") if existing else None,
-            school_code=profile.get("school_code") or existing.get("school_code") if existing else None,
+            full_name=body.full_name or profile.get("full_name") or (existing.get("full_name") if existing else None),
+            class_code=body.class_code or profile.get("class_code") or (existing.get("class_code") if existing else None),
+            school_code=body.school_code or profile.get("school_code") or (existing.get("school_code") if existing else None),
             hours=float(computed_hours),
             visible_in_leaderboard=bool(body.visible_in_leaderboard),
         )
@@ -1981,8 +2133,10 @@ def get_leaderboard(
         end_idx = start_idx + page_size
         page_items = entries[start_idx:end_idx]
 
+        current_aliases = username_aliases(get_session_username(u), getattr(u, "ident", None))
         enriched_items = []
         for idx, item in enumerate(page_items, start=start_idx + 1):
+            item_is_me = normalize_username(item.get("username")) in current_aliases
             enriched_items.append(
                 {
                     "rank": idx,
@@ -1993,6 +2147,7 @@ def get_leaderboard(
                     "hours": item.get("hours", 0),
                     "visible_in_leaderboard": item.get("visible_in_leaderboard", True),
                     "updated_at": item.get("updated_at"),
+                    "is_me": item_is_me,
                 }
             )
 
@@ -2026,6 +2181,11 @@ def get_my_average_leaderboard_entry(
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
         item = get_average_leaderboard_entry(session_username, subject_name, period_key)
+        if not item:
+            for alias in username_aliases(session_username, getattr(u, "ident", None)):
+                item = get_average_leaderboard_entry(alias, subject_name, period_key)
+                if item:
+                    break
         return {
             "ok": True,
             "item": item,
@@ -2064,9 +2224,9 @@ async def update_average_leaderboard(
 
         saved = upsert_average_leaderboard_entry(
             username=session_username,
-            full_name=profile.get("full_name") or existing.get("full_name") if existing else None,
-            class_code=profile.get("class_code") or existing.get("class_code") if existing else None,
-            school_code=profile.get("school_code") or existing.get("school_code") if existing else None,
+            full_name=body.full_name or profile.get("full_name") or (existing.get("full_name") if existing else None),
+            class_code=body.class_code or profile.get("class_code") or (existing.get("class_code") if existing else None),
+            school_code=body.school_code or profile.get("school_code") or (existing.get("school_code") if existing else None),
             subject_name=normalized_subject,
             period_key=normalized_period_key,
             period_label=body.period_label,
@@ -2157,8 +2317,10 @@ def get_average_leaderboard(
         end_idx = start_idx + page_size
         page_items = entries[start_idx:end_idx]
 
+        current_aliases = username_aliases(get_session_username(u), getattr(u, "ident", None))
         enriched_items = []
         for idx, item in enumerate(page_items, start=start_idx + 1):
+            item_is_me = normalize_username(item.get("username")) in current_aliases
             enriched_items.append(
                 {
                     "rank": idx,
@@ -2172,6 +2334,7 @@ def get_average_leaderboard(
                     "average": item.get("average", 0),
                     "visible_in_leaderboard": item.get("visible_in_leaderboard", True),
                     "updated_at": item.get("updated_at"),
+                    "is_me": item_is_me,
                 }
             )
 
