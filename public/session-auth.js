@@ -96,6 +96,14 @@
 
   async function requireAuth({ redirectTo = "/" } = {}) {
     const { res, data } = await fetchSession();
+
+    // Errore transitorio upstream (Spaggiari rate-limit / giù): NON sloggare,
+    // altrimenti si entra in loop login→dashboard. L'utente resta dov'è.
+    if (res.status >= 500) {
+      console.warn("[session] upstream non disponibile (%s), resto loggato", res.status);
+      return data?.authenticated ? data : { ok: true, authenticated: true, transient: true };
+    }
+
     if (!res.ok || !data?.authenticated) {
       clearLegacyClientState();
       if (redirectTo) {

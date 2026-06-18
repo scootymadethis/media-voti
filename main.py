@@ -102,6 +102,8 @@ DATABASE_PATH = os.getenv("DATABASE_PATH", os.path.join("data", "spaggiari2.db")
 SESSION_TTL = 60 * 30  # 30 minuti
 # Cache per-sessione della risposta /session/me: entro questa finestra non si tocca Spaggiari.
 SESSION_ME_CACHE_TTL = int(os.getenv("SESSION_ME_CACHE_TTL", "60"))
+# Cache per-sessione della student card (condivisa tra /session/me e /card).
+CARD_CACHE_TTL = int(os.getenv("CARD_CACHE_TTL", "300"))
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").strip().lower() not in {"0", "false", "no"}
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "S10371278X").strip()
 ADMIN_SESSION_TTL = 60 * 30  # allineato alla sessione principale
@@ -1083,6 +1085,8 @@ def create_session(u: Utente) -> str:
             "expires": now + SESSION_TTL,
             "me_lock": Lock(),  # anti-burst: serializza /session/me della stessa sessione
             "me_cache": None,   # (scadenza_epoch, risposta)
+            "card_lock": Lock(),
+            "card_cache": None,  # (scadenza_epoch, card_json) condivisa con /session/me
         }
     return sid
 
@@ -1143,9 +1147,15 @@ def session_me(
         if cached and cached[0] > time.time():
             return cached[1]
         try:
-            # Una sola card: valida la sessione upstream e alimenta il profilo.
-            card_res = fetch_student_card_or_401(u)
+            # Una sola card (cache condivisa con /card): valida la sessione e alimenta il profilo.
+            card_res = fetch_card_cached(sess)
+        except UpstreamUnavailable:
+            # Rate limit / Spaggiari giù: NON sloggare. Se ho una /session/me vecchia la riuso.
+            if cached:
+                return cached[1]
+            raise
         except HTTPException:
+            # Solo 401/403 reale → sessione scaduta upstream → logout.
             sess["me_cache"] = None
             destroy_session(session_id)
             response.delete_cookie(
@@ -1364,11 +1374,66 @@ def is_marconi_student_card(card_res) -> bool:
     return name_ok
 
 
-def fetch_student_card_or_401(u: Utente) -> dict:
+class UpstreamUnavailable(HTTPException):
+    """Spaggiari ha risposto male (429/5xx) o irraggiungibile: NON è logout."""
+
+    def __init__(self, detail: str):
+        super().__init__(status_code=503, detail=detail)
+
+
+def _fetch_student_card_raw(u: Utente) -> dict:
+    """Chiama /card leggendo lo status reale.
+
+    La libreria ClasseVivaAPI collassa ogni non-200 a None, quindi non distingue
+    un 401 (sessione scaduta → logout) da un 429 (rate limit → riprova).
+    Qui facciamo la GET direttamente per leggere response.status_code.
+    """
+    if not getattr(u, "is_logged_in", False):
+        raise HTTPException(status_code=401, detail="Utente non loggato")
+    url = RequestURLs.card[0].format(u.ident)
     try:
-        return u.request(RequestURLs.card).json()
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        resp = requests.get(url, headers=u.get_headers(), timeout=15)
+    except requests.RequestException as e:
+        raise UpstreamUnavailable(f"Spaggiari irraggiungibile: {e}")
+
+    if resp.status_code in {401, 403}:
+        raise HTTPException(status_code=401, detail="Sessione Spaggiari scaduta")
+    if resp.status_code != 200:
+        # 429 rate limit, 5xx, ecc.: NON è logout, l'utente resta loggato.
+        raise UpstreamUnavailable(f"Spaggiari status {resp.status_code}")
+    try:
+        return resp.json()
+    except ValueError as e:
+        raise UpstreamUnavailable(f"Card non valida: {e}")
+
+
+def fetch_student_card_or_401(u: Utente) -> dict:
+    return _fetch_student_card_raw(u)
+
+
+def fetch_card_cached(sess: dict) -> dict:
+    """Card condivisa tra /session/me e /card. Su rate limit serve la copia stale."""
+    now = time.time()
+    cached = sess.get("card_cache")
+    if cached and cached[0] > now:
+        return cached[1]
+
+    lock = sess.get("card_lock")
+    if lock is None:
+        lock = sess["card_lock"] = Lock()
+    with lock:
+        cached = sess.get("card_cache")
+        if cached and cached[0] > now:
+            return cached[1]
+        try:
+            card = _fetch_student_card_raw(sess["user"])
+        except UpstreamUnavailable:
+            # Rate limit / blip: se ho una card vecchia in cache la riuso comunque.
+            if cached:
+                return cached[1]
+            raise
+        sess["card_cache"] = (time.time() + CARD_CACHE_TTL, card)
+        return card
 
 
 def _parse_float_like(value: Any) -> Optional[float]:
@@ -1613,25 +1678,13 @@ def calendario(u: Utente = Depends(current_user)):
 
 
 @app.post("/card")
-def card(request: Request, u: Utente = Depends(current_user)):
-    try:
-        card_response = u.request(RequestURLs.card)
-        if card_response is None:
-            raise HTTPException(
-                status_code=401,
-                detail="Sessione Spaggiari non valida, effettua nuovamente il login",
-            )
-
-        if hasattr(card_response, "status_code"):
-            raise_for_upstream_http_status(card_response.status_code, context="card upstream")
-
-        card_res = card_response.json()
-
-        return {"ok": True, "card": card_res}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+def card(
+    request: Request,
+    session_id: Optional[str] = Cookie(default=None),
+):
+    sess = get_session_record(session_id)
+    card_res = fetch_card_cached(sess)
+    return {"ok": True, "card": card_res}
 
 
 @app.post("/voti")
