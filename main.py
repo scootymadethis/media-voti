@@ -1424,6 +1424,7 @@ def session_me(
             raise
 
         profile = build_session_profile(u, card_res=card_res)
+        _store_session_profile(sess, profile)
         result = {"ok": True, "authenticated": True, **profile}
         sess["me_cache"] = (time.time() + SESSION_ME_CACHE_TTL, result)
         return result
@@ -1541,6 +1542,7 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
 MARCONI_ORARIO_API = "https://apps.marconivr.it/orario/api.php"
 MARCONI_ORARIO_CVERS = "-1"
 MARCONI_MIUR_SCHOOL_CODE = "VRTF03000V"
+MARCONI_SCHOOL_CODES = {"VRIT0007", "VRTF03000V", MARCONI_MIUR_SCHOOL_CODE}
 ORARIO_ACCESS_DENIED_DETAIL = (
     "Al momento la funzione orario è disponibile solo per gli studenti dell'Istituto Marconi."
 )
@@ -1555,18 +1557,24 @@ def extract_student_card_fields(card_res) -> dict:
     return inner if isinstance(inner, dict) else {}
 
 
+def is_marconi_school_code(value: Any) -> bool:
+    code = str(value or "").strip().upper()
+    return bool(code and code in MARCONI_SCHOOL_CODES)
+
+
 def is_marconi_student_card(card_res) -> bool:
     fields = extract_student_card_fields(card_res)
     miur = str(fields.get("miurSchoolCode") or fields.get("miurDivisionCode") or "").strip().upper()
+    sch_code = str(fields.get("schCode") or fields.get("schoolCode") or "").strip().upper()
     label = " ".join(
         str(fields.get(key) or "")
         for key in ("schName", "schDedication", "schCity", "schProv", "schCode")
     ).lower()
     name_ok = "marconi" in label
-    miur_ok = miur == MARCONI_MIUR_SCHOOL_CODE
-    if miur and not miur_ok:
+    code_ok = is_marconi_school_code(miur) or is_marconi_school_code(sch_code)
+    if miur and not code_ok and not name_ok:
         return False
-    if miur_ok:
+    if code_ok:
         return True
     return name_ok
 
@@ -1775,12 +1783,49 @@ def calculate_general_average_from_payload(voti_payload: Any) -> float:
     return sum(values) / len(values)
 
 
+def _session_profile_from_cache(sess: dict) -> dict:
+    """Profilo locale per /orario: usa solo /session/me/session/DB, zero chiamate upstream."""
+    cached_me = sess.get("me_cache")
+    if cached_me and isinstance(cached_me[1], dict):
+        data = cached_me[1]
+        return {
+            "username": data.get("username") or sess.get("username"),
+            "full_name": data.get("full_name"),
+            "school_code": data.get("school_code"),
+            "class_code": data.get("class_code"),
+            "is_admin": data.get("is_admin"),
+            "easter_egg_eligible": data.get("easter_egg_eligible"),
+        }
+
+    profile = sess.get("profile")
+    if isinstance(profile, dict):
+        return profile
+
+    # Ultimo fallback solo locale: leaderboard DB + uid/ident. Non chiama ClasseViva.
+    return build_session_profile(sess["user"], card_res=None)
+
+
+def _store_session_profile(sess: dict, profile: dict) -> None:
+    sess["profile"] = {
+        "username": profile.get("username") or sess.get("username"),
+        "full_name": profile.get("full_name"),
+        "school_code": profile.get("school_code"),
+        "class_code": profile.get("class_code"),
+        "is_admin": profile.get("is_admin"),
+        "easter_egg_eligible": profile.get("easter_egg_eligible"),
+    }
+
+
+def is_marconi_session_profile(profile: dict) -> bool:
+    return is_marconi_school_code(profile.get("school_code"))
+
+
 def require_marconi_orario_access_from_session(session_id: Optional[str]) -> tuple[dict, dict]:
     sess = get_session_record(session_id)
-    card_res = fetch_card_cached(sess)
-    if not is_marconi_student_card(card_res):
+    profile = _session_profile_from_cache(sess)
+    if not is_marconi_session_profile(profile):
         raise HTTPException(status_code=403, detail=ORARIO_ACCESS_DENIED_DETAIL)
-    return sess, card_res
+    return sess, profile
 
 
 def require_marconi_orario_access(u: Utente) -> dict:
@@ -1795,9 +1840,8 @@ def require_marconi_orario_access(u: Utente) -> dict:
 def orario_eligible(session_id: Optional[str] = Cookie(default=None)):
     try:
         sess = get_session_record(session_id)
-        card_res = fetch_card_cached(sess)
-        eligible = is_marconi_student_card(card_res)
-        profile = build_session_profile(sess["user"], card_res=card_res)
+        profile = _session_profile_from_cache(sess)
+        eligible = is_marconi_session_profile(profile)
         return {
             "ok": True,
             "eligible": eligible,
@@ -1813,7 +1857,7 @@ def orario_eligible(session_id: Optional[str] = Cookie(default=None)):
 
 @app.get("/orario/meta")
 def orario_meta(session_id: Optional[str] = Cookie(default=None)):
-    sess, _card_res = require_marconi_orario_access_from_session(session_id)
+    sess, _profile = require_marconi_orario_access_from_session(session_id)
     u = sess["user"]
     try:
         payload = cached_external_get_json_for_user(
@@ -1835,7 +1879,7 @@ def orario_class(
     class_name: str = Query(..., min_length=1, max_length=16, alias="class"),
     session_id: Optional[str] = Cookie(default=None),
 ):
-    sess, _card_res = require_marconi_orario_access_from_session(session_id)
+    sess, _profile = require_marconi_orario_access_from_session(session_id)
     u = sess["user"]
     code = class_name.strip().upper()
     if not ORARIO_CLASS_PATTERN.match(code):

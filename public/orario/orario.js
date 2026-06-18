@@ -2,6 +2,7 @@ const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
 
 const ORARIO_CLASS_STORAGE_KEY = "orario_selected_class";
 const MARCONI_MIUR_SCHOOL_CODE = "VRTF03000V";
+const MARCONI_SESSION_SCHOOL_CODES = new Set(["VRIT0007", "VRTF03000V", MARCONI_MIUR_SCHOOL_CODE]);
 const ORARIO_ACCESS_MESSAGE =
   "Al momento la funzione orario è disponibile solo per gli studenti dell'Istituto Marconi.";
 
@@ -78,109 +79,6 @@ function matchMarconiClass(hint, classes) {
   return null;
 }
 
-function getWeekStartDate(offsetWeeks = 0) {
-  const date = new Date();
-  const day = date.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  date.setDate(date.getDate() + diff + offsetWeeks * 7);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function formatDateYYYYMMDD(date) {
-  const y = date.getFullYear();
-  const m = pad2(date.getMonth() + 1);
-  const d = pad2(date.getDate());
-  return `${y}${m}${d}`;
-}
-
-async function fetchAgendaInterval(startYYYYMMDD, endYYYYMMDD) {
-  const res = await fetch(apiUrl("/api/agenda"), {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ start: startYYYYMMDD, end: endYYYYMMDD }),
-  });
-  if (!res.ok) {
-    await handleAuthFail(res);
-    throw new Error("agenda fetch failed");
-  }
-  return res.json();
-}
-
-async function loadAgendaWeek(offsetWeeks) {
-  const startDate = getWeekStartDate(offsetWeeks);
-  const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 6);
-  return fetchAgendaInterval(formatDateYYYYMMDD(startDate), formatDateYYYYMMDD(endDate));
-}
-
-function extractEvents(agendaData) {
-  if (!agendaData) return [];
-  if (Array.isArray(agendaData)) return agendaData;
-  if (Array.isArray(agendaData.agenda)) return agendaData.agenda;
-  if (agendaData.agenda && Array.isArray(agendaData.agenda.agenda)) {
-    return agendaData.agenda.agenda;
-  }
-  for (const key of Object.keys(agendaData)) {
-    if (Array.isArray(agendaData[key])) return agendaData[key];
-  }
-  return [];
-}
-
-async function detectClassFromAgenda(classes) {
-  for (let offset = 0; offset < 52; offset++) {
-    try {
-      const agendaData = await loadAgendaWeek(offset);
-      const events = extractEvents(agendaData);
-      for (const ev of events) {
-        const classDesc = ev?.classDesc;
-        if (typeof classDesc !== "string" || !classDesc.trim()) continue;
-        const matched = matchMarconiClass(classDesc, classes);
-        if (matched) return matched;
-        const firstChunk = classDesc.split(" ")[0]?.trim();
-        const fallback = matchMarconiClass(firstChunk, classes);
-        if (fallback) return fallback;
-      }
-    } catch (err) {
-      console.warn("[orario] agenda week failed:", offset, err);
-    }
-  }
-  return null;
-}
-
-function extractCardFields(cardPayload) {
-  if (!cardPayload || typeof cardPayload !== "object") return {};
-  let inner = cardPayload.card ?? cardPayload;
-  if (inner?.card && typeof inner.card === "object") inner = inner.card;
-  return inner && typeof inner === "object" ? inner : {};
-}
-
-function isMarconiStudentFromCard(cardPayload) {
-  const fields = extractCardFields(cardPayload);
-  const miur = String(
-    fields.miurSchoolCode || fields.miurDivisionCode || "",
-  )
-    .trim()
-    .toUpperCase();
-  const label = [
-    fields.schName,
-    fields.schDedication,
-    fields.schCity,
-    fields.schProv,
-    fields.schCode,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  const nameOk = label.includes("marconi");
-  const miurOk = miur === MARCONI_MIUR_SCHOOL_CODE;
-
-  if (miur && !miurOk) return false;
-  if (miurOk) return true;
-  return nameOk;
-}
-
 async function readJsonSafe(res) {
   try {
     return await res.json();
@@ -189,63 +87,33 @@ async function readJsonSafe(res) {
   }
 }
 
-async function fetchStudentCard() {
-  const res = await fetch(apiUrl("/api/card"), {
-    method: "POST",
-    credentials: "include",
-    cache: "no-store",
-  });
-  if (res.status === 401) {
-    await handleAuthFail(res);
-    throw new Error("card fetch unauthorized");
-  }
-  if (!res.ok) throw new Error("card fetch failed");
-  const data = await readJsonSafe(res);
-  return data?.card ?? data;
+function isMarconiSchoolCode(value) {
+  const code = String(value || "").trim().toUpperCase();
+  return Boolean(code && MARCONI_SESSION_SCHOOL_CODES.has(code));
+}
+
+function getOrarioAccessFromSession(session) {
+  const schoolCode = String(session?.school_code || localStorage.getItem("schoolCode") || "")
+    .trim()
+    .toUpperCase();
+  const classCode = String(session?.class_code || localStorage.getItem("classCode") || "")
+    .trim()
+    .toUpperCase();
+  const eligible = isMarconiSchoolCode(schoolCode);
+  return {
+    eligible,
+    detail: eligible ? null : ORARIO_ACCESS_MESSAGE,
+    school_code: schoolCode || null,
+    class_code: classCode || null,
+  };
 }
 
 async function checkOrarioSchoolAccess() {
-  try {
-    const res = await fetch(apiUrl("/api/orario/eligible"), {
-      credentials: "include",
-      cache: "no-store",
-    });
-    if (res.status === 401) {
-      await handleAuthFail(res);
-      return false;
-    }
-    const data = await readJsonSafe(res);
-    if (res.status === 403 || data?.eligible === false) {
-      return { eligible: false, detail: data?.detail || ORARIO_ACCESS_MESSAGE };
-    }
-    if (!res.ok) {
-      const card = await fetchStudentCard();
-      const eligible = isMarconiStudentFromCard(card);
-      return {
-        eligible,
-        detail: eligible ? null : ORARIO_ACCESS_MESSAGE,
-      };
-    }
-    const eligible = data?.eligible === true;
-    return {
-      eligible,
-      detail: eligible ? null : data?.detail || ORARIO_ACCESS_MESSAGE,
-    };
-  } catch (err) {
-    console.warn("[orario] eligibility check failed, fallback to card:", err);
-    try {
-      const card = await fetchStudentCard();
-      const eligible = isMarconiStudentFromCard(card);
-      return {
-        eligible,
-        detail: eligible ? null : ORARIO_ACCESS_MESSAGE,
-      };
-    } catch (cardErr) {
-      console.error("[orario] card fallback failed:", cardErr);
-      return { eligible: false, detail: ORARIO_ACCESS_MESSAGE };
-    }
-  }
+  // /session/me contiene già school_code e class_code: non facciamo card/agenda.
+  return getOrarioAccessFromSession(currentSessionProfile);
 }
+
+
 
 function showOrarioSchoolGate(message) {
   const gate = document.getElementById("orarioSchoolGate");
@@ -706,8 +574,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       showOrarioSchoolGate(access.detail);
       return;
     }
-    if (access.class_code) localStorage.setItem("classCode", String(access.class_code).toUpperCase());
-    if (access.school_code) localStorage.setItem("schoolCode", String(access.school_code).toUpperCase());
+    if (access.class_code) {
+      currentSessionProfile.class_code = String(access.class_code).toUpperCase();
+      localStorage.setItem("classCode", currentSessionProfile.class_code);
+    }
+    if (access.school_code) {
+      currentSessionProfile.school_code = String(access.school_code).toUpperCase();
+      localStorage.setItem("schoolCode", currentSessionProfile.school_code);
+    }
     hideOrarioSchoolGate();
 
     bindClassPicker();
