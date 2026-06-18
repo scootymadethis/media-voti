@@ -100,6 +100,8 @@ app.add_middleware(
 
 DATABASE_PATH = os.getenv("DATABASE_PATH", os.path.join("data", "spaggiari2.db"))
 SESSION_TTL = 60 * 30  # 30 minuti
+# Cache per-sessione della risposta /session/me: entro questa finestra non si tocca Spaggiari.
+SESSION_ME_CACHE_TTL = int(os.getenv("SESSION_ME_CACHE_TTL", "60"))
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").strip().lower() not in {"0", "false", "no"}
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "S10371278X").strip()
 ADMIN_SESSION_TTL = 60 * 30  # allineato alla sessione principale
@@ -864,7 +866,7 @@ def destroy_session(session_id: Optional[str], admin_session_id: Optional[str] =
             admin_sessions.pop(admin_session_id, None)
 
 
-def build_session_profile(u: Utente) -> dict:
+def build_session_profile(u: Utente, card_res: Optional[dict] = None) -> dict:
     username = get_session_username(u)
     profile = {
         "username": username,
@@ -875,7 +877,7 @@ def build_session_profile(u: Utente) -> dict:
         "easter_egg_eligible": is_easter_egg_username(username),
     }
     try:
-        lb_profile = get_user_profile_for_leaderboards(u)
+        lb_profile = get_user_profile_for_leaderboards(u, card_res=card_res)
         profile["full_name"] = lb_profile.get("full_name")
         profile["school_code"] = lb_profile.get("school_code")
         profile["class_code"] = lb_profile.get("class_code")
@@ -884,7 +886,7 @@ def build_session_profile(u: Utente) -> dict:
     return profile
 
 
-def get_session_user(session_id: Optional[str]) -> Utente:
+def get_session_record(session_id: Optional[str]) -> dict:
     purge_expired_sessions()
     if not session_id:
         raise HTTPException(status_code=401, detail="Non loggato")
@@ -900,7 +902,11 @@ def get_session_user(session_id: Optional[str]) -> Utente:
 
         # rinnova TTL a ogni richiesta
         sess["expires"] = time.time() + SESSION_TTL
-        return sess["user"]
+        return sess
+
+
+def get_session_user(session_id: Optional[str]) -> Utente:
+    return get_session_record(session_id)["user"]
 
 
 async def websocket_auth(websocket: WebSocket) -> Utente:
@@ -1075,6 +1081,8 @@ def create_session(u: Utente) -> str:
             "user": u,
             "created_at": now,
             "expires": now + SESSION_TTL,
+            "me_lock": Lock(),  # anti-burst: serializza /session/me della stessa sessione
+            "me_cache": None,   # (scadenza_epoch, risposta)
         }
     return sid
 
@@ -1117,25 +1125,43 @@ def session_me(
     response: Response,
     session_id: Optional[str] = Cookie(default=None),
 ):
-    u = get_session_user(session_id)
-    try:
-        # Verifica anche la sessione upstream Spaggiari per evitare loop login/dashboard
-        # quando il cookie locale è ancora valido ma la sessione esterna è scaduta.
-        fetch_student_card_or_401(u)
-    except HTTPException:
-        destroy_session(session_id)
-        response.delete_cookie(
-            key="session_id",
-            httponly=True,
-            samesite="lax",
-            secure=COOKIE_SECURE,
-            path="/",
-        )
-        clear_admin_cookie(response)
-        raise
+    sess = get_session_record(session_id)
+    u = sess["user"]
 
-    profile = build_session_profile(u)
-    return {"ok": True, "authenticated": True, **profile}
+    # Cache hit veloce, nessuna chiamata a Spaggiari.
+    cached = sess.get("me_cache")
+    if cached and cached[0] > time.time():
+        return cached[1]
+
+    # ponytail: lock per-sessione, il burst di /session/me al login collassa in 1 sola fetch upstream
+    me_lock = sess.get("me_lock")
+    if me_lock is None:
+        me_lock = sess["me_lock"] = Lock()
+    with me_lock:
+        # double-check: un'altra richiesta del burst potrebbe aver già popolato la cache.
+        cached = sess.get("me_cache")
+        if cached and cached[0] > time.time():
+            return cached[1]
+        try:
+            # Una sola card: valida la sessione upstream e alimenta il profilo.
+            card_res = fetch_student_card_or_401(u)
+        except HTTPException:
+            sess["me_cache"] = None
+            destroy_session(session_id)
+            response.delete_cookie(
+                key="session_id",
+                httponly=True,
+                samesite="lax",
+                secure=COOKIE_SECURE,
+                path="/",
+            )
+            clear_admin_cookie(response)
+            raise
+
+        profile = build_session_profile(u, card_res=card_res)
+        result = {"ok": True, "authenticated": True, **profile}
+        sess["me_cache"] = (time.time() + SESSION_ME_CACHE_TTL, result)
+        return result
 
 
 @app.post("/logout")
@@ -1402,8 +1428,8 @@ def _extract_first_lesson_class_code(agenda_res: Any) -> Optional[str]:
     return None
 
 
-def get_user_profile_for_leaderboards(u: Utente) -> dict:
-    card_res = fetch_student_card_or_401(u)
+def get_user_profile_for_leaderboards(u: Utente, card_res: Optional[dict] = None) -> dict:
+    card_res = card_res if card_res is not None else fetch_student_card_or_401(u)
     card_fields = extract_student_card_fields(card_res)
     full_name = f"{(card_fields.get('firstName') or '').strip()} {(card_fields.get('lastName') or '').strip()}".strip()
     school_code = (
