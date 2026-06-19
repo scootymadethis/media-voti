@@ -240,7 +240,7 @@ class BadgeUpdateBody(BaseModel):
 class BadgeBatchBody(BaseModel):
     badge_id: int
     usernames: list[str] = Field(default_factory=list)
-    action: str = Field(..., regex="^(assign|remove)$")
+    action: str = Field(..., pattern="^(assign|remove)$")
 
 
 class ConnectionManager:
