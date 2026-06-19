@@ -995,8 +995,10 @@ function renderAverageLeaderboard(data) {
         <div class="leaderboard-user">
           <div class="leaderboard-user-main">
             <div class="leaderboard-username">${escapeHtml(item.full_name || item.username)}</div>
-            ${isMe ? '<span class="leaderboard-you">Tu</span>' : ""}
-            ${renderLeaderboardBadges(item.badges)}
+            <div class="leaderboard-badges-line">
+              ${isMe ? '<span class="leaderboard-you">Tu</span>' : ""}
+              ${renderLeaderboardBadges(item.badges)}
+            </div>
           </div>
           <div class="leaderboard-class">Classe: ${escapeHtml(item.class_code || "N/D")}</div>
         </div>

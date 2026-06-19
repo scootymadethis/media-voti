@@ -445,3 +445,30 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Mobile badge visibility fix */
+.admin-user-badges {
+  max-width: 100%;
+}
+
+.user-badge-pill {
+  flex: 0 0 auto;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 680px) {
+  .admin-user-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .user-badge-pill {
+    font-size: 0.72rem;
+    padding: 0.14rem 0.42rem;
+    line-height: 1.1;
+  }
+}
