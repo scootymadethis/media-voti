@@ -26,20 +26,22 @@
 }
 
 body.summer-active {
-  /* Pattern onde SVG ripetuto + wash di colore */
-  background-color: #0d7ea0;
-  background-image:
-    linear-gradient(
-      180deg,
-      rgba(186, 230, 253, 0.55) 0%,
-      rgba(56, 189, 248, 0.18) 28%,
-      rgba(13, 126, 160, 0.2) 58%,
-      rgba(8, 70, 100, 0.55) 100%
-    ),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='80' viewBox='0 0 160 80'%3E%3Cpath d='M0 40c20 0 20-16 40-16s20 16 40 16 20-16 40-16 20 16 40 16v40H0Z' fill='%23ffffff' fill-opacity='0.10'/%3E%3Cpath d='M0 52c20 0 20-14 40-14s20 14 40 14 20-14 40-14 20 14 40 14v28H0Z' fill='%2307364a' fill-opacity='0.14'/%3E%3C/svg%3E");
-  background-size: auto, 180px 90px;
-  background-repeat: no-repeat, repeat;
-  background-attachment: fixed, fixed;
+  background: #0d7ea0;
+  /* Su desktop fixed+is-loading bloccava scroll/click; forziamo pagina usabile. */
+  overflow: auto !important;
+}
+
+body.summer-active.is-loading .navbar,
+body.summer-active.is-loading .navbar button,
+body.summer-active.is-loading .summer-mode,
+body.summer-active.is-loading .summer-mode button,
+body.summer-active.is-loading .summer-mode a {
+  pointer-events: auto !important;
+}
+
+body.summer-active #loading-overlay {
+  display: none !important;
+  pointer-events: none !important;
 }
 
 body.summer-active .main,
@@ -49,6 +51,49 @@ body.summer-active .footer {
 
 body.summer-active .summer-mode {
   display: block;
+}
+
+/* Sfondo pattern onde: layer dedicato, animazione leggera (no canvas). */
+.summer-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(186, 230, 253, 0.62) 0%,
+      rgba(56, 189, 248, 0.22) 30%,
+      rgba(13, 126, 160, 0.35) 62%,
+      rgba(8, 70, 100, 0.62) 100%
+    ),
+    #0d7ea0;
+}
+
+.summer-bg-pattern {
+  position: absolute;
+  inset: -20% -25%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='80' viewBox='0 0 160 80'%3E%3Cpath d='M0 40c20 0 20-16 40-16s20 16 40 16 20-16 40-16 20 16 40 16v40H0Z' fill='%23ffffff' fill-opacity='0.14'/%3E%3Cpath d='M0 52c20 0 20-14 40-14s20 14 40 14 20-14 40-14 20 14 40 14v28H0Z' fill='%2307364a' fill-opacity='0.16'/%3E%3C/svg%3E");
+  background-size: 180px 90px;
+  background-repeat: repeat;
+  will-change: transform;
+  animation: summer-pattern-drift 28s linear infinite;
+}
+
+@keyframes summer-pattern-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-180px, -90px, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summer-bg-pattern {
+    animation: none;
+  }
 }
 
 /* Navbar azzurra estate */

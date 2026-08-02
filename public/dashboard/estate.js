@@ -95,6 +95,10 @@
       document.getElementById("summerWavesCss")?.remove();
 
       document.body.classList.add("summer-active");
+      // Sblocca subito: su desktop is-loading + overlay lasciavano la pagina morta.
+      document.body.classList.remove("is-loading");
+      window.LoadingScreen?.hide?.({ immediate: true });
+
       this.root.hidden = false;
       this.root.removeAttribute("hidden");
       this.root.setAttribute("aria-hidden", "false");
