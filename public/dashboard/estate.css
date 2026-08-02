@@ -204,12 +204,9 @@ body.summer-active .nav-drawer-close {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 0.55rem 0.85rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
+  text-shadow: 0 2px 10px rgba(7, 48, 71, 0.3);
 }
 
 .summer-actions {
@@ -256,9 +253,11 @@ body.summer-active .nav-drawer-close {
   }
 
   .summer-panel {
-    padding: 22px 18px;
-    border-radius: 22px;
-    margin-bottom: 16px;
+    margin-bottom: 36px;
+  }
+
+  .summer-hero {
+    min-height: calc(100svh - 150px);
   }
 
   .summer-actions {
