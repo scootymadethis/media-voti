@@ -24,11 +24,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       updateGreeting();
     }, 1000);
 
+    let agendaData = null;
+    let agendaFailed = false;
     try {
-      const agendaData = await loadAgendaWeek(0);
+      agendaData = await loadAgendaWeek(0);
       renderAgenda(agendaData);
     } catch (e) {
+      agendaFailed = true;
       console.error("agenda fetch failed", e);
+    }
+
+    const showSummer = window.SummerMode?.shouldShow?.({
+      agendaData,
+      agendaFailed,
+    });
+    if (showSummer) {
+      window.studentName = studentName;
+      window.SummerMode.show({ name: studentName });
+      window.LoadingScreen?.hide();
     }
 
     const [lezioniData, votiData, assenzeData] = await Promise.all([
