@@ -4,14 +4,13 @@
   function isItalianSchoolSummer(date = new Date()) {
     const month = date.getMonth();
     const day = date.getDate();
-    if (month === 5 && day >= 15) return true; // metà giugno
-    if (month === 6 || month === 7) return true; // luglio / agosto
-    if (month === 8 && day <= 14) return true; // inizio settembre
+    if (month === 5 && day >= 15) return true;
+    if (month === 6 || month === 7) return true;
+    if (month === 8 && day <= 14) return true;
     return false;
   }
 
   function currentSummerKey(date = new Date()) {
-    // Chiave anno scolastico: estate 2026 → "2025-2026"
     const year = date.getMonth() >= 8 ? date.getFullYear() : date.getFullYear() - 1;
     return `${year}-${year + 1}`;
   }
@@ -37,12 +36,12 @@
   class SeaEngine {
     constructor(canvas) {
       this.canvas = canvas;
-      this.ctx = canvas.getContext("2d", { alpha: false });
+      this.ctx = canvas.getContext("2d", { alpha: true });
       this.dpr = Math.min(window.devicePixelRatio || 1, 2);
       this.t = 0;
       this.scroll = 0;
-      this.pointer = { x: 0.5, y: 0.35 };
-      this.targetPointer = { x: 0.5, y: 0.35 };
+      this.pointer = { x: 0.55, y: 0.3 };
+      this.targetPointer = { x: 0.55, y: 0.3 };
       this.sparks = [];
       this.birds = [];
       this.running = false;
@@ -66,25 +65,25 @@
     }
 
     seedSparks() {
-      const count = Math.floor((this.w * this.h) / (14000 * this.dpr * this.dpr));
-      this.sparks = Array.from({ length: Math.max(24, count) }, () => ({
+      const count = Math.floor((this.w * this.h) / (12000 * this.dpr * this.dpr));
+      this.sparks = Array.from({ length: Math.max(30, count) }, () => ({
         x: Math.random(),
-        y: 0.45 + Math.random() * 0.5,
-        r: 0.6 + Math.random() * 2.2,
-        speed: 0.15 + Math.random() * 0.55,
+        y: 0.42 + Math.random() * 0.52,
+        r: 0.7 + Math.random() * 2.4,
+        speed: 0.2 + Math.random() * 0.6,
         phase: Math.random() * Math.PI * 2,
-        glow: 0.35 + Math.random() * 0.65,
+        glow: 0.4 + Math.random() * 0.6,
       }));
     }
 
     seedBirds() {
-      this.birds = Array.from({ length: 4 }, (_, i) => ({
+      this.birds = Array.from({ length: 5 }, (_, i) => ({
         x: Math.random(),
-        y: 0.12 + Math.random() * 0.18,
-        speed: 0.015 + Math.random() * 0.02,
+        y: 0.1 + Math.random() * 0.2,
+        speed: 0.018 + Math.random() * 0.02,
         amp: 0.01 + Math.random() * 0.015,
         phase: Math.random() * Math.PI * 2,
-        scale: 0.7 + i * 0.15,
+        scale: 0.75 + i * 0.12,
       }));
     }
 
@@ -114,159 +113,141 @@
       cancelAnimationFrame(this.raf);
     }
 
-    waveY(x, base, amp, freq, speed, phase) {
+    waveY(nx, base, amp, freq, speed, phase) {
       const px = this.pointer.x - 0.5;
       return (
         base +
-        Math.sin(x * freq + this.t * speed + phase) * amp +
-        Math.sin(x * freq * 2.1 - this.t * speed * 0.7 + phase) * amp * 0.35 +
-        px * amp * 0.8
+        Math.sin(nx * freq + this.t * speed + phase) * amp +
+        Math.sin(nx * freq * 2.05 - this.t * speed * 0.75 + phase * 1.7) * amp * 0.4 +
+        Math.sin(nx * freq * 0.45 + this.t * speed * 0.35) * amp * 0.25 +
+        px * amp * 0.9
       );
     }
 
     drawSky() {
-      const { ctx, w, h, scroll, t, pointer } = this;
-      const dive = scroll * 0.18;
+      const { ctx, w, h, scroll, pointer } = this;
+      ctx.clearRect(0, 0, w, h);
+
       const g = ctx.createLinearGradient(0, 0, 0, h);
-      g.addColorStop(0, `rgb(${8 + dive * 20}, ${28 + dive * 40}, ${68 + dive * 30})`);
-      g.addColorStop(0.42, `rgb(${18}, ${90 + scroll * 20}, ${140})`);
-      g.addColorStop(0.7, `rgb(${10}, ${120}, ${150})`);
-      g.addColorStop(1, `rgb(${2}, ${40 + scroll * 30}, ${70})`);
+      g.addColorStop(0, "#0b4470");
+      g.addColorStop(0.35, "#1280a0");
+      g.addColorStop(0.62, "#14a0b0");
+      g.addColorStop(1, "#04556a");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
 
-      // soft horizon bloom
       const bloom = ctx.createRadialGradient(
-        w * (0.5 + (pointer.x - 0.5) * 0.15),
-        h * (0.38 - scroll * 0.05),
+        w * (0.72 + (pointer.x - 0.5) * 0.1),
+        h * (0.18 + scroll * 0.06),
         0,
-        w * 0.5,
-        h * 0.42,
+        w * 0.72,
+        h * 0.22,
         h * 0.55,
       );
-      bloom.addColorStop(0, "rgba(255, 214, 120, 0.28)");
-      bloom.addColorStop(0.35, "rgba(80, 200, 255, 0.12)");
+      bloom.addColorStop(0, "rgba(255, 220, 130, 0.55)");
+      bloom.addColorStop(0.35, "rgba(120, 220, 255, 0.16)");
       bloom.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = bloom;
       ctx.fillRect(0, 0, w, h);
-
-      // drifting clouds
-      for (let i = 0; i < 5; i++) {
-        const cx = ((t * (8 + i * 3) + i * 180) % (w + 240)) - 120;
-        const cy = h * (0.1 + i * 0.035) + Math.sin(t * 0.4 + i) * 8;
-        ctx.fillStyle = `rgba(255,255,255,${0.05 + i * 0.015})`;
-        this.roundCloud(cx, cy, 60 + i * 18);
-      }
-    }
-
-    roundCloud(x, y, s) {
-      const { ctx } = this;
-      ctx.beginPath();
-      ctx.ellipse(x, y, s, s * 0.38, 0, 0, Math.PI * 2);
-      ctx.ellipse(x - s * 0.45, y + 4, s * 0.55, s * 0.28, 0, 0, Math.PI * 2);
-      ctx.ellipse(x + s * 0.5, y + 2, s * 0.5, s * 0.26, 0, 0, Math.PI * 2);
-      ctx.fill();
     }
 
     drawSun() {
       const { ctx, w, h, t, scroll, pointer } = this;
-      const sx = w * (0.72 + (pointer.x - 0.5) * 0.08);
-      const sy = h * (0.2 + scroll * 0.08 + Math.sin(t * 0.5) * 0.01);
-      const r = Math.min(w, h) * (0.09 + scroll * 0.02);
+      const sx = w * (0.74 + (pointer.x - 0.5) * 0.06);
+      const sy = h * (0.17 + scroll * 0.07 + Math.sin(t * 0.45) * 0.008);
+      const r = Math.min(w, h) * (0.1 + scroll * 0.015);
 
-      // rays
       ctx.save();
       ctx.translate(sx, sy);
-      ctx.rotate(t * 0.15);
-      for (let i = 0; i < 16; i++) {
-        const a = (i / 16) * Math.PI * 2;
+      ctx.rotate(t * 0.12);
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2;
         ctx.rotate(a);
-        const ray = ctx.createLinearGradient(0, 0, 0, r * 3.2);
-        ray.addColorStop(0, "rgba(255, 220, 120, 0.35)");
-        ray.addColorStop(1, "rgba(255, 220, 120, 0)");
+        const ray = ctx.createLinearGradient(0, 0, 0, r * 3.4);
+        ray.addColorStop(0, "rgba(255, 225, 140, 0.45)");
+        ray.addColorStop(1, "rgba(255, 225, 140, 0)");
         ctx.fillStyle = ray;
         ctx.beginPath();
-        ctx.moveTo(-6, r * 0.9);
-        ctx.lineTo(6, r * 0.9);
-        ctx.lineTo(1.5, r * 3.1);
-        ctx.lineTo(-1.5, r * 3.1);
+        ctx.moveTo(-7, r * 0.85);
+        ctx.lineTo(7, r * 0.85);
+        ctx.lineTo(2, r * 3.3);
+        ctx.lineTo(-2, r * 3.3);
         ctx.closePath();
         ctx.fill();
         ctx.rotate(-a);
       }
       ctx.restore();
 
-      const core = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 1.8);
-      core.addColorStop(0, "rgba(255, 250, 220, 1)");
-      core.addColorStop(0.35, "rgba(255, 209, 102, 0.95)");
-      core.addColorStop(0.7, "rgba(255, 140, 70, 0.35)");
-      core.addColorStop(1, "rgba(255, 140, 70, 0)");
+      const core = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 1.9);
+      core.addColorStop(0, "rgba(255, 252, 230, 1)");
+      core.addColorStop(0.3, "rgba(255, 210, 110, 0.98)");
+      core.addColorStop(0.65, "rgba(255, 150, 80, 0.4)");
+      core.addColorStop(1, "rgba(255, 150, 80, 0)");
       ctx.fillStyle = core;
       ctx.beginPath();
-      ctx.arc(sx, sy, r * 1.8, 0, Math.PI * 2);
+      ctx.arc(sx, sy, r * 1.9, 0, Math.PI * 2);
       ctx.fill();
     }
 
     drawBirds() {
       const { ctx, w, h, t } = this;
-      ctx.strokeStyle = "rgba(255,255,255,0.55)";
-      ctx.lineWidth = 2 * this.dpr;
+      ctx.strokeStyle = "rgba(255,255,255,0.65)";
+      ctx.lineWidth = 2.2 * this.dpr;
       ctx.lineCap = "round";
       for (const b of this.birds) {
-        const x = ((b.x + t * b.speed) % 1.2) * w - w * 0.1;
-        const y = h * (b.y + Math.sin(t * 1.4 + b.phase) * b.amp);
-        const flap = Math.sin(t * 8 + b.phase) * 0.35;
-        const s = 10 * this.dpr * b.scale;
+        const x = ((b.x + t * b.speed) % 1.25) * w - w * 0.12;
+        const y = h * (b.y + Math.sin(t * 1.5 + b.phase) * b.amp);
+        const flap = Math.sin(t * 9 + b.phase) * 0.4;
+        const s = 11 * this.dpr * b.scale;
         ctx.beginPath();
         ctx.moveTo(x - s, y + flap * s);
-        ctx.quadraticCurveTo(x - s * 0.2, y - s * 0.35, x, y);
-        ctx.quadraticCurveTo(x + s * 0.2, y - s * 0.35, x + s, y + flap * s);
+        ctx.quadraticCurveTo(x - s * 0.15, y - s * 0.4, x, y);
+        ctx.quadraticCurveTo(x + s * 0.15, y - s * 0.4, x + s, y + flap * s);
         ctx.stroke();
       }
     }
 
-    fillWave(baseRatio, ampRatio, freq, speed, phase, colorTop, colorBottom) {
+    fillWave(baseRatio, ampRatio, freq, speed, phase, colorTop, colorBottom, foamAlpha) {
       const { ctx, w, h, t, scroll } = this;
-      const base = h * (baseRatio - scroll * 0.04);
-      const amp = h * (ampRatio + scroll * 0.01);
+      const base = h * (baseRatio - scroll * 0.035);
+      const amp = h * (ampRatio + scroll * 0.012);
+      const steps = Math.ceil(w / (8 * this.dpr));
+
       ctx.beginPath();
       ctx.moveTo(0, h);
-      const steps = Math.ceil(w / (10 * this.dpr));
       for (let i = 0; i <= steps; i++) {
         const x = (i / steps) * w;
-        const y = this.waveY(x / w, base, amp, freq, speed, phase);
-        if (i === 0) ctx.lineTo(x, y);
-        else ctx.lineTo(x, y);
+        const y = this.waveY(i / steps, base, amp, freq, speed, phase);
+        ctx.lineTo(x, y);
       }
       ctx.lineTo(w, h);
       ctx.closePath();
-      const g = ctx.createLinearGradient(0, base - amp * 2, 0, h);
+
+      const g = ctx.createLinearGradient(0, base - amp * 2.2, 0, h);
       g.addColorStop(0, colorTop);
       g.addColorStop(1, colorBottom);
       ctx.fillStyle = g;
       ctx.fill();
 
-      // foam line
       ctx.beginPath();
       for (let i = 0; i <= steps; i++) {
         const x = (i / steps) * w;
-        const y = this.waveY(x / w, base, amp, freq, speed, phase);
+        const y = this.waveY(i / steps, base, amp, freq, speed, phase);
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
-      ctx.strokeStyle = "rgba(255,255,255,0.22)";
-      ctx.lineWidth = 2.2 * this.dpr;
+      ctx.strokeStyle = `rgba(255,255,255,${foamAlpha})`;
+      ctx.lineWidth = 2.6 * this.dpr;
       ctx.stroke();
 
-      // crest sparkles
-      ctx.fillStyle = "rgba(255,255,255,0.55)";
-      for (let i = 0; i < steps; i += 7) {
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      for (let i = 0; i < steps; i += 6) {
+        const twinkle = 0.5 + 0.5 * Math.sin(t * 7 + i + phase);
+        if (twinkle < 0.72) continue;
         const x = (i / steps) * w;
-        const y = this.waveY(x / w, base, amp, freq, speed, phase);
-        const twinkle = 0.5 + 0.5 * Math.sin(t * 6 + i + phase);
-        if (twinkle < 0.75) continue;
+        const y = this.waveY(i / steps, base, amp, freq, speed, phase);
         ctx.beginPath();
-        ctx.arc(x, y - 2 * this.dpr, 1.4 * this.dpr * twinkle, 0, Math.PI * 2);
+        ctx.arc(x, y - 2.5 * this.dpr, 1.6 * this.dpr * twinkle, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -275,20 +256,19 @@
       const { ctx, w, h, t, scroll } = this;
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
-      for (let i = 0; i < 7; i++) {
-        const x =
-          ((t * (20 + i * 8) + i * 97) % (w + 200)) - 100 + Math.sin(t + i) * 30;
-        const top = h * (0.52 - scroll * 0.03);
-        const beam = ctx.createLinearGradient(x, top, x + 40, h);
-        beam.addColorStop(0, "rgba(120, 230, 255, 0)");
-        beam.addColorStop(0.25, `rgba(120, 230, 255, ${0.05 + (i % 3) * 0.02})`);
-        beam.addColorStop(1, "rgba(120, 230, 255, 0)");
+      for (let i = 0; i < 8; i++) {
+        const x = ((t * (22 + i * 9) + i * 110) % (w + 220)) - 110;
+        const top = h * (0.5 - scroll * 0.03);
+        const beam = ctx.createLinearGradient(x, top, x + 50, h);
+        beam.addColorStop(0, "rgba(160, 240, 255, 0)");
+        beam.addColorStop(0.3, `rgba(160, 240, 255, ${0.06 + (i % 3) * 0.025})`);
+        beam.addColorStop(1, "rgba(160, 240, 255, 0)");
         ctx.fillStyle = beam;
         ctx.beginPath();
         ctx.moveTo(x, top);
-        ctx.lineTo(x + 55 + i * 6, top);
-        ctx.lineTo(x + 140 + i * 12, h);
-        ctx.lineTo(x - 40 - i * 8, h);
+        ctx.lineTo(x + 60 + i * 5, top);
+        ctx.lineTo(x + 150 + i * 10, h);
+        ctx.lineTo(x - 50 - i * 8, h);
         ctx.closePath();
         ctx.fill();
       }
@@ -298,9 +278,9 @@
     drawSparks() {
       const { ctx, w, h, t, sparks } = this;
       for (const s of sparks) {
-        const x = s.x * w + Math.sin(t * s.speed + s.phase) * 18;
-        const y = s.y * h + Math.cos(t * s.speed * 1.3 + s.phase) * 10;
-        const a = (0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t * 5 + s.phase))) * s.glow;
+        const x = s.x * w + Math.sin(t * s.speed + s.phase) * 20;
+        const y = s.y * h + Math.cos(t * s.speed * 1.25 + s.phase) * 12;
+        const a = (0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * 5.5 + s.phase))) * s.glow;
         ctx.fillStyle = `rgba(255,255,255,${a})`;
         ctx.beginPath();
         ctx.arc(x, y, s.r * this.dpr, 0, Math.PI * 2);
@@ -310,39 +290,39 @@
 
     drawBoat() {
       const { ctx, w, h, t, scroll } = this;
-      const x = w * (0.2 + Math.sin(t * 0.25) * 0.03);
-      const water = h * (0.62 - scroll * 0.04);
-      const bob = Math.sin(t * 1.7) * 6 * this.dpr;
+      const x = w * (0.22 + Math.sin(t * 0.28) * 0.04);
+      const water = h * (0.6 - scroll * 0.035);
+      const bob = Math.sin(t * 1.8) * 7 * this.dpr;
       const y = water + bob;
       ctx.save();
       ctx.translate(x, y);
-      ctx.rotate(Math.sin(t * 1.7) * 0.05);
-      ctx.fillStyle = "rgba(7, 32, 51, 0.85)";
+      ctx.rotate(Math.sin(t * 1.8) * 0.06);
+      ctx.fillStyle = "rgba(7, 40, 60, 0.9)";
       ctx.beginPath();
-      ctx.moveTo(-36 * this.dpr, 0);
-      ctx.lineTo(40 * this.dpr, 0);
-      ctx.quadraticCurveTo(28 * this.dpr, 18 * this.dpr, 0, 18 * this.dpr);
-      ctx.quadraticCurveTo(-30 * this.dpr, 18 * this.dpr, -36 * this.dpr, 0);
+      ctx.moveTo(-40 * this.dpr, 0);
+      ctx.lineTo(44 * this.dpr, 0);
+      ctx.quadraticCurveTo(30 * this.dpr, 20 * this.dpr, 0, 20 * this.dpr);
+      ctx.quadraticCurveTo(-32 * this.dpr, 20 * this.dpr, -40 * this.dpr, 0);
       ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.65)";
-      ctx.lineWidth = 2 * this.dpr;
+      ctx.strokeStyle = "rgba(255,255,255,0.75)";
+      ctx.lineWidth = 2.2 * this.dpr;
       ctx.beginPath();
       ctx.moveTo(0, 0);
-      ctx.lineTo(0, -42 * this.dpr);
+      ctx.lineTo(0, -46 * this.dpr);
       ctx.stroke();
-      ctx.fillStyle = "rgba(255, 214, 120, 0.9)";
+      ctx.fillStyle = "rgba(255, 214, 120, 0.95)";
       ctx.beginPath();
-      ctx.moveTo(2 * this.dpr, -40 * this.dpr);
-      ctx.lineTo(28 * this.dpr, -18 * this.dpr);
-      ctx.lineTo(2 * this.dpr, -12 * this.dpr);
+      ctx.moveTo(2 * this.dpr, -44 * this.dpr);
+      ctx.lineTo(30 * this.dpr, -20 * this.dpr);
+      ctx.lineTo(2 * this.dpr, -14 * this.dpr);
       ctx.closePath();
       ctx.fill();
       ctx.restore();
     }
 
     draw() {
-      this.pointer.x += (this.targetPointer.x - this.pointer.x) * 0.06;
-      this.pointer.y += (this.targetPointer.y - this.pointer.y) * 0.06;
+      this.pointer.x += (this.targetPointer.x - this.pointer.x) * 0.07;
+      this.pointer.y += (this.targetPointer.y - this.pointer.y) * 0.07;
 
       const { ctx, w, h } = this;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -350,51 +330,18 @@
       this.drawSun();
       this.drawBirds();
 
-      this.fillWave(
-        0.58,
-        0.028,
-        7.5,
-        1.1,
-        0.2,
-        "rgba(40, 170, 200, 0.75)",
-        "rgba(8, 70, 110, 0.95)",
-      );
-      this.fillWave(
-        0.64,
-        0.034,
-        5.8,
-        1.35,
-        1.4,
-        "rgba(30, 200, 200, 0.72)",
-        "rgba(6, 60, 100, 0.98)",
-      );
-      this.fillWave(
-        0.72,
-        0.045,
-        4.2,
-        1.7,
-        2.1,
-        "rgba(20, 150, 190, 0.9)",
-        "rgba(2, 30, 60, 1)",
-      );
-      this.fillWave(
-        0.8,
-        0.055,
-        3.4,
-        2.1,
-        3.3,
-        "rgba(10, 90, 140, 0.95)",
-        "rgba(1, 16, 34, 1)",
-      );
+      this.fillWave(0.52, 0.035, 7.2, 1.15, 0.2, "rgba(90, 220, 230, 0.72)", "rgba(20, 110, 140, 0.9)", 0.28);
+      this.fillWave(0.6, 0.042, 5.6, 1.4, 1.3, "rgba(50, 200, 210, 0.8)", "rgba(12, 90, 120, 0.95)", 0.32);
+      this.fillWave(0.7, 0.05, 4.1, 1.75, 2.2, "rgba(30, 160, 190, 0.92)", "rgba(6, 60, 90, 1)", 0.26);
+      this.fillWave(0.8, 0.06, 3.2, 2.15, 3.4, "rgba(14, 100, 140, 0.98)", "rgba(2, 28, 48, 1)", 0.2);
 
       this.drawBoat();
       this.drawCaustics();
       this.drawSparks();
 
-      // vignette
-      const vig = ctx.createRadialGradient(w * 0.5, h * 0.45, h * 0.2, w * 0.5, h * 0.5, h * 0.85);
+      const vig = ctx.createRadialGradient(w * 0.5, h * 0.42, h * 0.18, w * 0.5, h * 0.5, h * 0.9);
       vig.addColorStop(0, "rgba(0,0,0,0)");
-      vig.addColorStop(1, "rgba(0, 10, 20, 0.45)");
+      vig.addColorStop(1, "rgba(0, 18, 32, 0.35)");
       ctx.fillStyle = vig;
       ctx.fillRect(0, 0, w, h);
     }
@@ -413,6 +360,59 @@
     return 0;
   }
 
+  function ensureBackdrop() {
+    let canvas = document.getElementById("summerSea");
+    if (!canvas) {
+      canvas = document.createElement("canvas");
+      canvas.id = "summerSea";
+      canvas.className = "summer-sea-canvas";
+      canvas.setAttribute("aria-hidden", "true");
+    }
+    if (canvas.parentElement !== document.body) {
+      document.body.prepend(canvas);
+    }
+
+    let sun = document.getElementById("summerSunGlow");
+    if (!sun) {
+      sun = document.createElement("div");
+      sun.id = "summerSunGlow";
+      sun.className = "summer-sun-glow";
+      sun.setAttribute("aria-hidden", "true");
+      document.body.prepend(sun);
+    }
+
+    let waves = document.getElementById("summerWavesCss");
+    if (!waves) {
+      waves = document.createElement("div");
+      waves.id = "summerWavesCss";
+      waves.className = "summer-waves-css";
+      waves.setAttribute("aria-hidden", "true");
+      waves.innerHTML = `
+        <svg class="wave-a" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <path fill="rgba(94, 231, 240, 0.45)" d="M0,192L48,176C96,160,192,128,288,133.3C384,139,480,181,576,186.7C672,192,768,160,864,154.7C960,149,1056,171,1152,181.3C1248,192,1344,192,1392,192L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+          <path fill="rgba(94, 231, 240, 0.45)" transform="translate(1440)" d="M0,192L48,176C96,160,192,128,288,133.3C384,139,480,181,576,186.7C672,192,768,160,864,154.7C960,149,1056,171,1152,181.3C1248,192,1344,192,1392,192L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+        </svg>
+        <svg class="wave-b" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <path fill="rgba(14, 165, 233, 0.4)" d="M0,224L60,208C120,192,240,160,360,165.3C480,171,600,213,720,224C840,235,960,213,1080,192C1200,171,1320,149,1380,138.7L1440,128L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z"></path>
+          <path fill="rgba(14, 165, 233, 0.4)" transform="translate(1440)" d="M0,224L60,208C120,192,240,160,360,165.3C480,171,600,213,720,224C840,235,960,213,1080,192C1200,171,1320,149,1380,138.7L1440,128L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z"></path>
+        </svg>
+        <svg class="wave-c" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <path fill="rgba(3, 70, 100, 0.75)" d="M0,288L48,272C96,256,192,224,288,224C384,224,480,256,576,250.7C672,245,768,203,864,197.3C960,192,1056,224,1152,234.7C1248,245,1344,235,1392,229.3L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+          <path fill="rgba(3, 70, 100, 0.75)" transform="translate(1440)" d="M0,288L48,272C96,256,192,224,288,224C384,224,480,256,576,250.7C672,245,768,203,864,197.3C960,192,1056,224,1152,234.7C1248,245,1344,235,1392,229.3L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+        </svg>
+      `;
+      document.body.prepend(waves);
+    }
+
+    return canvas;
+  }
+
+  function removeBackdrop() {
+    document.getElementById("summerSea")?.remove();
+    document.getElementById("summerSunGlow")?.remove();
+    document.getElementById("summerWavesCss")?.remove();
+  }
+
   const SummerMode = {
     root: null,
     canvas: null,
@@ -420,6 +420,7 @@
     observer: null,
     hint: null,
     active: false,
+    bound: false,
 
     shouldShow({ agendaData = null, agendaFailed = false } = {}) {
       const params = new URLSearchParams(window.location.search);
@@ -433,9 +434,8 @@
 
     mount() {
       this.root = document.getElementById("summerMode");
-      this.canvas = document.getElementById("summerSea");
       this.hint = this.root?.querySelector(".summer-scroll-hint");
-      if (!this.root || !this.canvas) return false;
+      if (!this.root) return false;
 
       const nameEl = document.getElementById("summerUserName");
       if (nameEl && window.studentName) {
@@ -445,39 +445,49 @@
         if (stored) nameEl.textContent = stored;
       }
 
-      document.getElementById("summerGoDashboard")?.addEventListener("click", () => {
-        this.hide({ remember: true });
-      });
-      document.getElementById("summerStay")?.addEventListener("click", () => {
-        window.scrollTo({
-          top: 0,
-          behavior: prefersReducedMotion() ? "auto" : "smooth",
+      if (!this.bound) {
+        document.getElementById("summerGoDashboard")?.addEventListener("click", () => {
+          this.hide({ remember: true });
         });
-      });
+        document.getElementById("summerStay")?.addEventListener("click", () => {
+          window.scrollTo({
+            top: 0,
+            behavior: prefersReducedMotion() ? "auto" : "smooth",
+          });
+        });
+        this.bound = true;
+      }
 
       return true;
     },
 
     bindScroll() {
       const panels = [...this.root.querySelectorAll("[data-summer-reveal]")];
+      this.observer?.disconnect();
       this.observer = new IntersectionObserver(
         (entries) => {
           for (const entry of entries) {
-            if (entry.isIntersecting) entry.target.classList.add("is-inview");
+            if (entry.isIntersecting) {
+              entry.target.classList.add("is-inview");
+            }
           }
         },
-        { threshold: 0.28, rootMargin: "0px 0px -8% 0px" },
+        { threshold: [0.12, 0.25, 0.4], rootMargin: "0px 0px -5% 0px" },
       );
-      panels.forEach((p) => this.observer.observe(p));
-      // hero visible immediately
-      panels[0]?.classList.add("is-inview");
+      panels.forEach((p) => {
+        p.classList.remove("is-inview");
+        this.observer.observe(p);
+      });
+      // force hero visible after paint
+      requestAnimationFrame(() => panels[0]?.classList.add("is-inview"));
 
       this.onScroll = () => {
         const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
         const p = window.scrollY / max;
         this.engine?.setScrollProgress(p);
         if (this.hint) {
-          this.hint.style.opacity = String(Math.max(0, 1 - p * 4));
+          this.hint.style.opacity = String(Math.max(0, 1 - p * 3.5));
+          this.hint.style.visibility = p > 0.35 ? "hidden" : "visible";
         }
       };
       window.addEventListener("scroll", this.onScroll, { passive: true });
@@ -486,8 +496,9 @@
 
     bindPointer() {
       this.onPointer = (e) => {
-        const x = "touches" in e ? e.touches[0].clientX : e.clientX;
-        const y = "touches" in e ? e.touches[0].clientY : e.clientY;
+        const x = "touches" in e ? e.touches[0]?.clientX : e.clientX;
+        const y = "touches" in e ? e.touches[0]?.clientY : e.clientY;
+        if (x == null || y == null) return;
         this.engine?.setPointer(x / window.innerWidth, y / window.innerHeight);
       };
       window.addEventListener("pointermove", this.onPointer, { passive: true });
@@ -501,22 +512,28 @@
         if (nameEl) nameEl.textContent = name;
       }
 
+      this.canvas = ensureBackdrop();
+      // Hint fisso su body: evita clip da contenitori/navbar.
+      if (this.hint && this.hint.parentElement !== document.body) {
+        document.body.appendChild(this.hint);
+      }
       document.body.classList.add("summer-active");
       this.root.hidden = false;
+      this.root.removeAttribute("hidden");
       this.root.setAttribute("aria-hidden", "false");
       this.active = true;
       window.scrollTo({ top: 0, behavior: "auto" });
 
-      if (!prefersReducedMotion()) {
-        this.engine = new SeaEngine(this.canvas);
-        this.engine.start();
-        this.onResize = () => this.engine?.resize();
-        window.addEventListener("resize", this.onResize);
-        this.bindPointer();
-      } else {
-        // static gradient fallback
-        this.canvas.style.background =
-          "linear-gradient(180deg, #08305a 0%, #0e7c8a 48%, #06263f 100%)";
+      try {
+        if (!prefersReducedMotion()) {
+          this.engine = new SeaEngine(this.canvas);
+          this.engine.start();
+          this.onResize = () => this.engine?.resize();
+          window.addEventListener("resize", this.onResize);
+          this.bindPointer();
+        }
+      } catch (err) {
+        console.error("Summer sea engine failed, CSS waves still active", err);
       }
 
       this.bindScroll();
@@ -527,14 +544,20 @@
       if (remember) markDismissed();
       document.body.classList.remove("summer-active");
       this.root.hidden = true;
+      this.root.setAttribute("hidden", "");
       this.root.setAttribute("aria-hidden", "true");
       this.active = false;
       this.engine?.stop();
+      this.engine = null;
       this.observer?.disconnect();
       window.removeEventListener("scroll", this.onScroll);
       window.removeEventListener("resize", this.onResize);
       window.removeEventListener("pointermove", this.onPointer);
       window.removeEventListener("touchmove", this.onPointer);
+      if (this.hint && this.root && this.hint.parentElement !== this.root) {
+        this.root.prepend(this.hint);
+      }
+      removeBackdrop();
     },
   };
 
