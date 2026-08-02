@@ -24,8 +24,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       updateGreeting();
     }, 1000);
 
-    const agendaData = await loadAgendaWeek(0);
-    renderAgenda(agendaData);
+    try {
+      const agendaData = await loadAgendaWeek(0);
+      renderAgenda(agendaData);
+    } catch (e) {
+      console.error("agenda fetch failed", e);
+    }
 
     const [lezioniData, votiData, assenzeData] = await Promise.all([
       fetchLezioni().catch((e) => {
