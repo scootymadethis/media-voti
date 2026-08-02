@@ -26,6 +26,7 @@ import hashlib
 import copy
 import requests
 from math import ceil
+from datetime import datetime
 from threading import Lock
 from typing import Optional, Any
 
@@ -1467,11 +1468,69 @@ def cached_cvv_direct_json(u: Utente, endpoint_name: str, request_url: Any, *arg
     return cached_call(key, fetch)
 
 
-def cached_agenda_json(u: Utente, start: str, end: str) -> Any:
-    user_ident = getattr(u, "ident", None) or getattr(u, "uid", None)
-    if not user_ident:
+_YYYYMMDD_RE = re.compile(r"^\d{8}$")
+# ClasseViva rifiuta intervalli agenda troppo ampi (tipicamente >14 giorni) con HTTP 422.
+AGENDA_MAX_RANGE_DAYS = 14
+
+
+def parse_agenda_yyyymmdd(value: Optional[str], *, field: str) -> str:
+    raw = str(value or "").strip()
+    if not _YYYYMMDD_RE.match(raw):
+        raise HTTPException(status_code=400, detail=f"{field} deve essere nel formato YYYYMMDD")
+    try:
+        time.strptime(raw, "%Y%m%d")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"{field} non è una data valida") from exc
+    return raw
+
+
+def normalize_agenda_range(start: str, end: str) -> tuple[str, str]:
+    start_s = parse_agenda_yyyymmdd(start, field="start")
+    end_s = parse_agenda_yyyymmdd(end, field="end")
+    start_d = datetime.strptime(start_s, "%Y%m%d").date()
+    end_d = datetime.strptime(end_s, "%Y%m%d").date()
+    if end_d < start_d:
+        raise HTTPException(status_code=400, detail="end non può precedere start")
+    delta_days = (end_d - start_d).days
+    if delta_days > AGENDA_MAX_RANGE_DAYS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Intervallo agenda massimo {AGENDA_MAX_RANGE_DAYS} giorni",
+        )
+    return start_s, end_s
+
+
+def _agenda_student_ident(u: Utente) -> str:
+    """Ident numerico richiesto da /students/{id}/agenda/..."""
+    raw = getattr(u, "ident", None) or getattr(u, "uid", None)
+    digits = "".join(ch for ch in str(raw or "") if ch.isdigit())
+    if not digits:
         raise HTTPException(status_code=500, detail="Impossibile determinare ident utente")
-    return cached_cvv_direct_json(u, "agenda", RequestURLs.agenda, user_ident, start, end, timeout=20)
+    return digits
+
+
+def cached_agenda_json(u: Utente, start: str, end: str) -> Any:
+    """Fetch agenda upstream; 422 (fuori anno scolastico / range) → agenda vuota."""
+    user_ident = _agenda_student_ident(u)
+    url = _format_request_url(RequestURLs.agenda, user_ident, start, end)
+    key = _cache_key(["cvv-direct", _cache_user_key(u), "agenda", url])
+
+    def fetch() -> Any:
+        try:
+            resp = requests.get(url, headers=u.get_headers(), timeout=20)
+        except requests.RequestException as e:
+            raise UpstreamUnavailable(f"Spaggiari irraggiungibile: {e}")
+        # Fuori anno scolastico o parametri non accettati: non è un fault del backend.
+        if resp.status_code == 422:
+            return {"agenda": []}
+        raise_for_upstream_http_status(resp.status_code, context="agenda upstream")
+        try:
+            data = resp.json()
+        except ValueError:
+            return {"agenda": []}
+        return data if data is not None else {"agenda": []}
+
+    return cached_call(key, fetch)
 
 def cached_external_get_json_for_user(
     u: Utente,
@@ -1845,6 +1904,7 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
     try:
         start = body.start or time.strftime("%Y%m%d")
         end = body.end or start
+        start, end = normalize_agenda_range(start, end)
         data = cached_agenda_json(u, start, end)
         return {"ok": True, "agenda": data}
     except HTTPException:
