@@ -63,20 +63,31 @@
       startIndeterminateProgress();
     },
 
-    hide() {
+    hide(options) {
       const overlay = overlayEl();
       if (!overlay) return;
+
+      const immediate =
+        options === true ||
+        (options && typeof options === "object" && options.immediate === true);
 
       stopProgressTimer();
       setProgress(100);
 
-      window.setTimeout(() => {
+      const finish = () => {
         overlay.classList.add("hidden");
         overlay.setAttribute("aria-hidden", "true");
         overlay.setAttribute("aria-busy", "false");
         unlockPage();
         setProgress(0);
-      }, 220);
+      };
+
+      if (immediate) {
+        finish();
+        return;
+      }
+
+      window.setTimeout(finish, 220);
     },
 
     setMessage(message) {

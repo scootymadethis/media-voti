@@ -41,9 +41,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (showSummer) {
       window.studentName = studentName;
       window.SummerMode.show({ name: studentName });
-      window.LoadingScreen?.hide();
+      window.LoadingScreen?.hide?.({ immediate: true });
+      // Non bloccare la UI estate dietro fetch/setup dashboard.
+      // La dashboard si prepara in background se l'utente esce dalla modalità.
+      void bootstrapDashboardPanels().catch((err) => {
+        console.error("dashboard background hydrate failed", err);
+      });
+      return;
     }
 
+    await bootstrapDashboardPanels();
+  } catch (err) {
+    console.error(err);
+    window.LoadingScreen?.hide?.({ immediate: true });
+  }
+});
+
+async function bootstrapDashboardPanels() {
     const [lezioniData, votiData, assenzeData] = await Promise.all([
       fetchLezioni().catch((e) => {
         console.error("lezioni fetch failed", e);
@@ -78,6 +92,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function updateSlidesLayout() {
+      if (!track) return;
       slidesPerView = getSlidesPerView();
       const giornoEls = Array.from(
         document.querySelectorAll(".agenda-track .giorno"),
@@ -166,16 +181,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     updateGreeting();
     await new Promise((res) => requestAnimationFrame(res));
 
-    window.LoadingScreen?.hide();
+    window.LoadingScreen?.hide?.({ immediate: Boolean(document.body.classList.contains("summer-active")) });
 
     if (typeof window.initSiteAnnouncementModal === "function") {
       await window.initSiteAnnouncementModal();
     }
-  } catch (err) {
-    console.error(err);
-    window.LoadingScreen?.hide();
-  }
-});
+}
 
 async function fetchCard() {
   const res = await fetch(apiUrl("/api/card"), {
