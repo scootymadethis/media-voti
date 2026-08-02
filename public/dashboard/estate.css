@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800;9..144,900&family=Sora:wght@400;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=Sora:wght@400;600;700&display=swap");
 
 .summer-mode .visually-hidden {
   position: absolute;
@@ -12,122 +12,43 @@
   border: 0;
 }
 
-/* Canvas montato su body: non deve stare dentro overflow/transform */
-.summer-sea-canvas {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 0 !important;
-  pointer-events: none !important;
-  display: block;
-}
-
-.summer-waves-css {
-  position: fixed;
-  inset: auto 0 0 0;
-  height: min(58vh, 620px);
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.summer-waves-css svg {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 200%;
-  height: 100%;
-  min-height: 220px;
-}
-
-.summer-waves-css .wave-a {
-  animation: summer-wave-slide 11s linear infinite;
-  opacity: 0.55;
-}
-
-.summer-waves-css .wave-b {
-  animation: summer-wave-slide 17s linear infinite reverse;
-  opacity: 0.45;
-  bottom: -8%;
-}
-
-.summer-waves-css .wave-c {
-  animation: summer-wave-slide 23s linear infinite;
-  opacity: 0.7;
-  bottom: -18%;
-}
-
-.summer-sun-glow {
-  position: fixed;
-  top: 8%;
-  right: 12%;
-  width: min(42vw, 320px);
-  height: min(42vw, 320px);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at center, rgba(255, 236, 170, 0.95) 0%, rgba(255, 196, 90, 0.55) 28%, rgba(255, 160, 70, 0.18) 52%, transparent 70%);
-  filter: blur(2px);
-  z-index: 0;
-  pointer-events: none;
-  animation: summer-sun-pulse 4.5s ease-in-out infinite;
-}
-
-.summer-sun-glow::before {
-  content: "";
-  position: absolute;
-  inset: -18%;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg 12deg,
-    rgba(255, 220, 140, 0.22) 12deg 16deg,
-    transparent 16deg 45deg,
-    rgba(255, 220, 140, 0.16) 45deg 49deg,
-    transparent 49deg 90deg,
-    rgba(255, 220, 140, 0.2) 90deg 94deg,
-    transparent 94deg 140deg,
-    rgba(255, 220, 140, 0.14) 140deg 144deg,
-    transparent 144deg 180deg,
-    rgba(255, 220, 140, 0.2) 180deg 184deg,
-    transparent 184deg 230deg,
-    rgba(255, 220, 140, 0.14) 230deg 234deg,
-    transparent 234deg 280deg,
-    rgba(255, 220, 140, 0.18) 280deg 284deg,
-    transparent 284deg 360deg
-  );
-  border-radius: 50%;
-  animation: summer-sun-spin 28s linear infinite;
-  opacity: 0.85;
-}
-
 .summer-mode {
-  --summer-ink: #073047;
-  --summer-foam: #f4fbff;
-  --summer-sun: #ffd166;
-  --summer-lagoon: #5ee7f0;
+  --summer-ink: #0b3d5c;
+  --summer-foam: #f3fbff;
+  --summer-deep: #0a6e8a;
   position: relative;
   display: none;
   width: 100%;
   min-height: 100vh;
-  margin: 0;
-  padding: 0;
-  overflow: visible;
+  z-index: 1;
   color: var(--summer-foam);
   font-family: "Sora", sans-serif;
-  z-index: 1;
 }
 
 body.summer-active {
-  background:
-    radial-gradient(ellipse 80% 50% at 70% 10%, rgba(255, 200, 110, 0.35), transparent 55%),
-    radial-gradient(ellipse 90% 60% at 20% 80%, rgba(40, 180, 210, 0.35), transparent 50%),
-    linear-gradient(180deg, #0a3a62 0%, #0c6e86 42%, #087a8c 68%, #034860 100%);
-  background-attachment: fixed;
+  /* Pattern onde SVG ripetuto + wash di colore */
+  background-color: #0d7ea0;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(186, 230, 253, 0.55) 0%,
+      rgba(56, 189, 248, 0.18) 28%,
+      rgba(13, 126, 160, 0.2) 58%,
+      rgba(8, 70, 100, 0.55) 100%
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='80' viewBox='0 0 160 80'%3E%3Cpath d='M0 40c20 0 20-16 40-16s20 16 40 16 20-16 40-16 20 16 40 16v40H0Z' fill='%23ffffff' fill-opacity='0.10'/%3E%3Cpath d='M0 52c20 0 20-14 40-14s20 14 40 14 20-14 40-14 20 14 40 14v28H0Z' fill='%2307364a' fill-opacity='0.14'/%3E%3C/svg%3E");
+  background-size: auto, 180px 90px;
+  background-repeat: no-repeat, repeat;
+  background-attachment: fixed, fixed;
 }
 
 body.summer-active .main,
 body.summer-active .footer {
   display: none !important;
+}
+
+body.summer-active .summer-mode {
+  display: block;
 }
 
 /* Navbar azzurra estate */
@@ -138,10 +59,10 @@ body.summer-active .navbar {
   transform: translateX(-50%);
   width: min(1300px, calc(100% - 24px));
   z-index: 40;
-  background: linear-gradient(135deg, rgba(186, 230, 253, 0.82), rgba(125, 211, 252, 0.72));
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  box-shadow: 0 14px 40px rgba(14, 116, 144, 0.22);
-  backdrop-filter: blur(18px) saturate(1.25);
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.92), rgba(186, 230, 253, 0.88));
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 12px 32px rgba(12, 74, 110, 0.18);
+  backdrop-filter: blur(16px);
   color: #0c4a6e;
 }
 
@@ -161,20 +82,19 @@ body.summer-active .navbar-brand-mark {
 
 body.summer-active .buttons button,
 body.summer-active .buttons .btn-secondary {
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid rgba(14, 116, 144, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(14, 116, 144, 0.16);
   color: #0c4a6e;
 }
 
 body.summer-active .buttons button:hover,
 body.summer-active .buttons .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 10px 24px rgba(14, 116, 144, 0.18);
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(14, 116, 144, 0.14);
 }
 
 body.summer-active .buttons #logoutBtn,
-body.summer-active .nav-drawer #logoutBtn,
-body.summer-active .buttons button:not(.btn-secondary):not(.btn-admin):not(.btn-easter-egg) {
+body.summer-active .nav-drawer button:not(.btn-secondary):not(.btn-admin):not(.btn-easter-egg):not(.nav-drawer-close) {
   background: linear-gradient(135deg, #0ea5e9, #0284c7);
   border: none;
   color: #fff;
@@ -182,19 +102,19 @@ body.summer-active .buttons button:not(.btn-secondary):not(.btn-admin):not(.btn-
 
 body.summer-active .buttons .btn-admin {
   background: linear-gradient(135deg, #38bdf8, #6366f1);
-  color: #fff;
   border: none;
+  color: #fff;
 }
 
 body.summer-active .navbar-toggle {
-  background: rgba(255, 255, 255, 0.65);
-  border-color: rgba(14, 116, 144, 0.2);
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(14, 116, 144, 0.18);
   color: #0c4a6e;
 }
 
 body.summer-active .nav-drawer {
-  background: linear-gradient(180deg, rgba(186, 230, 253, 0.95), #e0f2fe 30%, #f0f9ff);
-  border-left-color: rgba(14, 116, 144, 0.15);
+  background: linear-gradient(180deg, #e0f2fe, #f0f9ff);
+  border-left-color: rgba(14, 116, 144, 0.12);
   color: #0c4a6e;
 }
 
@@ -204,310 +124,141 @@ body.summer-active .nav-drawer .navbar-subtitle {
 }
 
 body.summer-active .nav-drawer-close {
-  background: rgba(255, 255, 255, 0.8);
-  border-color: rgba(14, 116, 144, 0.2);
+  background: #fff;
+  border-color: rgba(14, 116, 144, 0.18);
   color: #0c4a6e;
-}
-
-body.summer-active .summer-mode {
-  display: block;
-}
-
-body.summer-active .summer-waves-css,
-body.summer-active .summer-sun-glow {
-  display: block;
-}
-
-.summer-waves-css,
-.summer-sun-glow {
-  display: none;
 }
 
 .summer-scroll {
   position: relative;
   z-index: 2;
-  width: min(920px, calc(100% - 32px));
+  width: min(760px, calc(100% - 32px));
   margin: 0 auto;
-  padding: calc(110px + env(safe-area-inset-top, 0px)) 0 calc(140px + env(safe-area-inset-bottom, 0px));
+  padding: calc(120px + env(safe-area-inset-top, 0px)) 0 calc(72px + env(safe-area-inset-bottom, 0px));
 }
 
 .summer-panel {
-  min-height: min(86vh, 820px);
   display: grid;
+  gap: 12px;
+  margin-bottom: 48px;
+  padding: 8px 0 8px;
+}
+
+.summer-hero {
+  min-height: calc(100svh - 180px);
   align-content: center;
-  gap: 18px;
-  padding: clamp(32px, 7vw, 64px) 0 clamp(48px, 8vw, 80px);
-  opacity: 0;
-  transform: translate3d(0, 56px, 0);
-  transition:
-    opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
+  margin-bottom: 24px;
 }
-
-.summer-panel.is-inview {
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
-}
-
-.summer-panel.is-inview .summer-title,
-.summer-panel.is-inview .summer-lead,
-.summer-panel.is-inview .summer-note,
-.summer-panel.is-inview .summer-kicker,
-.summer-panel.is-inview .summer-chip-row,
-.summer-panel.is-inview .summer-actions {
-  animation: summer-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.summer-panel.is-inview .summer-kicker { animation-delay: 0.05s; }
-.summer-panel.is-inview .summer-title { animation-delay: 0.12s; }
-.summer-panel.is-inview .summer-lead { animation-delay: 0.22s; }
-.summer-panel.is-inview .summer-note { animation-delay: 0.3s; }
-.summer-panel.is-inview .summer-chip-row { animation-delay: 0.34s; }
-.summer-panel.is-inview .summer-actions { animation-delay: 0.38s; }
 
 .summer-kicker {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: fit-content;
-  padding: 0.45rem 0.85rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background: rgba(7, 48, 71, 0.28);
-  backdrop-filter: blur(10px);
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(244, 251, 255, 0.95);
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.28);
-}
-
-.summer-kicker span[aria-hidden="true"] {
-  font-size: 1.15rem;
-  line-height: 1;
+  text-shadow: 0 2px 12px rgba(7, 48, 71, 0.35);
 }
 
 .summer-title {
   font-family: "Fraunces", Georgia, serif;
   font-weight: 900;
-  font-size: clamp(2.5rem, 8.5vw, 5.1rem);
-  line-height: 1.08;
-  letter-spacing: -0.035em;
-  max-width: 13ch;
-  padding-bottom: 0.12em;
-  overflow: visible;
-  color: #fff8e7;
-  text-shadow:
-    0 2px 0 rgba(7, 48, 71, 0.15),
-    0 14px 40px rgba(0, 0, 0, 0.28);
-  background: none;
-  -webkit-background-clip: unset;
-  background-clip: unset;
+  font-size: clamp(2.1rem, 6.5vw, 3.4rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  color: #fffdf8;
+  text-shadow: 0 8px 24px rgba(7, 48, 71, 0.25);
+  padding-bottom: 0.05em;
 }
 
 .summer-title .emoji {
   display: inline-block;
-  margin-left: 0.12em;
-  transform-origin: 70% 70%;
-  animation: summer-wave-hand 2.4s ease-in-out infinite;
+  margin-left: 0.1em;
 }
 
 .summer-lead {
-  max-width: 36ch;
-  font-size: clamp(1.1rem, 2.8vw, 1.45rem);
+  max-width: 38ch;
+  font-size: clamp(1.05rem, 2.4vw, 1.25rem);
   line-height: 1.5;
-  color: rgba(244, 251, 255, 0.95);
-  text-shadow: 0 3px 16px rgba(0, 0, 0, 0.35);
+  color: rgba(243, 251, 255, 0.95);
 }
 
 .summer-note {
-  max-width: 38ch;
   font-family: "Fraunces", Georgia, serif;
-  font-size: clamp(1.35rem, 3.4vw, 2rem);
+  font-size: clamp(1.15rem, 2.8vw, 1.45rem);
   font-weight: 700;
   line-height: 1.35;
-  padding-bottom: 0.15em;
-  color: #fff1c2;
-  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  color: #fff3c4;
 }
 
 .summer-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.summer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.summer-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 6px;
 }
 
-.summer-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0.7rem 1rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(7, 48, 71, 0.32);
-  backdrop-filter: blur(10px);
-  font-size: 0.95rem;
-  font-weight: 600;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
-}
-
-.summer-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 10px;
-}
-
 .summer-btn {
   border: none;
   border-radius: 999px;
-  padding: 0.95rem 1.35rem;
+  padding: 0.9rem 1.25rem;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
 .summer-btn-primary {
   color: #073047;
-  background: linear-gradient(135deg, #ffe08a, #ffb347 55%, #ff7a59);
-  box-shadow: 0 14px 34px rgba(255, 140, 70, 0.35);
+  background: linear-gradient(135deg, #ffe08a, #ffb347 55%, #ff8a5b);
+  box-shadow: 0 10px 24px rgba(255, 140, 70, 0.28);
 }
 
 .summer-btn-primary:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 18px 40px rgba(255, 140, 70, 0.45);
+  transform: translateY(-1px);
 }
 
 .summer-btn-ghost {
-  color: #f4fbff;
+  color: #f3fbff;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.28);
 }
 
 .summer-btn-ghost:hover {
-  transform: translateY(-2px);
   background: rgba(255, 255, 255, 0.2);
-}
-
-.summer-scroll-hint {
-  position: fixed;
-  left: 50%;
-  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  color: rgba(244, 251, 255, 0.9);
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  pointer-events: none;
-  animation: summer-hint 2.2s ease-in-out infinite;
-  z-index: 5;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
-}
-
-.summer-scroll-hint .summer-scroll-mouse {
-  width: 20px;
-  height: 30px;
-  border: 2px solid rgba(244, 251, 255, 0.7);
-  border-radius: 999px;
-  position: relative;
-}
-
-.summer-scroll-hint .summer-scroll-mouse::after {
-  content: "";
-  position: absolute;
-  top: 6px;
-  left: 50%;
-  width: 4px;
-  height: 4px;
-  margin-left: -2px;
-  border-radius: 50%;
-  background: #fff;
-  animation: summer-hint-dot 2.2s ease-in-out infinite;
-}
-
-.summer-hero {
-  min-height: calc(100svh - 130px);
-}
-
-.summer-panel[data-depth="1"] .summer-title,
-.summer-panel[data-depth="2"] .summer-title {
-  max-width: 16ch;
-}
-
-.summer-panel[data-depth="3"] {
-  min-height: min(72vh, 680px);
-  padding-bottom: 96px;
-}
-
-@keyframes summer-rise {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 28px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-@keyframes summer-wave-hand {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(14deg); }
-  50% { transform: rotate(-6deg); }
-  75% { transform: rotate(10deg); }
-}
-
-@keyframes summer-hint {
-  0%, 100% { opacity: 0.65; transform: translate(-50%, 0); }
-  50% { opacity: 1; transform: translate(-50%, 6px); }
-}
-
-@keyframes summer-hint-dot {
-  0% { transform: translateY(0); opacity: 1; }
-  70% { transform: translateY(10px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 0; }
-}
-
-@keyframes summer-wave-slide {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
-@keyframes summer-sun-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.92; }
-  50% { transform: scale(1.06); opacity: 1; }
-}
-
-@keyframes summer-sun-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 720px) {
   .summer-scroll {
-    width: calc(100% - 24px);
-    padding-top: calc(96px + env(safe-area-inset-top, 0px));
+    width: calc(100% - 20px);
+    padding-top: calc(100px + env(safe-area-inset-top, 0px));
   }
 
   .summer-panel {
-    min-height: 78svh;
-    gap: 14px;
-  }
-
-  .summer-title {
-    max-width: 12ch;
+    padding: 22px 18px;
+    border-radius: 22px;
+    margin-bottom: 16px;
   }
 
   .summer-actions {
@@ -523,39 +274,5 @@ body.summer-active .summer-sun-glow {
     top: 10px;
     width: calc(100% - 16px);
     padding: 10px 12px;
-  }
-
-  .summer-sun-glow {
-    top: 4%;
-    right: -8%;
-    width: 55vw;
-    height: 55vw;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .summer-panel,
-  .summer-panel.is-inview,
-  .summer-panel.is-inview .summer-title,
-  .summer-panel.is-inview .summer-lead,
-  .summer-panel.is-inview .summer-note,
-  .summer-panel.is-inview .summer-kicker,
-  .summer-panel.is-inview .summer-chip-row,
-  .summer-panel.is-inview .summer-actions,
-  .summer-title .emoji,
-  .summer-scroll-hint,
-  .summer-scroll-hint .summer-scroll-mouse::after,
-  .summer-waves-css .wave-a,
-  .summer-waves-css .wave-b,
-  .summer-waves-css .wave-c,
-  .summer-sun-glow,
-  .summer-sun-glow::before,
-  .summer-btn,
-  .summer-btn-primary:hover,
-  .summer-btn-ghost:hover {
-    animation: none !important;
-    transition: none !important;
-    transform: none !important;
-    opacity: 1 !important;
   }
 }
