@@ -73,7 +73,16 @@ async function bootstrapDashboardPanels() {
       }),
     ]);
     if (lezioniData) renderLezioni(lezioniData);
-    if (votiData) renderVoti(votiData);
+    if (votiData) {
+      renderVoti(votiData);
+      try {
+        window.NewGradesAlert?.processVotiPayload?.(votiData, {
+          username: localStorage.getItem("username") || null,
+        });
+      } catch (err) {
+        console.warn("[dashboard] new grades alert failed", err);
+      }
+    }
     if (assenzeData) renderAssenze(assenzeData);
 
     const nextBtn = document.getElementById("nextWeek");
