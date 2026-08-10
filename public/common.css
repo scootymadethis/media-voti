@@ -232,3 +232,14 @@ body.is-loading textarea {
   .school-year-switcher { gap: 6px; }
   .school-year-btn { padding: 7px 10px; font-size: 12px; }
 }
+
+.export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+.export-btn {
+  font-size: 13px;
+  font-weight: 600;
+}

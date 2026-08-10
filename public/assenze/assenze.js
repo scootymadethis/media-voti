@@ -13,6 +13,7 @@ let mySchoolCode = null;
 let myUsername = null;
 let myFullName = null;
 let myLeaderboardHours = 0;
+let cachedAssenzePayload = null;
 let leaderboardVisible = true;
 let leaderboardSocket = null;
 let leaderboardReconnectTimer = null;
@@ -57,6 +58,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       await switcher.init();
     }
 
+    window.DataExport?.mountExportButtons?.(
+      document.getElementById("assenzeExportActions"),
+      {
+        onCsv: () => {
+          if (!cachedAssenzePayload) return;
+          window.DataExport.exportAssenzeCsv(cachedAssenzePayload);
+        },
+        onPdf: () => {
+          if (!cachedAssenzePayload) return;
+          try {
+            window.DataExport.exportAssenzePdf(cachedAssenzePayload);
+          } catch (err) {
+            console.error(err);
+            alert(err.message || "Impossibile aprire l'export PDF");
+          }
+        },
+      },
+    );
+
     await loadAssenzePageContent({ syncPreference: true });
     connectLeaderboardRealtime();
   } catch (err) {
@@ -82,9 +102,11 @@ async function loadAssenzePageContent({ syncPreference = true } = {}) {
   let assenzeData = [];
   try {
     const res = await fetchAssenze();
+    cachedAssenzePayload = res;
     assenzeData = res?.assenze?.events ?? [];
   } catch (err) {
     console.error("Errore durante il recupero delle assenze:", err);
+    cachedAssenzePayload = null;
     assenzeData = [];
   }
 
