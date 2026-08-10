@@ -6,7 +6,7 @@
     <title>Spaggiari 2 - Voti</title>
     <link rel="stylesheet" href="/common.css?v=9" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
-    <link rel="stylesheet" href="voti.css?v=7" />
+    <link rel="stylesheet" href="voti.css?v=10" />
   </head>
   <body>
     <div class="navbar">
@@ -231,14 +231,29 @@
       >
           <div class="leaderboard-header">
             <div>
-              <h3 class="leaderboard-title">Classifica media generale</h3>
-              <p class="leaderboard-subtitle">
+              <h3 class="leaderboard-title" id="averageLeaderboardTitle">Classifica media generale</h3>
+              <p class="leaderboard-subtitle" id="averageLeaderboardSubtitle">
                 Ordinata in base alla media generale salvata nella dashboard
               </p>
             </div>
             <div class="leaderboard-mini-summary" id="myAverageBadge"></div>
           </div>
 
+          <div class="leaderboard-subject-filter">
+            <label class="leaderboard-subject-label" for="averageLeaderboardSubjectSelect">
+              Materia
+            </label>
+            <div class="subject-select-wrap leaderboard-subject-wrap">
+              <select
+                id="averageLeaderboardSubjectSelect"
+                class="subject-select"
+                aria-label="Seleziona materia classifica"
+              >
+                <option value="Media generale">Media generale</option>
+              </select>
+              <span class="subject-select-icon" aria-hidden="true">⌄</span>
+            </div>
+          </div>
 
           <div class="leaderboard-preferences panel-subsection">
             <div>
@@ -345,6 +360,6 @@
     <script src="/nav.js?v=2"></script>
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
-    <script src="voti.js?v=14"></script>
+    <script src="voti.js?v=18"></script>
   </body>
 </html>

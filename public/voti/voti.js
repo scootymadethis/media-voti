@@ -24,6 +24,7 @@ let votiPageBootstrapping = true;
 const GENERAL_AVERAGE_LEADERBOARD_SUBJECT = "Media generale";
 const GENERAL_AVERAGE_LEADERBOARD_PERIOD_KEY = "generale";
 const GENERAL_AVERAGE_LEADERBOARD_PERIOD_LABEL = "Media generale";
+let selectedAverageLeaderboardSubject = GENERAL_AVERAGE_LEADERBOARD_SUBJECT;
 
 function extractGradesFromVotiResponse(votiData) {
   if (!votiData || typeof votiData !== "object") return [];
@@ -171,6 +172,7 @@ function initVotiViewTabs() {
 
 async function bootstrapAverageLeaderboardAfterPaint() {
   try {
+    await loadAverageLeaderboardSubjects();
     votiPageBootstrapping = false;
     await refreshAverageLeaderboardForCurrentSelection();
   } catch (err) {
@@ -184,6 +186,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();
   initVotiViewTabs();
   initAverageLeaderboardTabs();
+  initAverageLeaderboardSubjectFilter();
   initAverageLeaderboardPreferenceControls();
 
   window.LoadingScreen?.show("Caricamento voti…");
@@ -916,7 +919,7 @@ async function loadAndRenderAverageLeaderboard() {
     type: averageLeaderboardType,
     page: String(averageLeaderboardPage),
     page_size: String(averageLeaderboardPageSize),
-    subject_name: GENERAL_AVERAGE_LEADERBOARD_SUBJECT,
+    subject_name: selectedAverageLeaderboardSubject || GENERAL_AVERAGE_LEADERBOARD_SUBJECT,
     period_key: GENERAL_AVERAGE_LEADERBOARD_PERIOD_KEY,
   });
   window.SchoolYear?.appendSchoolYearParam?.(params);
@@ -940,7 +943,82 @@ async function loadAndRenderAverageLeaderboard() {
   }
 
   const data = await res.json();
+  updateAverageLeaderboardHeading();
   renderAverageLeaderboard(data);
+}
+
+function updateAverageLeaderboardHeading() {
+  const title = document.getElementById("averageLeaderboardTitle");
+  const subtitle = document.getElementById("averageLeaderboardSubtitle");
+  const subject = selectedAverageLeaderboardSubject || GENERAL_AVERAGE_LEADERBOARD_SUBJECT;
+  if (title) {
+    title.textContent =
+      subject === GENERAL_AVERAGE_LEADERBOARD_SUBJECT
+        ? "Classifica media generale"
+        : `Classifica · ${subject}`;
+  }
+  if (subtitle) {
+    subtitle.textContent =
+      subject === GENERAL_AVERAGE_LEADERBOARD_SUBJECT
+        ? "Ordinata in base alla media generale salvata nella dashboard"
+        : `Ordinata in base alla media di ${subject}`;
+  }
+}
+
+async function loadAverageLeaderboardSubjects() {
+  const select = document.getElementById("averageLeaderboardSubjectSelect");
+  if (!select) return;
+
+  const params = new URLSearchParams();
+  window.SchoolYear?.appendSchoolYearParam?.(params);
+  try {
+    const res = await fetch(apiUrl(`/api/average-leaderboard/subjects?${params.toString()}`), {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      await handleAuthFail(res);
+      return;
+    }
+    const data = await res.json();
+    const subjects = Array.isArray(data.subjects) ? data.subjects : [];
+    const current = selectedAverageLeaderboardSubject;
+    select.innerHTML = "";
+    const list = subjects.length ? subjects : [GENERAL_AVERAGE_LEADERBOARD_SUBJECT];
+    list.forEach((subject) => {
+      const option = document.createElement("option");
+      option.value = subject;
+      option.textContent = subject;
+      select.appendChild(option);
+    });
+    if (list.includes(current)) {
+      select.value = current;
+    } else {
+      selectedAverageLeaderboardSubject = list[0];
+      select.value = list[0];
+    }
+  } catch (err) {
+    console.warn("[average-leaderboard] subjects", err);
+  }
+}
+
+function initAverageLeaderboardSubjectFilter() {
+  const select = document.getElementById("averageLeaderboardSubjectSelect");
+  if (!select) return;
+  select.addEventListener("change", async () => {
+    selectedAverageLeaderboardSubject = select.value || GENERAL_AVERAGE_LEADERBOARD_SUBJECT;
+    averageLeaderboardPage = 1;
+    updateAverageLeaderboardHeading();
+    showLoading(true);
+    try {
+      await loadAndRenderAverageLeaderboard();
+    } catch (err) {
+      console.error("Errore cambio materia classifica:", err);
+      renderAverageLeaderboardEmpty("Impossibile caricare la classifica per questa materia.");
+    } finally {
+      showLoading(false);
+    }
+  });
 }
 
 function initAverageLeaderboardSearch() {
