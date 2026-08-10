@@ -19,6 +19,7 @@ let myUsername = null;
 let myFullName = null;
 let currentAverageValue = 0;
 let cachedAllVoti = [];
+let cachedVotiPayload = null;
 let votiPageBootstrapping = true;
 
 const GENERAL_AVERAGE_LEADERBOARD_SUBJECT = "Media generale";
@@ -230,6 +231,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       await switcher.init();
     }
 
+    window.DataExport?.mountExportButtons?.(
+      document.getElementById("votiExportActions"),
+      {
+        onCsv: () => {
+          if (!cachedVotiPayload) return;
+          window.DataExport.exportVotiCsv(cachedVotiPayload);
+        },
+        onPdf: () => {
+          if (!cachedVotiPayload) return;
+          try {
+            window.DataExport.exportVotiPdf(cachedVotiPayload);
+          } catch (err) {
+            console.error(err);
+            alert(err.message || "Impossibile aprire l'export PDF");
+          }
+        },
+      },
+    );
+
     await loadVotiPageContent();
     connectAverageLeaderboardRealtime();
 
@@ -296,6 +316,7 @@ async function loadVotiPageContent() {
   }
 
   const voti = extractGradesFromVotiResponse(votiData);
+  cachedVotiPayload = votiData;
   cachedAllVoti = voti;
   renderPrevisionePagella(cachedAllVoti);
 
