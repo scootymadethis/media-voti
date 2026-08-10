@@ -1299,3 +1299,22 @@
     overflow: visible;
   }
 }
+
+.leaderboard-subject-filter {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.leaderboard-subject-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.leaderboard-subject-wrap {
+  max-width: 420px;
+}
+@media (max-width: 720px) {
+  .leaderboard-subject-wrap { max-width: none; }
+}

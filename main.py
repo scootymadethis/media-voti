@@ -2498,6 +2498,67 @@ def calculate_general_average_from_payload(voti_payload: Any) -> float:
     return sum(values) / len(values)
 
 
+def calculate_subject_averages_from_payload(voti_payload: Any) -> dict[str, float]:
+    """Media per materia (stesse regole di esclusione della media generale)."""
+    grades: list[Any] = []
+    if isinstance(voti_payload, dict):
+        voti = voti_payload.get("voti", voti_payload)
+        if isinstance(voti, dict) and isinstance(voti.get("grades"), list):
+            grades = voti.get("grades") or []
+        elif isinstance(voti, list):
+            grades = voti
+    elif isinstance(voti_payload, list):
+        grades = voti_payload
+
+    buckets: dict[str, list[float]] = {}
+    for voto in grades:
+        if not isinstance(voto, dict):
+            continue
+        subject = str(voto.get("subjectDesc") or "").strip()
+        if not subject:
+            continue
+        if "RELIGIONE" in subject.upper():
+            continue
+        if str(voto.get("displayValue") or "").strip().upper() == "A":
+            continue
+        if str(voto.get("color") or "").strip().lower() == "blue":
+            continue
+        value = _parse_float_like(voto.get("decimalValue"))
+        if value is None:
+            continue
+        buckets.setdefault(subject, []).append(value)
+
+    return {
+        subject: sum(vals) / len(vals)
+        for subject, vals in buckets.items()
+        if vals
+    }
+
+
+def list_average_leaderboard_subjects(school_year: Optional[str] = None) -> list[str]:
+    year = resolve_school_year(school_year)
+    with get_db_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT subject_name
+            FROM average_leaderboard_entries_scoped
+            WHERE school_year = ? AND period_key = ?
+            ORDER BY lower(subject_name)
+            """,
+            (year, GENERAL_AVERAGE_PERIOD_KEY),
+        ).fetchall()
+    subjects = [str(row["subject_name"]).strip() for row in rows if row["subject_name"]]
+    # Media generale sempre prima
+    ordered = []
+    if GENERAL_AVERAGE_SUBJECT not in subjects:
+        ordered.append(GENERAL_AVERAGE_SUBJECT)
+    else:
+        ordered.append(GENERAL_AVERAGE_SUBJECT)
+        subjects = [s for s in subjects if s != GENERAL_AVERAGE_SUBJECT]
+    ordered.extend(subjects)
+    return ordered
+
+
 def _session_profile_from_cache(sess: dict) -> dict:
     """Profilo locale per /orario: usa solo /session/me/session/DB, zero chiamate upstream."""
     cached_me = sess.get("me_cache")
@@ -3127,17 +3188,54 @@ async def update_average_leaderboard(
             school_year=year,
         )
 
+        # Aggiorna anche le medie per materia (stessa visibilità della media generale).
+        subject_averages = calculate_subject_averages_from_payload(voti_payload)
+        full_name = body.full_name or profile.get("full_name") or (existing.get("full_name") if existing else None)
+        class_code = body.class_code or profile.get("class_code") or (existing.get("class_code") if existing else None)
+        school_code = body.school_code or profile.get("school_code") or (existing.get("school_code") if existing else None)
+        for subject_name, subject_average in subject_averages.items():
+            if float(subject_average) <= 0:
+                continue
+            upsert_average_leaderboard_entry(
+                username=session_username,
+                full_name=full_name,
+                class_code=class_code,
+                school_code=school_code,
+                subject_name=subject_name,
+                period_key=GENERAL_AVERAGE_PERIOD_KEY,
+                period_label="Media materia",
+                average=float(subject_average),
+                visible_in_leaderboard=bool(body.visible_in_leaderboard),
+                school_year=year,
+            )
+
         await broadcast_average_leaderboard_change("upsert", session_username.strip())
 
         return {
             "ok": True,
             "saved": saved,
             "school_year": year,
+            "subjects_updated": len(subject_averages),
         }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/average-leaderboard/subjects")
+def get_average_leaderboard_subjects(
+    school_year: Optional[str] = Query(default=None),
+    u: Utente = Depends(current_user),
+):
+    year = resolve_school_year(school_year)
+    subjects = list_average_leaderboard_subjects(school_year=year)
+    return {
+        "ok": True,
+        "school_year": year,
+        "subjects": subjects,
+        "default": GENERAL_AVERAGE_SUBJECT,
+    }
 
 
 @app.delete("/average-leaderboard/me")
