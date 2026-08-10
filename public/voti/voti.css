@@ -1299,3 +1299,85 @@
     overflow: visible;
   }
 }
+
+.andamento-shell {
+  margin: 18px 0 22px;
+  padding: 20px;
+  background:
+    radial-gradient(circle at top right, rgba(220, 38, 38, 0.14), transparent 42%),
+    var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+}
+
+.andamento-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.andamento-kicker {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.14);
+  color: #fca5a5;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.andamento-title {
+  margin: 0 0 4px;
+  font-size: 1.2rem;
+}
+
+.andamento-subtitle {
+  margin: 0;
+  color: var(--secondary);
+  font-size: 0.92rem;
+}
+
+.andamento-summary {
+  text-align: right;
+  min-width: 88px;
+}
+
+.andamento-summary-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.andamento-summary-delta {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.andamento-summary-delta.is-up { color: var(--success); }
+.andamento-summary-delta.is-down { color: var(--error); }
+.andamento-summary-delta.is-flat { color: var(--secondary); }
+
+.andamento-chart {
+  width: 100%;
+  min-height: 180px;
+}
+
+.andamento-chart svg {
+  width: 100%;
+  height: 180px;
+  display: block;
+}
+
+.andamento-empty {
+  margin: 8px 0 0;
+  color: var(--secondary);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 720px) {
+  .andamento-header { flex-direction: column; }
+  .andamento-summary { text-align: left; }
+}

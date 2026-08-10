@@ -6,7 +6,7 @@
     <title>Spaggiari 2 - Voti</title>
     <link rel="stylesheet" href="/common.css?v=9" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
-    <link rel="stylesheet" href="voti.css?v=7" />
+    <link rel="stylesheet" href="voti.css?v=9" />
   </head>
   <body>
     <div class="navbar">
@@ -226,6 +226,19 @@
         </div>
       </div>
 
+      <section class="andamento-shell" aria-label="Andamento media">
+        <div class="andamento-header">
+          <div>
+            <span class="andamento-kicker">Andamento</span>
+            <h3 class="andamento-title">Media generale nel tempo</h3>
+            <p class="andamento-subtitle">Un punto al giorno, aggiornato quando apri i voti.</p>
+          </div>
+          <div class="andamento-summary" id="andamentoSummary"></div>
+        </div>
+        <div id="andamentoChart" class="andamento-chart" role="img" aria-label="Grafico andamento media"></div>
+        <p id="andamentoEmpty" class="andamento-empty" hidden>Ancora pochi dati: torna nei prossimi giorni per vedere la curva.</p>
+      </section>
+
       <section
         class="grade-leaderboard-shell grade-leaderboard-shell--standalone voti-leaderboard-section"
       >
@@ -345,6 +358,6 @@
     <script src="/nav.js?v=2"></script>
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
-    <script src="voti.js?v=14"></script>
+    <script src="voti.js?v=17"></script>
   </body>
 </html>
