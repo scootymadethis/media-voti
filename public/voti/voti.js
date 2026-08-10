@@ -171,14 +171,113 @@ function initVotiViewTabs() {
 
 async function bootstrapAverageLeaderboardAfterPaint() {
   try {
-    votiPageBootstrapping = false;
     await refreshAverageLeaderboardForCurrentSelection();
+    await loadAndRenderAndamento();
   } catch (err) {
     console.error("[voti] bootstrap classifica media:", err);
+  } finally {
     votiPageBootstrapping = false;
-    renderAverageLeaderboardEmpty("Impossibile caricare la classifica al momento.");
   }
 }
+
+async function loadAndRenderAndamento() {
+  const chart = document.getElementById("andamentoChart");
+  const empty = document.getElementById("andamentoEmpty");
+  const summary = document.getElementById("andamentoSummary");
+  if (!chart) return;
+
+  const params = new URLSearchParams({
+    subject_name: GENERAL_AVERAGE_LEADERBOARD_SUBJECT,
+  });
+  window.SchoolYear?.appendSchoolYearParam?.(params);
+
+  try {
+    const res = await fetch(apiUrl(`/api/average-history?${params.toString()}`), {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      await handleAuthFail(res);
+      throw new Error("history fetch failed");
+    }
+    const data = await res.json();
+    const points = Array.isArray(data.points) ? data.points : [];
+    renderAndamentoChart(points);
+  } catch (err) {
+    console.warn("[andamento]", err);
+    chart.innerHTML = "";
+    if (empty) {
+      empty.hidden = false;
+      empty.textContent = "Andamento non disponibile al momento.";
+    }
+    if (summary) summary.innerHTML = "";
+  }
+}
+
+function renderAndamentoChart(points) {
+  const chart = document.getElementById("andamentoChart");
+  const empty = document.getElementById("andamentoEmpty");
+  const summary = document.getElementById("andamentoSummary");
+  if (!chart) return;
+
+  if (!points.length) {
+    chart.innerHTML = "";
+    if (empty) empty.hidden = false;
+    if (summary) summary.innerHTML = "";
+    return;
+  }
+  if (empty) empty.hidden = true;
+
+  const values = points.map((p) => Number(p.average) || 0);
+  const last = values[values.length - 1];
+  const prev = values.length > 1 ? values[values.length - 2] : last;
+  const delta = last - prev;
+  const deltaClass = Math.abs(delta) < 0.005 ? "is-flat" : delta > 0 ? "is-up" : "is-down";
+  const deltaLabel = Math.abs(delta) < 0.005 ? "stabile" : `${delta > 0 ? "+" : ""}${delta.toFixed(2)}`;
+
+  if (summary) {
+    summary.innerHTML = `
+      <div class="andamento-summary-value">${last.toFixed(2)}</div>
+      <div class="andamento-summary-delta ${deltaClass}">${deltaLabel}</div>
+    `;
+  }
+
+  const width = 640;
+  const height = 180;
+  const padX = 18;
+  const padY = 18;
+  const minV = Math.max(0, Math.min(...values) - 0.3);
+  const maxV = Math.min(10, Math.max(...values) + 0.3);
+  const span = Math.max(0.5, maxV - minV);
+
+  const coords = values.map((value, index) => {
+    const x = padX + (index / Math.max(1, values.length - 1)) * (width - padX * 2);
+    const y = height - padY - ((value - minV) / span) * (height - padY * 2);
+    return [x, y];
+  });
+
+  const line = coords.map((c, i) => `${i === 0 ? "M" : "L"}${c[0].toFixed(1)},${c[1].toFixed(1)}`).join(" ");
+  const area = `${line} L${coords[coords.length - 1][0].toFixed(1)},${height - padY} L${coords[0][0].toFixed(1)},${height - padY} Z`;
+  const dots = coords.map((c, i) => {
+    const label = `${points[i].day}: ${values[i].toFixed(2)}`;
+    return `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="3.5" fill="#f87171"><title>${label}</title></circle>`;
+  }).join("");
+
+  chart.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="andamentoFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(220,38,38,0.35)" />
+          <stop offset="100%" stop-color="rgba(220,38,38,0)" />
+        </linearGradient>
+      </defs>
+      <path d="${area}" fill="url(#andamentoFill)"></path>
+      <path d="${line}" fill="none" stroke="#f87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+      ${dots}
+    </svg>
+  `;
+}
+
 
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileMenu();

@@ -425,6 +425,20 @@ def init_db():
                 )
                 """
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_average_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL,
+                    school_year TEXT NOT NULL,
+                    subject_name TEXT NOT NULL,
+                    average REAL NOT NULL,
+                    day_key TEXT NOT NULL,
+                    recorded_at REAL NOT NULL,
+                    UNIQUE(username, school_year, subject_name, day_key)
+                )
+                """
+            )
 
             conn.commit()
 
@@ -586,6 +600,71 @@ def get_user_year_snapshot(*, username: str, school_year: str, kind: str) -> Opt
         return json.loads(row["payload"])
     except (TypeError, ValueError, json.JSONDecodeError):
         return None
+
+
+
+def save_average_history_point(
+    *,
+    username: str,
+    school_year: str,
+    subject_name: str,
+    average: float,
+) -> None:
+    """Salva al massimo un punto al giorno per utente/anno/materia."""
+    normalized_username = username.strip()
+    year = resolve_school_year(school_year)
+    subject = (subject_name or GENERAL_AVERAGE_SUBJECT).strip() or GENERAL_AVERAGE_SUBJECT
+    value = float(average)
+    if value <= 0 or not normalized_username:
+        return
+    day_key = time.strftime("%Y-%m-%d")
+    now = time.time()
+    with db_lock:
+        with get_db_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO user_average_history (
+                    username, school_year, subject_name, average, day_key, recorded_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(username, school_year, subject_name, day_key) DO UPDATE SET
+                    average = excluded.average,
+                    recorded_at = excluded.recorded_at
+                """,
+                (normalized_username, year, subject, value, day_key, now),
+            )
+            conn.commit()
+
+
+def list_average_history(
+    *,
+    username: str,
+    school_year: Optional[str] = None,
+    subject_name: Optional[str] = None,
+    limit: int = 120,
+) -> list[dict]:
+    year = resolve_school_year(school_year)
+    subject = (subject_name or GENERAL_AVERAGE_SUBJECT).strip() or GENERAL_AVERAGE_SUBJECT
+    with get_db_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT day_key, average, recorded_at, subject_name, school_year
+            FROM user_average_history
+            WHERE username = ? AND school_year = ? AND subject_name = ?
+            ORDER BY day_key ASC
+            LIMIT ?
+            """,
+            (username.strip(), year, subject, max(1, min(int(limit), 365))),
+        ).fetchall()
+    return [
+        {
+            "day": row["day_key"],
+            "average": row["average"],
+            "recorded_at": row["recorded_at"],
+            "subject_name": row["subject_name"],
+            "school_year": row["school_year"],
+        }
+        for row in rows
+    ]
 
 
 def payload_has_grades(voti_payload: Any) -> bool:
@@ -3099,6 +3178,12 @@ async def update_average_leaderboard(
                         school_year=year,
                     )
                     await broadcast_average_leaderboard_change("upsert", session_username.strip())
+                save_average_history_point(
+                    username=session_username,
+                    school_year=year,
+                    subject_name=GENERAL_AVERAGE_SUBJECT,
+                    average=existing_average,
+                )
                 return {
                     "ok": True,
                     "saved": existing,
@@ -3127,6 +3212,13 @@ async def update_average_leaderboard(
             school_year=year,
         )
 
+        save_average_history_point(
+            username=session_username,
+            school_year=year,
+            subject_name=GENERAL_AVERAGE_SUBJECT,
+            average=computed_average,
+        )
+
         await broadcast_average_leaderboard_change("upsert", session_username.strip())
 
         return {
@@ -3138,6 +3230,39 @@ async def update_average_leaderboard(
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/average-history")
+def get_average_history(
+    school_year: Optional[str] = Query(default=None),
+    subject_name: Optional[str] = Query(default=None),
+    u: Utente = Depends(current_user),
+):
+    session_username = getattr(u, "uid", None)
+    if not session_username:
+        raise HTTPException(status_code=400, detail="Username sessione non disponibile")
+    year = resolve_school_year(school_year)
+    subject = (subject_name or GENERAL_AVERAGE_SUBJECT).strip()
+    points = list_average_history(
+        username=session_username,
+        school_year=year,
+        subject_name=subject,
+    )
+    if not points:
+        for alias in username_aliases(session_username, getattr(u, "ident", None)):
+            points = list_average_history(
+                username=alias,
+                school_year=year,
+                subject_name=subject,
+            )
+            if points:
+                break
+    return {
+        "ok": True,
+        "school_year": year,
+        "subject_name": subject,
+        "points": points,
+    }
 
 
 @app.delete("/average-leaderboard/me")
