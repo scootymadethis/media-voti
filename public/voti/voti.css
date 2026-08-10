@@ -99,7 +99,14 @@
 .previsione-pagella {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 22px;
+}
+
+.previsione-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .previsione-table-head,
@@ -119,7 +126,7 @@
   text-transform: uppercase;
   border-bottom: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.02);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-radius: 0;
 }
 
 .previsione-table-head span:not(:first-child) {
@@ -156,6 +163,117 @@
   color: var(--secondary);
   padding: 24px 8px;
   text-align: center;
+}
+
+.obiettivo-pagella {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at top left, rgba(220, 38, 38, 0.12), transparent 40%),
+    rgba(255, 255, 255, 0.02);
+  padding: 18px;
+}
+
+.obiettivo-kicker {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.14);
+  color: #fca5a5;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.obiettivo-title {
+  margin: 0 0 6px;
+  font-size: 1.2rem;
+}
+
+.obiettivo-subtitle {
+  margin: 0;
+  color: var(--secondary);
+  font-size: 0.92rem;
+  max-width: 62ch;
+}
+
+.obiettivo-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.obiettivo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--secondary);
+  font-weight: 600;
+}
+
+.obiettivo-field input,
+.obiettivo-field select {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--primary);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.obiettivo-results {
+  margin-top: 16px;
+}
+
+.obiettivo-hint {
+  color: var(--secondary);
+  margin: 0;
+}
+
+.obiettivo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.obiettivo-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.obiettivo-card h4 {
+  margin: 0 0 6px;
+  font-size: 0.98rem;
+  line-height: 1.3;
+}
+
+.obiettivo-card-meta,
+.obiettivo-card-note {
+  margin: 0;
+  color: var(--secondary);
+  font-size: 0.8rem;
+}
+
+.obiettivo-card-needed {
+  margin: 10px 0 6px;
+  font-size: 1.55rem;
+  font-weight: 800;
+}
+
+.obiettivo-card.is-ok .obiettivo-card-needed { color: var(--success); }
+.obiettivo-card.is-mid .obiettivo-card-needed { color: var(--warning); }
+.obiettivo-card.is-hard .obiettivo-card-needed { color: var(--error); }
+.obiettivo-card.is-empty .obiettivo-card-needed { color: var(--secondary); }
+
+@media (max-width: 720px) {
+  .obiettivo-controls {
+    grid-template-columns: 1fr;
+  }
 }
 
 .voti-list {
