@@ -4,10 +4,15 @@
 
 .voti-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(220px, 0.85fr);
   gap: 18px;
   margin-bottom: 18px;
-  align-items: stretch;
+  align-items: start;
+}
+
+.voti-hero .school-year-switcher {
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 
 .voti-kicker {

@@ -147,6 +147,44 @@ body.is-loading textarea {
 .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.65); z-index: 9999; padding: 20px; }
 .modal.show { display: flex; }
 .modal-content { background: var(--surface); color: var(--primary); border-radius: var(--radius-md); padding: 18px; width: min(820px, 100%); max-height: min(85vh, 760px); overflow: auto; border: 1px solid var(--border); box-shadow: var(--shadow); }
+
+.school-year-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+.school-year-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--primary);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.school-year-btn:hover {
+  border-color: rgba(148, 163, 184, 0.55);
+  background: rgba(148, 163, 184, 0.12);
+}
+.school-year-btn.active {
+  border-color: rgba(96, 165, 250, 0.65);
+  background: rgba(59, 130, 246, 0.18);
+  color: #dbeafe;
+}
+.school-year-note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--muted, #94a3b8);
+}
+@media (max-width: 720px) {
+  .school-year-switcher { gap: 6px; }
+  .school-year-btn { padding: 7px 10px; font-size: 12px; }
+}
 .modal-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .modal-close { background: transparent; color: var(--primary); border: none; font-size: 1.2rem; }
 .modal-close:focus { outline: none; }
@@ -156,3 +194,41 @@ body.is-loading textarea {
 .footer { width: var(--container-width); margin: 26px auto 18px; display: flex; justify-content: space-between; gap: 12px; color: var(--secondary); font-size: 0.9rem; }
 @media (max-width: 860px) { .navbar { padding: 12px 14px; } .navbar .buttons { display: none; } .navbar-toggle { display: inline-flex; } .navbar-subtitle { display: none; } }
 @media (max-width: 640px) { .main { margin-top: 18px; padding-bottom: 120px; } .navbar { width: calc(100% - 20px); top: 10px; margin-top: 10px; border-radius: 22px; } .navbar-brand-mark { width: 38px; height: 38px; border-radius: 12px; } .footer { flex-direction: column; font-size: 0.82rem; width: calc(100% - 20px); } }
+
+.school-year-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+.school-year-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--primary);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.school-year-btn:hover {
+  border-color: rgba(148, 163, 184, 0.55);
+  background: rgba(148, 163, 184, 0.12);
+}
+.school-year-btn.active {
+  border-color: rgba(96, 165, 250, 0.65);
+  background: rgba(59, 130, 246, 0.18);
+  color: #dbeafe;
+}
+.school-year-note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--muted, #94a3b8);
+}
+@media (max-width: 720px) {
+  .school-year-switcher { gap: 6px; }
+  .school-year-btn { padding: 7px 10px; font-size: 12px; }
+}

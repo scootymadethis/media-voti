@@ -29,6 +29,13 @@ from math import ceil
 from datetime import datetime
 from threading import Lock
 from typing import Optional, Any
+from school_year import (
+    LEGACY_SCHOOL_YEAR,
+    current_school_year,
+    merge_available_school_years,
+    parse_school_year,
+    school_year_label,
+)
 
 app = FastAPI()
 
@@ -306,13 +313,15 @@ def init_db():
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS leaderboard_entries (
-                    username TEXT PRIMARY KEY,
+                    username TEXT NOT NULL,
+                    school_year TEXT NOT NULL,
                     full_name TEXT,
                     class_code TEXT,
                     school_code TEXT,
                     hours REAL NOT NULL DEFAULT 0,
                     visible_in_leaderboard INTEGER NOT NULL DEFAULT 1,
-                    updated_at REAL NOT NULL
+                    updated_at REAL NOT NULL,
+                    PRIMARY KEY (username, school_year)
                 )
                 """
             )
@@ -326,6 +335,7 @@ def init_db():
                 """
                 CREATE TABLE IF NOT EXISTS average_leaderboard_entries_scoped (
                     username TEXT NOT NULL,
+                    school_year TEXT NOT NULL,
                     full_name TEXT,
                     class_code TEXT,
                     school_code TEXT,
@@ -335,7 +345,7 @@ def init_db():
                     average REAL NOT NULL DEFAULT 0,
                     visible_in_leaderboard INTEGER NOT NULL DEFAULT 1,
                     updated_at REAL NOT NULL,
-                    PRIMARY KEY (username, subject_name, period_key)
+                    PRIMARY KEY (username, school_year, subject_name, period_key)
                 )
                 """
             )
@@ -402,38 +412,223 @@ def init_db():
                     (time.time(),),
                 )
 
+            _migrate_school_year_schema(conn)
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_year_snapshots (
+                    username TEXT NOT NULL,
+                    school_year TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    payload TEXT NOT NULL,
+                    updated_at REAL NOT NULL,
+                    PRIMARY KEY (username, school_year, kind)
+                )
+                """
+            )
+
             conn.commit()
+
+
+def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
+    return {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+
+
+def _migrate_school_year_schema(conn: sqlite3.Connection) -> None:
+    """Aggiunge school_year alle classifiche e migra i dati legacy a 2025/26."""
+    hours_cols = _table_columns(conn, "leaderboard_entries")
+    if "school_year" not in hours_cols:
+        conn.execute("ALTER TABLE leaderboard_entries RENAME TO leaderboard_entries_pre_year")
+        conn.execute(
+            """
+            CREATE TABLE leaderboard_entries (
+                username TEXT NOT NULL,
+                school_year TEXT NOT NULL,
+                full_name TEXT,
+                class_code TEXT,
+                school_code TEXT,
+                hours REAL NOT NULL DEFAULT 0,
+                visible_in_leaderboard INTEGER NOT NULL DEFAULT 1,
+                updated_at REAL NOT NULL,
+                PRIMARY KEY (username, school_year)
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO leaderboard_entries (
+                username, school_year, full_name, class_code, school_code,
+                hours, visible_in_leaderboard, updated_at
+            )
+            SELECT
+                username, ?, full_name, class_code, school_code,
+                hours, visible_in_leaderboard, updated_at
+            FROM leaderboard_entries_pre_year
+            """,
+            (LEGACY_SCHOOL_YEAR,),
+        )
+        conn.execute("DROP TABLE leaderboard_entries_pre_year")
+
+    avg_cols = _table_columns(conn, "average_leaderboard_entries_scoped")
+    if "school_year" not in avg_cols:
+        conn.execute(
+            "ALTER TABLE average_leaderboard_entries_scoped RENAME TO average_leaderboard_entries_pre_year"
+        )
+        conn.execute(
+            """
+            CREATE TABLE average_leaderboard_entries_scoped (
+                username TEXT NOT NULL,
+                school_year TEXT NOT NULL,
+                full_name TEXT,
+                class_code TEXT,
+                school_code TEXT,
+                subject_name TEXT NOT NULL,
+                period_key TEXT NOT NULL,
+                period_label TEXT,
+                average REAL NOT NULL DEFAULT 0,
+                visible_in_leaderboard INTEGER NOT NULL DEFAULT 1,
+                updated_at REAL NOT NULL,
+                PRIMARY KEY (username, school_year, subject_name, period_key)
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO average_leaderboard_entries_scoped (
+                username, school_year, full_name, class_code, school_code,
+                subject_name, period_key, period_label, average,
+                visible_in_leaderboard, updated_at
+            )
+            SELECT
+                username, ?, full_name, class_code, school_code,
+                subject_name, period_key, period_label, average,
+                visible_in_leaderboard, updated_at
+            FROM average_leaderboard_entries_pre_year
+            """,
+            (LEGACY_SCHOOL_YEAR,),
+        )
+        conn.execute("DROP TABLE average_leaderboard_entries_pre_year")
+
+
+def resolve_school_year(value: Optional[str] = None) -> str:
+    return parse_school_year(value) or current_school_year()
+
+
+def list_db_school_years() -> list[str]:
+    years: list[str] = []
+    with get_db_connection() as conn:
+        try:
+            years.extend(
+                row[0]
+                for row in conn.execute(
+                    "SELECT DISTINCT school_year FROM leaderboard_entries"
+                ).fetchall()
+            )
+        except sqlite3.Error:
+            pass
+        try:
+            years.extend(
+                row[0]
+                for row in conn.execute(
+                    "SELECT DISTINCT school_year FROM average_leaderboard_entries_scoped"
+                ).fetchall()
+            )
+        except sqlite3.Error:
+            pass
+        try:
+            years.extend(
+                row[0]
+                for row in conn.execute(
+                    "SELECT DISTINCT school_year FROM user_year_snapshots"
+                ).fetchall()
+            )
+        except sqlite3.Error:
+            pass
+    return merge_available_school_years(years)
+
+
+def save_user_year_snapshot(*, username: str, school_year: str, kind: str, payload: Any) -> None:
+    normalized_username = username.strip()
+    year = resolve_school_year(school_year)
+    kind_norm = str(kind or "").strip().lower()
+    if kind_norm not in {"voti", "assenze"}:
+        return
+    body = json.dumps(payload if payload is not None else {}, ensure_ascii=False, default=str)
+    with db_lock:
+        with get_db_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO user_year_snapshots (username, school_year, kind, payload, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(username, school_year, kind) DO UPDATE SET
+                    payload = excluded.payload,
+                    updated_at = excluded.updated_at
+                """,
+                (normalized_username, year, kind_norm, body, time.time()),
+            )
+            conn.commit()
+
+
+def get_user_year_snapshot(*, username: str, school_year: str, kind: str) -> Optional[Any]:
+    normalized_username = username.strip()
+    year = resolve_school_year(school_year)
+    kind_norm = str(kind or "").strip().lower()
+    with get_db_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT payload FROM user_year_snapshots
+            WHERE username = ? AND school_year = ? AND kind = ?
+            """,
+            (normalized_username, year, kind_norm),
+        ).fetchone()
+    if not row:
+        return None
+    try:
+        return json.loads(row["payload"])
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+
+def payload_has_grades(voti_payload: Any) -> bool:
+    return calculate_general_average_from_payload(voti_payload) > 0
+
+
+def payload_has_absences(assenze_payload: Any) -> bool:
+    return calculate_absence_hours_from_payload(assenze_payload) > 0
 
 
 def _dedup_leaderboard(conn: sqlite3.Connection):
     """
-    Remove duplicate leaderboard entries: for each group of (full_name, class_code, school_code),
+    Remove duplicate leaderboard entries: for each group of (school_year, full_name, class_code, school_code),
     keep only the row with the most recent updated_at and delete the others.
     """
     rows = conn.execute(
         """
-        SELECT username, full_name, class_code, school_code, updated_at
+        SELECT username, school_year, full_name, class_code, school_code, updated_at
         FROM leaderboard_entries
         ORDER BY updated_at DESC
         """
     ).fetchall()
 
     seen: dict[tuple, str] = {}  # key -> username to keep
-    to_delete: list[str] = []
+    to_delete: list[tuple[str, str]] = []
 
     for row in rows:
         key = (
+            (row["school_year"] or LEGACY_SCHOOL_YEAR),
             (row["full_name"] or "").strip().lower(),
             (row["class_code"] or "").strip().upper(),
             (row["school_code"] or "").strip().upper(),
         )
         if key in seen:
-            to_delete.append(row["username"])
+            to_delete.append((row["username"], row["school_year"] or LEGACY_SCHOOL_YEAR))
         else:
             seen[key] = row["username"]
 
-    for username in to_delete:
-        conn.execute("DELETE FROM leaderboard_entries WHERE username = ?", (username,))
+    for username, school_year in to_delete:
+        conn.execute(
+            "DELETE FROM leaderboard_entries WHERE username = ? AND school_year = ?",
+            (username, school_year),
+        )
 
     return len(to_delete)
 
@@ -441,12 +636,12 @@ def _dedup_leaderboard(conn: sqlite3.Connection):
 def _dedup_average_leaderboard(conn: sqlite3.Connection):
     """
     Remove duplicate average leaderboard entries: for each group of
-    (full_name, class_code, school_code, subject_name, period_key),
+    (school_year, full_name, class_code, school_code, subject_name, period_key),
     keep only the row with the most recent updated_at.
     """
     rows = conn.execute(
         """
-        SELECT username, full_name, class_code, school_code, subject_name, period_key, updated_at
+        SELECT username, school_year, full_name, class_code, school_code, subject_name, period_key, updated_at
         FROM average_leaderboard_entries_scoped
         ORDER BY updated_at DESC
         """
@@ -457,6 +652,7 @@ def _dedup_average_leaderboard(conn: sqlite3.Connection):
 
     for row in rows:
         key = (
+            (row["school_year"] or LEGACY_SCHOOL_YEAR),
             (row["full_name"] or "").strip().lower(),
             (row["class_code"] or "").strip().upper(),
             (row["school_code"] or "").strip().upper(),
@@ -464,14 +660,24 @@ def _dedup_average_leaderboard(conn: sqlite3.Connection):
             (row["period_key"] or "").strip().lower(),
         )
         if key in seen:
-            to_delete.append((row["username"], row["subject_name"], row["period_key"]))
+            to_delete.append(
+                (
+                    row["username"],
+                    row["school_year"] or LEGACY_SCHOOL_YEAR,
+                    row["subject_name"],
+                    row["period_key"],
+                )
+            )
         else:
             seen[key] = row["username"]
 
-    for (username, subject_name, period_key) in to_delete:
+    for (username, school_year, subject_name, period_key) in to_delete:
         conn.execute(
-            "DELETE FROM average_leaderboard_entries_scoped WHERE username = ? AND subject_name = ? AND period_key = ?",
-            (username, subject_name, period_key),
+            """
+            DELETE FROM average_leaderboard_entries_scoped
+            WHERE username = ? AND school_year = ? AND subject_name = ? AND period_key = ?
+            """,
+            (username, school_year, subject_name, period_key),
         )
 
     return len(to_delete)
@@ -492,8 +698,10 @@ def on_startup():
 def row_to_entry(row: sqlite3.Row | None):
     if row is None:
         return None
+    keys = set(row.keys())
     return {
         "username": row["username"],
+        "school_year": row["school_year"] if "school_year" in keys else LEGACY_SCHOOL_YEAR,
         "full_name": row["full_name"] or row["username"],
         "class_code": row["class_code"],
         "school_code": row["school_code"],
@@ -503,8 +711,18 @@ def row_to_entry(row: sqlite3.Row | None):
     }
 
 
-def upsert_leaderboard_entry(*, username: str, full_name: Optional[str], class_code: Optional[str], school_code: Optional[str], hours: float, visible_in_leaderboard: bool):
+def upsert_leaderboard_entry(
+    *,
+    username: str,
+    full_name: Optional[str],
+    class_code: Optional[str],
+    school_code: Optional[str],
+    hours: float,
+    visible_in_leaderboard: bool,
+    school_year: Optional[str] = None,
+):
     now = time.time()
+    year = resolve_school_year(school_year)
     normalized_username = username.strip()
     normalized_full_name = (full_name or "").strip() or normalized_username
     normalized_class = (class_code or "").strip().upper() or None
@@ -512,14 +730,17 @@ def upsert_leaderboard_entry(*, username: str, full_name: Optional[str], class_c
 
     with db_lock:
         with get_db_connection() as conn:
-            # Check if another username already exists with same (full_name, class_code, school_code)
             existing = conn.execute(
                 """
                 SELECT username FROM leaderboard_entries
-                WHERE lower(trim(full_name)) = lower(?) AND upper(trim(coalesce(class_code,''))) = upper(?) AND upper(trim(coalesce(school_code,''))) = upper(?)
-                AND username != ?
+                WHERE school_year = ?
+                  AND lower(trim(full_name)) = lower(?)
+                  AND upper(trim(coalesce(class_code,''))) = upper(?)
+                  AND upper(trim(coalesce(school_code,''))) = upper(?)
+                  AND username != ?
                 """,
                 (
+                    year,
                     normalized_full_name,
                     normalized_class or "",
                     normalized_school or "",
@@ -528,7 +749,6 @@ def upsert_leaderboard_entry(*, username: str, full_name: Optional[str], class_c
             ).fetchone()
 
             if existing:
-                # Merge: update the existing canonical entry with latest data and delete this username's entry
                 old_username = existing["username"]
                 conn.execute(
                     """
@@ -536,30 +756,30 @@ def upsert_leaderboard_entry(*, username: str, full_name: Optional[str], class_c
                         hours = ?,
                         visible_in_leaderboard = ?,
                         updated_at = ?
-                    WHERE username = ?
+                    WHERE username = ? AND school_year = ?
                     """,
-                    (float(hours), 1 if visible_in_leaderboard else 0, now, old_username),
+                    (float(hours), 1 if visible_in_leaderboard else 0, now, old_username, year),
                 )
-                # Remove stale duplicate if it exists
-                conn.execute("DELETE FROM leaderboard_entries WHERE username = ? AND username != ?", (normalized_username, old_username))
+                conn.execute(
+                    "DELETE FROM leaderboard_entries WHERE username = ? AND school_year = ? AND username != ?",
+                    (normalized_username, year, old_username),
+                )
                 conn.commit()
                 row = conn.execute(
-                    "SELECT username, full_name, class_code, school_code, hours, visible_in_leaderboard, updated_at FROM leaderboard_entries WHERE username = ?",
-                    (old_username,),
+                    """
+                    SELECT username, school_year, full_name, class_code, school_code, hours, visible_in_leaderboard, updated_at
+                    FROM leaderboard_entries WHERE username = ? AND school_year = ?
+                    """,
+                    (old_username, year),
                 ).fetchone()
             else:
                 conn.execute(
                     """
                     INSERT INTO leaderboard_entries (
-                        username,
-                        full_name,
-                        class_code,
-                        school_code,
-                        hours,
-                        visible_in_leaderboard,
-                        updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(username) DO UPDATE SET
+                        username, school_year, full_name, class_code, school_code,
+                        hours, visible_in_leaderboard, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(username, school_year) DO UPDATE SET
                         full_name = excluded.full_name,
                         class_code = excluded.class_code,
                         school_code = excluded.school_code,
@@ -569,6 +789,7 @@ def upsert_leaderboard_entry(*, username: str, full_name: Optional[str], class_c
                     """,
                     (
                         normalized_username,
+                        year,
                         normalized_full_name,
                         normalized_class,
                         normalized_school,
@@ -579,44 +800,91 @@ def upsert_leaderboard_entry(*, username: str, full_name: Optional[str], class_c
                 )
                 conn.commit()
                 row = conn.execute(
-                    "SELECT username, full_name, class_code, school_code, hours, visible_in_leaderboard, updated_at FROM leaderboard_entries WHERE username = ?",
-                    (normalized_username,),
+                    """
+                    SELECT username, school_year, full_name, class_code, school_code, hours, visible_in_leaderboard, updated_at
+                    FROM leaderboard_entries WHERE username = ? AND school_year = ?
+                    """,
+                    (normalized_username, year),
                 ).fetchone()
     return row_to_entry(row)
 
 
-def delete_leaderboard_entry(username: str) -> bool:
+def delete_leaderboard_entry(username: str, school_year: Optional[str] = None) -> bool:
     normalized_username = username.strip()
+    year = resolve_school_year(school_year) if school_year else None
     with db_lock:
         with get_db_connection() as conn:
-            cur = conn.execute("DELETE FROM leaderboard_entries WHERE username = ?", (normalized_username,))
+            if year:
+                cur = conn.execute(
+                    "DELETE FROM leaderboard_entries WHERE username = ? AND school_year = ?",
+                    (normalized_username, year),
+                )
+            else:
+                cur = conn.execute(
+                    "DELETE FROM leaderboard_entries WHERE username = ?",
+                    (normalized_username,),
+                )
             conn.commit()
             return cur.rowcount > 0
 
 
-def get_leaderboard_entry(username: str):
+def get_leaderboard_entry(username: str, school_year: Optional[str] = None):
     normalized_username = username.strip()
+    year = resolve_school_year(school_year)
     with get_db_connection() as conn:
         row = conn.execute(
-            "SELECT username, full_name, class_code, school_code, hours, visible_in_leaderboard, updated_at FROM leaderboard_entries WHERE username = ?",
-            (normalized_username,),
+            """
+            SELECT username, school_year, full_name, class_code, school_code, hours, visible_in_leaderboard, updated_at
+            FROM leaderboard_entries WHERE username = ? AND school_year = ?
+            """,
+            (normalized_username, year),
         ).fetchone()
+        if row is None:
+            # Fallback profilo: qualsiasi anno più recente.
+            row = conn.execute(
+                """
+                SELECT username, school_year, full_name, class_code, school_code, hours, visible_in_leaderboard, updated_at
+                FROM leaderboard_entries WHERE username = ?
+                ORDER BY updated_at DESC LIMIT 1
+                """,
+                (normalized_username,),
+            ).fetchone()
     return row_to_entry(row)
 
 
-def list_leaderboard_entries():
+def list_leaderboard_entries(
+    school_year: Optional[str] = None,
+    *,
+    include_all_years: bool = False,
+):
     with get_db_connection() as conn:
-        rows = conn.execute(
-            "SELECT username, full_name, class_code, school_code, hours, visible_in_leaderboard, updated_at FROM leaderboard_entries"
-        ).fetchall()
+        if include_all_years:
+            rows = conn.execute(
+                """
+                SELECT username, school_year, full_name, class_code, school_code, hours, visible_in_leaderboard, updated_at
+                FROM leaderboard_entries
+                """
+            ).fetchall()
+        else:
+            year = resolve_school_year(school_year)
+            rows = conn.execute(
+                """
+                SELECT username, school_year, full_name, class_code, school_code, hours, visible_in_leaderboard, updated_at
+                FROM leaderboard_entries
+                WHERE school_year = ?
+                """,
+                (year,),
+            ).fetchall()
     return [row_to_entry(row) for row in rows]
 
 
 def row_to_average_entry(row: sqlite3.Row | None):
     if row is None:
         return None
+    keys = set(row.keys())
     return {
         "username": row["username"],
+        "school_year": row["school_year"] if "school_year" in keys else LEGACY_SCHOOL_YEAR,
         "full_name": row["full_name"] or row["username"],
         "class_code": row["class_code"],
         "school_code": row["school_code"],
@@ -629,8 +897,21 @@ def row_to_average_entry(row: sqlite3.Row | None):
     }
 
 
-def upsert_average_leaderboard_entry(*, username: str, full_name: Optional[str], class_code: Optional[str], school_code: Optional[str], subject_name: str, period_key: str, period_label: Optional[str], average: float, visible_in_leaderboard: bool):
+def upsert_average_leaderboard_entry(
+    *,
+    username: str,
+    full_name: Optional[str],
+    class_code: Optional[str],
+    school_code: Optional[str],
+    subject_name: str,
+    period_key: str,
+    period_label: Optional[str],
+    average: float,
+    visible_in_leaderboard: bool,
+    school_year: Optional[str] = None,
+):
     now = time.time()
+    year = resolve_school_year(school_year)
     normalized_username = username.strip()
     normalized_full_name = (full_name or "").strip() or normalized_username
     normalized_class = (class_code or "").strip().upper() or None
@@ -646,11 +927,11 @@ def upsert_average_leaderboard_entry(*, username: str, full_name: Optional[str],
 
     with db_lock:
         with get_db_connection() as conn:
-            # Check for duplicate: same (full_name, class_code, school_code, subject_name, period_key), different username
             existing = conn.execute(
                 """
                 SELECT username FROM average_leaderboard_entries_scoped
-                WHERE lower(trim(full_name)) = lower(?)
+                WHERE school_year = ?
+                  AND lower(trim(full_name)) = lower(?)
                   AND upper(trim(coalesce(class_code,''))) = upper(?)
                   AND upper(trim(coalesce(school_code,''))) = upper(?)
                   AND subject_name = ?
@@ -658,6 +939,7 @@ def upsert_average_leaderboard_entry(*, username: str, full_name: Optional[str],
                   AND username != ?
                 """,
                 (
+                    year,
                     normalized_full_name,
                     normalized_class or "",
                     normalized_school or "",
@@ -676,7 +958,7 @@ def upsert_average_leaderboard_entry(*, username: str, full_name: Optional[str],
                         average = ?,
                         visible_in_leaderboard = ?,
                         updated_at = ?
-                    WHERE username = ? AND subject_name = ? AND period_key = ?
+                    WHERE username = ? AND school_year = ? AND subject_name = ? AND period_key = ?
                     """,
                     (
                         normalized_period_label,
@@ -684,40 +966,36 @@ def upsert_average_leaderboard_entry(*, username: str, full_name: Optional[str],
                         1 if visible_in_leaderboard else 0,
                         now,
                         old_username,
+                        year,
                         normalized_subject,
                         normalized_period_key,
                     ),
                 )
-                # Remove stale entry for this username if it exists
                 conn.execute(
-                    "DELETE FROM average_leaderboard_entries_scoped WHERE username = ? AND subject_name = ? AND period_key = ? AND username != ?",
-                    (normalized_username, normalized_subject, normalized_period_key, old_username),
+                    """
+                    DELETE FROM average_leaderboard_entries_scoped
+                    WHERE username = ? AND school_year = ? AND subject_name = ? AND period_key = ? AND username != ?
+                    """,
+                    (normalized_username, year, normalized_subject, normalized_period_key, old_username),
                 )
                 conn.commit()
                 row = conn.execute(
                     """
-                    SELECT username, full_name, class_code, school_code, subject_name, period_key, period_label, average, visible_in_leaderboard, updated_at
+                    SELECT username, school_year, full_name, class_code, school_code, subject_name, period_key, period_label, average, visible_in_leaderboard, updated_at
                     FROM average_leaderboard_entries_scoped
-                    WHERE username = ? AND subject_name = ? AND period_key = ?
+                    WHERE username = ? AND school_year = ? AND subject_name = ? AND period_key = ?
                     """,
-                    (old_username, normalized_subject, normalized_period_key),
+                    (old_username, year, normalized_subject, normalized_period_key),
                 ).fetchone()
             else:
                 conn.execute(
                     """
                     INSERT INTO average_leaderboard_entries_scoped (
-                        username,
-                        full_name,
-                        class_code,
-                        school_code,
-                        subject_name,
-                        period_key,
-                        period_label,
-                        average,
-                        visible_in_leaderboard,
-                        updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(username, subject_name, period_key) DO UPDATE SET
+                        username, school_year, full_name, class_code, school_code,
+                        subject_name, period_key, period_label, average,
+                        visible_in_leaderboard, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(username, school_year, subject_name, period_key) DO UPDATE SET
                         full_name = excluded.full_name,
                         class_code = excluded.class_code,
                         school_code = excluded.school_code,
@@ -728,6 +1006,7 @@ def upsert_average_leaderboard_entry(*, username: str, full_name: Optional[str],
                     """,
                     (
                         normalized_username,
+                        year,
                         normalized_full_name,
                         normalized_class,
                         normalized_school,
@@ -742,22 +1021,41 @@ def upsert_average_leaderboard_entry(*, username: str, full_name: Optional[str],
                 conn.commit()
                 row = conn.execute(
                     """
-                    SELECT username, full_name, class_code, school_code, subject_name, period_key, period_label, average, visible_in_leaderboard, updated_at
+                    SELECT username, school_year, full_name, class_code, school_code, subject_name, period_key, period_label, average, visible_in_leaderboard, updated_at
                     FROM average_leaderboard_entries_scoped
-                    WHERE username = ? AND subject_name = ? AND period_key = ?
+                    WHERE username = ? AND school_year = ? AND subject_name = ? AND period_key = ?
                     """,
-                    (normalized_username, normalized_subject, normalized_period_key),
+                    (normalized_username, year, normalized_subject, normalized_period_key),
                 ).fetchone()
     return row_to_average_entry(row)
 
 
-def delete_average_leaderboard_entry(username: str, subject_name: Optional[str] = None, period_key: Optional[str] = None) -> bool:
+def delete_average_leaderboard_entry(
+    username: str,
+    subject_name: Optional[str] = None,
+    period_key: Optional[str] = None,
+    school_year: Optional[str] = None,
+) -> bool:
     normalized_username = username.strip()
     normalized_subject = (subject_name or "").strip()
     normalized_period_key = (period_key or "").strip().lower()
+    year = resolve_school_year(school_year) if school_year else None
     with db_lock:
         with get_db_connection() as conn:
-            if normalized_subject and normalized_period_key:
+            if normalized_subject and normalized_period_key and year:
+                cur = conn.execute(
+                    """
+                    DELETE FROM average_leaderboard_entries_scoped
+                    WHERE username = ? AND school_year = ? AND subject_name = ? AND period_key = ?
+                    """,
+                    (normalized_username, year, normalized_subject, normalized_period_key),
+                )
+            elif year:
+                cur = conn.execute(
+                    "DELETE FROM average_leaderboard_entries_scoped WHERE username = ? AND school_year = ?",
+                    (normalized_username, year),
+                )
+            elif normalized_subject and normalized_period_key:
                 cur = conn.execute(
                     "DELETE FROM average_leaderboard_entries_scoped WHERE username = ? AND subject_name = ? AND period_key = ?",
                     (normalized_username, normalized_subject, normalized_period_key),
@@ -771,31 +1069,49 @@ def delete_average_leaderboard_entry(username: str, subject_name: Optional[str] 
             return cur.rowcount > 0
 
 
-def get_average_leaderboard_entry(username: str, subject_name: str, period_key: str):
+def get_average_leaderboard_entry(
+    username: str,
+    subject_name: str,
+    period_key: str,
+    school_year: Optional[str] = None,
+):
     normalized_username = username.strip()
     normalized_subject = (subject_name or "").strip()
     normalized_period_key = (period_key or "").strip().lower()
+    year = resolve_school_year(school_year)
     with get_db_connection() as conn:
         row = conn.execute(
             """
-            SELECT username, full_name, class_code, school_code, subject_name, period_key, period_label, average, visible_in_leaderboard, updated_at
+            SELECT username, school_year, full_name, class_code, school_code, subject_name, period_key, period_label, average, visible_in_leaderboard, updated_at
             FROM average_leaderboard_entries_scoped
-            WHERE username = ? AND subject_name = ? AND period_key = ?
+            WHERE username = ? AND school_year = ? AND subject_name = ? AND period_key = ?
             """,
-            (normalized_username, normalized_subject, normalized_period_key),
+            (normalized_username, year, normalized_subject, normalized_period_key),
         ).fetchone()
     return row_to_average_entry(row)
 
 
-def list_all_average_leaderboard_entries():
+def list_all_average_leaderboard_entries(school_year: Optional[str] = None):
+    year = resolve_school_year(school_year) if school_year else None
     with get_db_connection() as conn:
-        rows = conn.execute(
-            """
-            SELECT username, full_name, class_code, school_code, subject_name, period_key, period_label, average, visible_in_leaderboard, updated_at
-            FROM average_leaderboard_entries_scoped
-            ORDER BY updated_at DESC
-            """
-        ).fetchall()
+        if year:
+            rows = conn.execute(
+                """
+                SELECT username, school_year, full_name, class_code, school_code, subject_name, period_key, period_label, average, visible_in_leaderboard, updated_at
+                FROM average_leaderboard_entries_scoped
+                WHERE school_year = ?
+                ORDER BY updated_at DESC
+                """,
+                (year,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT username, school_year, full_name, class_code, school_code, subject_name, period_key, period_label, average, visible_in_leaderboard, updated_at
+                FROM average_leaderboard_entries_scoped
+                ORDER BY updated_at DESC
+                """
+            ).fetchall()
     return [row_to_average_entry(row) for row in rows]
 
 
@@ -878,17 +1194,22 @@ def update_average_leaderboard_visibility_for_user(username: str, visible: bool)
             return cur.rowcount > 0
 
 
-def list_average_leaderboard_entries(subject_name: str, period_key: str):
+def list_average_leaderboard_entries(
+    subject_name: str,
+    period_key: str,
+    school_year: Optional[str] = None,
+):
     normalized_subject = (subject_name or "").strip()
     normalized_period_key = (period_key or "").strip().lower()
+    year = resolve_school_year(school_year)
     with get_db_connection() as conn:
         rows = conn.execute(
             """
-            SELECT username, full_name, class_code, school_code, subject_name, period_key, period_label, average, visible_in_leaderboard, updated_at
+            SELECT username, school_year, full_name, class_code, school_code, subject_name, period_key, period_label, average, visible_in_leaderboard, updated_at
             FROM average_leaderboard_entries_scoped
-            WHERE subject_name = ? AND period_key = ?
+            WHERE school_year = ? AND subject_name = ? AND period_key = ?
             """,
-            (normalized_subject, normalized_period_key),
+            (year, normalized_subject, normalized_period_key),
         ).fetchall()
     return [row_to_average_entry(row) for row in rows]
 
@@ -1103,7 +1424,7 @@ def collect_known_users(query: Optional[str] = None, limit: int = 80) -> list[di
             "sources": sorted(set(existing.get("sources", [])) | {source}),
         }
 
-    for row in list_leaderboard_entries():
+    for row in list_leaderboard_entries(include_all_years=True):
         add_user(row.get("username"), row.get("full_name"), row.get("class_code"), row.get("school_code"), "assenze")
     for row in list_all_average_leaderboard_entries():
         add_user(row.get("username"), row.get("full_name"), row.get("class_code"), row.get("school_code"), "voti")
@@ -1879,10 +2200,31 @@ async def leaderboard_ws(websocket: WebSocket):
 
 # ---- endpoint che riusano la sessione ----
 @app.post("/assenze")
-def assenze(u: Utente = Depends(current_user)):
+def assenze(
+    u: Utente = Depends(current_user),
+    school_year: Optional[str] = Query(default=None),
+):
     try:
-        assenze = cached_cvv_request_json(u, "assenze", RequestURLs.assenze)
-        return {"ok": True, "assenze": assenze}
+        year = resolve_school_year(school_year)
+        username = getattr(u, "uid", None) or ""
+        if year != current_school_year():
+            snapshot = get_user_year_snapshot(username=username, school_year=year, kind="assenze")
+            if snapshot is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Nessun dato assenze salvato per {school_year_label(year)}",
+                )
+            return {"ok": True, "assenze": snapshot, "school_year": year, "from_snapshot": True}
+
+        assenze_payload = cached_cvv_request_json(u, "assenze", RequestURLs.assenze)
+        if username and payload_has_absences(assenze_payload):
+            save_user_year_snapshot(
+                username=username,
+                school_year=year,
+                kind="assenze",
+                payload=assenze_payload,
+            )
+        return {"ok": True, "assenze": assenze_payload, "school_year": year, "from_snapshot": False}
     except HTTPException:
         raise
     except Exception as e:
@@ -2319,14 +2661,53 @@ def card(
 
 
 @app.post("/voti")
-def voti(u: Utente = Depends(current_user)):
+def voti(
+    u: Utente = Depends(current_user),
+    school_year: Optional[str] = Query(default=None),
+):
     try:
-        voti = cached_cvv_request_json(u, "voti", RequestURLs.voti)
-        return {"ok": True, "voti": voti}
+        year = resolve_school_year(school_year)
+        username = getattr(u, "uid", None) or ""
+        if year != current_school_year():
+            snapshot = get_user_year_snapshot(username=username, school_year=year, kind="voti")
+            if snapshot is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Nessun dato voti salvato per {school_year_label(year)}",
+                )
+            return {"ok": True, "voti": snapshot, "school_year": year, "from_snapshot": True}
+
+        voti_payload = cached_cvv_request_json(u, "voti", RequestURLs.voti)
+        if username and payload_has_grades(voti_payload):
+            save_user_year_snapshot(
+                username=username,
+                school_year=year,
+                kind="voti",
+                payload=voti_payload,
+            )
+        return {"ok": True, "voti": voti_payload, "school_year": year, "from_snapshot": False}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.get("/school-years")
+def get_school_years(u: Utente = Depends(current_user)):
+    years = list_db_school_years()
+    current = current_school_year()
+    return {
+        "ok": True,
+        "current": current,
+        "years": [
+            {
+                "id": year,
+                "label": school_year_label(year),
+                "is_current": year == current,
+            }
+            for year in years
+        ],
+    }
 
 
 @app.post("/lezioni_oggi")
@@ -2407,21 +2788,26 @@ def documenti(u: Utente = Depends(current_user)):
 
 
 @app.get("/leaderboard/me")
-def get_my_leaderboard_entry(u: Utente = Depends(current_user)):
+def get_my_leaderboard_entry(
+    school_year: Optional[str] = Query(default=None),
+    u: Utente = Depends(current_user),
+):
     try:
         session_username = getattr(u, "uid", None)
         if not session_username:
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
-        item = get_leaderboard_entry(session_username)
+        year = resolve_school_year(school_year)
+        item = get_leaderboard_entry(session_username, school_year=year)
         if not item:
             for alias in username_aliases(session_username, getattr(u, "ident", None)):
-                item = get_leaderboard_entry(alias)
+                item = get_leaderboard_entry(alias, school_year=year)
                 if item:
                     break
         return {
             "ok": True,
             "item": item,
+            "school_year": year,
             "default_visible_in_leaderboard": True,
         }
     except HTTPException:
@@ -2440,18 +2826,44 @@ async def update_leaderboard(
         if not session_username:
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
+        year = current_school_year()
         profile = get_user_profile_for_leaderboards(u)
         assenze_payload = cached_cvv_request_json(u, "assenze", RequestURLs.assenze)
-        computed_hours = calculate_absence_hours_from_payload(assenze_payload)
+        computed_hours = float(calculate_absence_hours_from_payload(assenze_payload))
 
-        existing = get_leaderboard_entry(session_username)
+        if payload_has_absences(assenze_payload):
+            save_user_year_snapshot(
+                username=session_username,
+                school_year=year,
+                kind="assenze",
+                payload=assenze_payload,
+            )
+
+        existing = get_leaderboard_entry(session_username, school_year=year)
+        existing_hours = float(existing.get("hours") or 0) if existing else 0.0
+
+        # Non sovrascrivere ore > 0 con un payload vuoto (estate / blip Spaggiari).
+        if computed_hours <= 0 and existing_hours > 0 and not payload_has_absences(assenze_payload):
+            if existing and bool(existing.get("visible_in_leaderboard")) != bool(body.visible_in_leaderboard):
+                update_leaderboard_visibility(session_username, bool(body.visible_in_leaderboard))
+                existing = get_leaderboard_entry(session_username, school_year=year)
+                await broadcast_leaderboard_change("upsert", session_username.strip())
+            return {
+                "ok": True,
+                "saved": existing,
+                "school_year": year,
+                "skipped": True,
+                "reason": "preserve_non_zero_hours",
+            }
+
         saved = upsert_leaderboard_entry(
             username=session_username,
             full_name=body.full_name or profile.get("full_name") or (existing.get("full_name") if existing else None),
             class_code=body.class_code or profile.get("class_code") or (existing.get("class_code") if existing else None),
             school_code=body.school_code or profile.get("school_code") or (existing.get("school_code") if existing else None),
-            hours=float(computed_hours),
+            hours=computed_hours,
             visible_in_leaderboard=bool(body.visible_in_leaderboard),
+            school_year=year,
         )
 
         await broadcast_leaderboard_change("upsert", session_username.strip())
@@ -2459,6 +2871,7 @@ async def update_leaderboard(
         return {
             "ok": True,
             "saved": saved,
+            "school_year": year,
         }
     except HTTPException:
         raise
@@ -2467,19 +2880,24 @@ async def update_leaderboard(
 
 
 @app.delete("/leaderboard/me")
-async def delete_my_leaderboard_entry(u: Utente = Depends(current_user)):
+async def delete_my_leaderboard_entry(
+    school_year: Optional[str] = Query(default=None),
+    u: Utente = Depends(current_user),
+):
     try:
         session_username = getattr(u, "uid", None)
         if not session_username:
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
-        removed = delete_leaderboard_entry(session_username)
+        year = resolve_school_year(school_year)
+        removed = delete_leaderboard_entry(session_username, school_year=year)
         if removed:
             await broadcast_leaderboard_change("delete", session_username.strip())
 
         return {
             "ok": True,
             "removed": removed,
+            "school_year": year,
         }
     except HTTPException:
         raise
@@ -2511,13 +2929,15 @@ def get_leaderboard(
     type: str = Query(default="global"),
     class_code: Optional[str] = Query(default=None),
     school_code: Optional[str] = Query(default=None),
+    school_year: Optional[str] = Query(default=None),
     q: Optional[str] = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
     u: Utente = Depends(current_user),
 ):
     try:
-        entries = list_leaderboard_entries()
+        year = resolve_school_year(school_year)
+        entries = list_leaderboard_entries(school_year=year)
 
         if type not in {"global", "class"}:
             raise HTTPException(status_code=400, detail="type deve essere 'global' o 'class'")
@@ -2563,6 +2983,7 @@ def get_leaderboard(
                     "full_name": item.get("full_name") or item.get("username"),
                     "class_code": item.get("class_code"),
                     "school_code": item.get("school_code"),
+                    "school_year": item.get("school_year") or year,
                     "hours": item.get("hours", 0),
                     "visible_in_leaderboard": item.get("visible_in_leaderboard", True),
                     "updated_at": item.get("updated_at"),
@@ -2574,6 +2995,7 @@ def get_leaderboard(
         return {
             "ok": True,
             "scope": type,
+            "school_year": year,
             "class_code": normalized_class if type == "class" else None,
             "school_code": normalized_school if type == "class" else None,
             "page": page,
@@ -2593,6 +3015,7 @@ def get_leaderboard(
 def get_my_average_leaderboard_entry(
     subject_name: str = Query(...),
     period_key: str = Query(...),
+    school_year: Optional[str] = Query(default=None),
     u: Utente = Depends(current_user),
 ):
     try:
@@ -2600,15 +3023,21 @@ def get_my_average_leaderboard_entry(
         if not session_username:
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
-        item = get_average_leaderboard_entry(session_username, subject_name, period_key)
+        year = resolve_school_year(school_year)
+        item = get_average_leaderboard_entry(
+            session_username, subject_name, period_key, school_year=year
+        )
         if not item:
             for alias in username_aliases(session_username, getattr(u, "ident", None)):
-                item = get_average_leaderboard_entry(alias, subject_name, period_key)
+                item = get_average_leaderboard_entry(
+                    alias, subject_name, period_key, school_year=year
+                )
                 if item:
                     break
         return {
             "ok": True,
             "item": item,
+            "school_year": year,
             "default_visible_in_leaderboard": True,
         }
     except HTTPException:
@@ -2627,20 +3056,63 @@ async def update_average_leaderboard(
         if not session_username:
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
+        year = current_school_year()
         profile = get_user_profile_for_leaderboards(u)
         voti_payload = cached_cvv_request_json(u, "voti", RequestURLs.voti)
-        computed_average = calculate_general_average_from_payload(voti_payload)
+        computed_average = float(calculate_general_average_from_payload(voti_payload))
 
         normalized_subject = body.subject_name.strip()
         normalized_period_key = body.period_key.strip().lower()
         if normalized_subject != GENERAL_AVERAGE_SUBJECT or normalized_period_key != GENERAL_AVERAGE_PERIOD_KEY:
             raise HTTPException(status_code=400, detail="Solo la media generale può essere aggiornata")
 
+        if payload_has_grades(voti_payload):
+            save_user_year_snapshot(
+                username=session_username,
+                school_year=year,
+                kind="voti",
+                payload=voti_payload,
+            )
+
         existing = get_average_leaderboard_entry(
             session_username,
             normalized_subject,
             normalized_period_key,
+            school_year=year,
         )
+        existing_average = float(existing.get("average") or 0) if existing else 0.0
+
+        # Medie 0 (nessun voto): non resettare medie già salvate e non creare voci a zero.
+        if computed_average <= 0:
+            if existing and existing_average > 0:
+                if bool(existing.get("visible_in_leaderboard")) != bool(body.visible_in_leaderboard):
+                    update_average_leaderboard_visibility(
+                        session_username,
+                        normalized_subject,
+                        normalized_period_key,
+                        bool(body.visible_in_leaderboard),
+                    )
+                    existing = get_average_leaderboard_entry(
+                        session_username,
+                        normalized_subject,
+                        normalized_period_key,
+                        school_year=year,
+                    )
+                    await broadcast_average_leaderboard_change("upsert", session_username.strip())
+                return {
+                    "ok": True,
+                    "saved": existing,
+                    "school_year": year,
+                    "skipped": True,
+                    "reason": "preserve_non_zero_average",
+                }
+            return {
+                "ok": True,
+                "saved": existing,
+                "school_year": year,
+                "skipped": True,
+                "reason": "no_grades",
+            }
 
         saved = upsert_average_leaderboard_entry(
             username=session_username,
@@ -2650,8 +3122,9 @@ async def update_average_leaderboard(
             subject_name=normalized_subject,
             period_key=normalized_period_key,
             period_label=body.period_label,
-            average=float(computed_average),
+            average=computed_average,
             visible_in_leaderboard=bool(body.visible_in_leaderboard),
+            school_year=year,
         )
 
         await broadcast_average_leaderboard_change("upsert", session_username.strip())
@@ -2659,6 +3132,7 @@ async def update_average_leaderboard(
         return {
             "ok": True,
             "saved": saved,
+            "school_year": year,
         }
     except HTTPException:
         raise
@@ -2667,19 +3141,24 @@ async def update_average_leaderboard(
 
 
 @app.delete("/average-leaderboard/me")
-async def delete_my_average_leaderboard_entry(u: Utente = Depends(current_user)):
+async def delete_my_average_leaderboard_entry(
+    school_year: Optional[str] = Query(default=None),
+    u: Utente = Depends(current_user),
+):
     try:
         session_username = getattr(u, "uid", None)
         if not session_username:
             raise HTTPException(status_code=400, detail="Username sessione non disponibile")
 
-        removed = delete_average_leaderboard_entry(session_username)
+        year = resolve_school_year(school_year)
+        removed = delete_average_leaderboard_entry(session_username, school_year=year)
         if removed:
             await broadcast_average_leaderboard_change("delete", session_username.strip())
 
         return {
             "ok": True,
             "removed": removed,
+            "school_year": year,
         }
     except HTTPException:
         raise
@@ -2692,6 +3171,7 @@ def get_average_leaderboard(
     type: str = Query(default="global"),
     class_code: Optional[str] = Query(default=None),
     school_code: Optional[str] = Query(default=None),
+    school_year: Optional[str] = Query(default=None),
     subject_name: str = Query(...),
     period_key: str = Query(...),
     q: Optional[str] = Query(default=None),
@@ -2700,7 +3180,8 @@ def get_average_leaderboard(
     u: Utente = Depends(current_user),
 ):
     try:
-        entries = list_average_leaderboard_entries(subject_name, period_key)
+        year = resolve_school_year(school_year)
+        entries = list_average_leaderboard_entries(subject_name, period_key, school_year=year)
 
         if type not in {"global", "class"}:
             raise HTTPException(status_code=400, detail="type deve essere 'global' o 'class'")
@@ -2748,6 +3229,7 @@ def get_average_leaderboard(
                     "full_name": item.get("full_name") or item.get("username"),
                     "class_code": item.get("class_code"),
                     "school_code": item.get("school_code"),
+                    "school_year": item.get("school_year") or year,
                     "subject_name": item.get("subject_name"),
                     "period_key": item.get("period_key"),
                     "period_label": item.get("period_label"),
@@ -2762,6 +3244,7 @@ def get_average_leaderboard(
         return {
             "ok": True,
             "scope": type,
+            "school_year": year,
             "class_code": normalized_class if type == "class" else None,
             "school_code": normalized_school if type == "class" else None,
             "subject_name": normalized_subject,
@@ -3065,7 +3548,7 @@ def admin_overview(_: Utente = Depends(current_admin)):
 
 @app.get("/admin/leaderboard")
 def admin_leaderboard(_: Utente = Depends(current_admin)):
-    entries = [enrich_entry_with_badges(item) for item in list_leaderboard_entries()]
+    entries = [enrich_entry_with_badges(item) for item in list_leaderboard_entries(include_all_years=True)]
     return {"ok": True, "items": entries}
 
 

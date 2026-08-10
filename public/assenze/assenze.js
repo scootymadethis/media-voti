@@ -37,32 +37,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     mySchoolCode = session.school_code || localStorage.getItem("schoolCode") || null;
     myClassCode = session.class_code || null;
 
-    let assenzeData = [];
-    try {
-      const res = await fetchAssenze();
-      assenzeData = res?.assenze?.events ?? [];
-    } catch (err) {
-      console.error("Errore durante il recupero delle assenze:", err);
+    const switcher = window.SchoolYear?.mountSwitcher(
+      document.getElementById("schoolYearSwitcher"),
+      {
+        onChange: async () => {
+          showLoading(true);
+          try {
+            await loadAssenzePageContent({ syncPreference: false });
+          } catch (err) {
+            console.error("[assenze] cambio anno:", err);
+            renderLeaderboardEmpty("Impossibile caricare la classifica per questo anno.");
+          } finally {
+            showLoading(false);
+          }
+        },
+      },
+    );
+    if (switcher) {
+      await switcher.init();
     }
 
-    myLeaderboardHours = calculateAbsenceHours(assenzeData);
-    console.log("Ore di assenza totali:", myLeaderboardHours);
-
-    const badge = document.getElementById("myHoursBadge");
-    if (badge) badge.textContent = `${myLeaderboardHours} ore`;
-
-    leaderboardVisible = await loadLeaderboardPreference();
-    updateLeaderboardPreferenceUI();
-    updateLeaderboardTabsVisibility();
-    await syncLeaderboardPreference();
+    await loadAssenzePageContent({ syncPreference: true });
     connectLeaderboardRealtime();
-
-    try {
-      await loadAndRenderLeaderboard();
-    } catch (err) {
-      console.error("Errore durante il caricamento della classifica:", err);
-      renderLeaderboardEmpty("Impossibile caricare la classifica.");
-    }
   } catch (err) {
     console.error("Errore inizializzazione pagina assenze:", err);
     renderLeaderboardEmpty("Si è verificato un errore durante il caricamento.");
@@ -79,9 +75,81 @@ window.addEventListener("beforeunload", () => {
   if (leaderboardSocket) leaderboardSocket.close();
 });
 
+async function loadAssenzePageContent({ syncPreference = true } = {}) {
+  updateAssenzeSchoolYearNote();
+  updateLeaderboardPreferenceControlsState();
+
+  let assenzeData = [];
+  try {
+    const res = await fetchAssenze();
+    assenzeData = res?.assenze?.events ?? [];
+  } catch (err) {
+    console.error("Errore durante il recupero delle assenze:", err);
+    assenzeData = [];
+  }
+
+  myLeaderboardHours = calculateAbsenceHours(assenzeData);
+  console.log("Ore di assenza totali:", myLeaderboardHours);
+
+  const badge = document.getElementById("myHoursBadge");
+  if (badge) badge.textContent = `${myLeaderboardHours} ore`;
+
+  leaderboardVisible = await loadLeaderboardPreference();
+  updateLeaderboardPreferenceUI();
+  updateLeaderboardTabsVisibility();
+  if (syncPreference && (!window.SchoolYear || window.SchoolYear.isCurrentSchoolYear())) {
+    await syncLeaderboardPreference();
+  }
+
+  try {
+    await loadAndRenderLeaderboard();
+  } catch (err) {
+    console.error("Errore durante il caricamento della classifica:", err);
+    renderLeaderboardEmpty("Impossibile caricare la classifica.");
+  }
+}
+
+function updateAssenzeSchoolYearNote() {
+  const shell = document.querySelector(".leaderboard-shell");
+  if (!shell) return;
+  let note = document.getElementById("schoolYearNote");
+  if (!note) {
+    note = document.createElement("p");
+    note.id = "schoolYearNote";
+    note.className = "school-year-note";
+    const switcher = document.getElementById("schoolYearSwitcher");
+    if (switcher?.parentNode) {
+      switcher.parentNode.insertBefore(note, switcher.nextSibling);
+    } else {
+      shell.insertBefore(note, shell.firstChild?.nextSibling || null);
+    }
+  }
+  const year = window.SchoolYear?.getSelectedSchoolYear?.();
+  const isCurrent = window.SchoolYear?.isCurrentSchoolYear?.() ?? true;
+  if (!year || isCurrent) {
+    note.hidden = true;
+    note.textContent = "";
+    return;
+  }
+  note.hidden = false;
+  note.textContent = `Stai consultando i dati salvati di ${window.SchoolYear.labelFor(year)}.`;
+}
+
+function updateLeaderboardPreferenceControlsState() {
+  const button = document.getElementById("toggleLeaderboardVisibilityBtn");
+  const text = document.getElementById("leaderboardVisibilityText");
+  const isCurrent = window.SchoolYear?.isCurrentSchoolYear?.() ?? true;
+  if (button) button.disabled = !isCurrent;
+  if (!isCurrent && text) {
+    text.textContent = "La preferenza di visibilità si può modificare solo per l'anno corrente.";
+  }
+}
 async function loadLeaderboardPreference() {
   try {
-    const res = await fetch(apiUrl("/api/leaderboard/me"), {
+    const params = new URLSearchParams();
+    window.SchoolYear?.appendSchoolYearParam?.(params);
+    const qs = params.toString();
+    const res = await fetch(apiUrl(`/api/leaderboard/me${qs ? `?${qs}` : ""}`), {
       method: "GET",
       credentials: "include",
     });
@@ -127,6 +195,10 @@ function updateLeaderboardPreferenceUI() {
 
 async function syncLeaderboardPreference() {
   updateLeaderboardPreferenceUI();
+  updateLeaderboardPreferenceControlsState();
+  if (window.SchoolYear && !window.SchoolYear.isCurrentSchoolYear()) {
+    return;
+  }
   try {
     await saveMyAbsenceHours({
       classCode: myClassCode,
@@ -345,7 +417,8 @@ async function logClasseFromFirstLesson({ maxWeeksToCheck = 52, startOffset = 0 
 }
 
 async function fetchAssenze() {
-  const res = await fetch(apiUrl("/api/assenze"), {
+  const qs = window.SchoolYear?.schoolYearQuery?.() || "";
+  const res = await fetch(apiUrl(`/api/assenze${qs ? `?${qs}` : ""}`), {
     method: "POST",
     credentials: "include",
   });
@@ -423,6 +496,7 @@ async function loadAndRenderLeaderboard() {
     page: String(currentLeaderboardPage),
     page_size: String(leaderboardPageSize),
   });
+  window.SchoolYear?.appendSchoolYearParam?.(params);
 
   if (currentLeaderboardType === "class" && myClassCode) {
     params.set("class_code", myClassCode);
