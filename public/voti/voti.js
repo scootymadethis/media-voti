@@ -202,46 +202,36 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  const votiDiv = document.querySelector(".actual-voti");
-  const materiaSelect = document.getElementById("materiaSelect");
-  if (votiDiv) votiDiv.innerHTML = "";
-
   try {
     myUsername = session.username || null;
     myFullName = session.full_name || localStorage.getItem("fullName") || null;
     mySchoolCode = session.school_code || localStorage.getItem("schoolCode") || null;
     myClassCode = session.class_code || null;
 
-    const materie = [];
-    const votiData = await fetchVoti();
-    const voti = extractGradesFromVotiResponse(votiData);
-    cachedAllVoti = voti;
-    renderPrevisionePagella(cachedAllVoti);
-
-    voti.forEach((voto) => {
-      if (!materie.includes(voto.subjectDesc)) materie.push(voto.subjectDesc);
-    });
-
-    voti.sort((a, b) => new Date(b.evtDate) - new Date(a.evtDate));
-    materie.sort();
-    setCurrentGeneralAverageValue(voti);
-    updateAverageBadge();
-
-    connectAverageLeaderboardRealtime();
-
-    if (materie.length && voti.length) {
-      renderVoti(materie, voti);
-      if (materiaSelect) materiaSelect.value = materie[0];
-      handleMateriaChange(materie[0], voti);
-    } else {
-      if (votiDiv) {
-        votiDiv.innerHTML =
-          '<div class="empty-voti">Nessun voto disponibile al momento.</div>';
-      }
-      renderMedia(0);
-      updateAverageBadge();
-      renderAverageLeaderboardEmpty("Nessuna classifica disponibile al momento.");
+    const switcher = window.SchoolYear?.mountSwitcher(
+      document.getElementById("schoolYearSwitcher"),
+      {
+        onChange: async () => {
+          window.LoadingScreen?.show("Cambio anno scolastico…");
+          votiPageBootstrapping = true;
+          try {
+            await loadVotiPageContent();
+            void bootstrapAverageLeaderboardAfterPaint();
+          } catch (err) {
+            console.error("[voti] cambio anno:", err);
+            renderAverageLeaderboardEmpty("Impossibile caricare i dati per questo anno.");
+          } finally {
+            window.LoadingScreen?.hide();
+          }
+        },
+      },
+    );
+    if (switcher) {
+      await switcher.init();
     }
+
+    await loadVotiPageContent();
+    connectAverageLeaderboardRealtime();
 
     if (calcolatorBtn) {
       calcolatorBtn.onclick = () => {
@@ -279,8 +269,94 @@ window.addEventListener("beforeunload", () => {
   }
 });
 
+async function loadVotiPageContent() {
+  const votiDiv = document.querySelector(".actual-voti");
+  const materiaSelect = document.getElementById("materiaSelect");
+  if (votiDiv) votiDiv.innerHTML = "";
+
+  updateSchoolYearNote();
+  updateAverageLeaderboardPreferenceControlsState();
+
+  const materie = [];
+  let votiData;
+  try {
+    votiData = await fetchVoti();
+  } catch (err) {
+    cachedAllVoti = [];
+    renderPrevisionePagella([]);
+    if (votiDiv) {
+      const year = window.SchoolYear?.getSelectedSchoolYear?.();
+      const label = year ? window.SchoolYear.labelFor(year) : "questo anno";
+      votiDiv.innerHTML = `<div class="empty-voti">Nessun voto salvato per ${escapeHtml(label)}.</div>`;
+    }
+    renderMedia(0);
+    updateAverageBadge();
+    renderAverageLeaderboardEmpty("Nessuna classifica disponibile per questo anno.");
+    return;
+  }
+
+  const voti = extractGradesFromVotiResponse(votiData);
+  cachedAllVoti = voti;
+  renderPrevisionePagella(cachedAllVoti);
+
+  voti.forEach((voto) => {
+    if (!materie.includes(voto.subjectDesc)) materie.push(voto.subjectDesc);
+  });
+
+  voti.sort((a, b) => new Date(b.evtDate) - new Date(a.evtDate));
+  materie.sort();
+  setCurrentGeneralAverageValue(voti);
+  updateAverageBadge();
+
+  if (materie.length && voti.length) {
+    renderVoti(materie, voti);
+    if (materiaSelect) materiaSelect.value = materie[0];
+    handleMateriaChange(materie[0], voti);
+  } else {
+    if (votiDiv) {
+      votiDiv.innerHTML =
+        '<div class="empty-voti">Nessun voto disponibile al momento.</div>';
+    }
+    renderMedia(0);
+    updateAverageBadge();
+    renderAverageLeaderboardEmpty("Nessuna classifica disponibile al momento.");
+  }
+}
+
+function updateSchoolYearNote() {
+  const heroCopy = document.querySelector(".voti-hero > div");
+  if (!heroCopy) return;
+  let note = document.getElementById("schoolYearNote");
+  if (!note) {
+    note = document.createElement("p");
+    note.id = "schoolYearNote";
+    note.className = "school-year-note";
+    heroCopy.appendChild(note);
+  }
+  const year = window.SchoolYear?.getSelectedSchoolYear?.();
+  const isCurrent = window.SchoolYear?.isCurrentSchoolYear?.() ?? true;
+  if (!year || isCurrent) {
+    note.hidden = true;
+    note.textContent = "";
+    return;
+  }
+  note.hidden = false;
+  note.textContent = `Stai consultando i dati salvati di ${window.SchoolYear.labelFor(year)}.`;
+}
+
+function updateAverageLeaderboardPreferenceControlsState() {
+  const button = document.getElementById("toggleAverageLeaderboardVisibilityBtn");
+  const text = document.getElementById("averageLeaderboardVisibilityText");
+  const isCurrent = window.SchoolYear?.isCurrentSchoolYear?.() ?? true;
+  if (button) button.disabled = !isCurrent;
+  if (!isCurrent && text) {
+    text.textContent = "La preferenza di visibilità si può modificare solo per l'anno corrente.";
+  }
+}
+
 async function fetchVoti() {
-  const res = await fetch(apiUrl("/api/voti"), {
+  const qs = window.SchoolYear?.schoolYearQuery?.() || "";
+  const res = await fetch(apiUrl(`/api/voti${qs ? `?${qs}` : ""}`), {
     method: "POST",
     credentials: "include",
   });
@@ -609,6 +685,7 @@ async function loadAverageLeaderboardPreference() {
       subject_name: subjectName,
       period_key: periodKey,
     });
+    window.SchoolYear?.appendSchoolYearParam?.(params);
 
     const res = await fetch(apiUrl(`/api/average-leaderboard/me?${params.toString()}`), {
       method: "GET",
@@ -682,6 +759,11 @@ function updateAverageLeaderboardPreferenceUI() {
 async function syncAverageLeaderboardPreference() {
   updateAverageBadge();
   updateAverageLeaderboardPreferenceUI();
+  updateAverageLeaderboardPreferenceControlsState();
+
+  if (window.SchoolYear && !window.SchoolYear.isCurrentSchoolYear()) {
+    return;
+  }
 
   try {
     await saveMyAverage({
@@ -837,6 +919,7 @@ async function loadAndRenderAverageLeaderboard() {
     subject_name: GENERAL_AVERAGE_LEADERBOARD_SUBJECT,
     period_key: GENERAL_AVERAGE_LEADERBOARD_PERIOD_KEY,
   });
+  window.SchoolYear?.appendSchoolYearParam?.(params);
 
   if (averageLeaderboardType === "class" && myClassCode) {
     params.set("class_code", myClassCode);
