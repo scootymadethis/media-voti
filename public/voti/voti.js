@@ -74,6 +74,12 @@ function averageRounded(values) {
   return Math.round(sum / values.length);
 }
 
+function averageExact(values) {
+  if (!values.length) return null;
+  const sum = values.reduce((acc, value) => acc + value, 0);
+  return sum / values.length;
+}
+
 function buildPrevisionePagellaRows(voti) {
   const bySubject = new Map();
 
@@ -99,8 +105,30 @@ function buildPrevisionePagellaRows(voti) {
       subject,
       primo: averageRounded(periods.primo),
       secondo: averageRounded(periods.secondo),
+      primoExact: averageExact(periods.primo),
+      secondoExact: averageExact(periods.secondo),
+      primoCount: periods.primo.length,
+      secondoCount: periods.secondo.length,
     }))
     .sort((a, b) => a.subject.localeCompare(b.subject, "it"));
+}
+
+function formatNeededGradeLabel(grade) {
+  const rounded = Math.round(grade * 4) / 4;
+  const integerPart = Math.floor(rounded);
+  const decimalPart = rounded - integerPart;
+  if (rounded >= 10) return "10";
+  if (decimalPart === 0) return `${integerPart}`;
+  if (decimalPart === 0.25) return `${integerPart}+`;
+  if (decimalPart === 0.5) return `${integerPart}.5`;
+  if (decimalPart === 0.75) return `${integerPart + 1}-`;
+  return rounded.toFixed(2);
+}
+
+function computeNeededGrade(mediaAttuale, count, target, futureCount) {
+  if (count <= 0 && futureCount <= 0) return null;
+  const totalNeeded = target * (count + futureCount) - mediaAttuale * count;
+  return totalNeeded / futureCount;
 }
 
 function renderPrevisionePagella(voti) {
@@ -136,13 +164,124 @@ function renderPrevisionePagella(voti) {
     .join("");
 
   root.innerHTML = `
-    <div class="previsione-table-head">
-      <span>Materia</span>
-      <span>Primo periodo</span>
-      <span>Secondo periodo</span>
+    <div class="previsione-table-wrap">
+      <div class="previsione-table-head">
+        <span>Materia</span>
+        <span>Primo periodo</span>
+        <span>Secondo periodo</span>
+      </div>
+      ${bodyHtml}
     </div>
-    ${bodyHtml}
+
+    <section class="obiettivo-pagella" aria-label="Obiettivo pagella">
+      <div class="obiettivo-pagella-header">
+        <span class="obiettivo-kicker">Obiettivo</span>
+        <h3 class="obiettivo-title">Cosa ti serve in ogni materia</h3>
+        <p class="obiettivo-subtitle">
+          Imposta la media desiderata e quanti voti ti aspetti ancora: calcola il voto medio necessario per ciascuna materia sul periodo attivo.
+        </p>
+      </div>
+      <div class="obiettivo-controls">
+        <label class="obiettivo-field" for="obiettivoTargetAverage">
+          <span>Media desiderata</span>
+          <input id="obiettivoTargetAverage" type="number" min="1" max="10" step="0.25" value="6" />
+        </label>
+        <label class="obiettivo-field" for="obiettivoFutureCount">
+          <span>Prossimi voti</span>
+          <input id="obiettivoFutureCount" type="number" min="1" max="10" step="1" value="1" />
+        </label>
+        <label class="obiettivo-field" for="obiettivoPeriod">
+          <span>Periodo</span>
+          <select id="obiettivoPeriod">
+            <option value="auto">Automatico</option>
+            <option value="primo">Primo periodo</option>
+            <option value="secondo">Secondo periodo</option>
+          </select>
+        </label>
+      </div>
+      <div id="obiettivoPagellaResults" class="obiettivo-results"></div>
+    </section>
   `;
+
+  const rerender = () => renderObiettivoPagellaResults(rows);
+  document.getElementById("obiettivoTargetAverage")?.addEventListener("input", rerender);
+  document.getElementById("obiettivoFutureCount")?.addEventListener("input", rerender);
+  document.getElementById("obiettivoPeriod")?.addEventListener("change", rerender);
+  rerender();
+}
+
+function resolveObiettivoPeriod(row, mode) {
+  if (mode === "primo") return "primo";
+  if (mode === "secondo") return "secondo";
+  if (row.secondoCount > 0) return "secondo";
+  if (row.primoCount > 0) return "primo";
+  return "secondo";
+}
+
+function renderObiettivoPagellaResults(rows) {
+  const results = document.getElementById("obiettivoPagellaResults");
+  if (!results) return;
+
+  const target = parseFloat(document.getElementById("obiettivoTargetAverage")?.value);
+  const futureCount = parseInt(document.getElementById("obiettivoFutureCount")?.value, 10);
+  const periodMode = document.getElementById("obiettivoPeriod")?.value || "auto";
+
+  if (isNaN(target) || target < 0 || target > 10 || isNaN(futureCount) || futureCount <= 0) {
+    results.innerHTML = `<p class="obiettivo-hint">Inserisci una media tra 0 e 10 e almeno 1 prossimo voto.</p>`;
+    return;
+  }
+
+  const cards = rows.map((row) => {
+    const period = resolveObiettivoPeriod(row, periodMode);
+    const media = period === "primo" ? row.primoExact : row.secondoExact;
+    const count = period === "primo" ? row.primoCount : row.secondoCount;
+    const periodLabel = period === "primo" ? "1° periodo" : "2° periodo";
+
+    if (media === null || count <= 0) {
+      return `
+        <article class="obiettivo-card is-empty">
+          <h4>${escapeHtml(row.subject)}</h4>
+          <p class="obiettivo-card-meta">${periodLabel} · nessun voto</p>
+          <p class="obiettivo-card-needed">—</p>
+          <p class="obiettivo-card-note">Servono prima dei voti su questo periodo.</p>
+        </article>
+      `;
+    }
+
+    const needed = computeNeededGrade(media, count, target, futureCount);
+    if (needed > 10) {
+      return `
+        <article class="obiettivo-card is-hard">
+          <h4>${escapeHtml(row.subject)}</h4>
+          <p class="obiettivo-card-meta">${periodLabel} · media ${media.toFixed(2)} · ${count} voti</p>
+          <p class="obiettivo-card-needed">Impossibile</p>
+          <p class="obiettivo-card-note">Con ${futureCount} voti non arrivi a ${target}.</p>
+        </article>
+      `;
+    }
+    if (needed <= 0) {
+      return `
+        <article class="obiettivo-card is-ok">
+          <h4>${escapeHtml(row.subject)}</h4>
+          <p class="obiettivo-card-meta">${periodLabel} · media ${media.toFixed(2)} · ${count} voti</p>
+          <p class="obiettivo-card-needed">Già ok</p>
+          <p class="obiettivo-card-note">Hai già raggiunto (o superato) ${target}.</p>
+        </article>
+      `;
+    }
+
+    const tone = needed >= 6 ? "is-ok" : needed >= 5 ? "is-mid" : "is-hard";
+    return `
+      <article class="obiettivo-card ${tone}">
+        <h4>${escapeHtml(row.subject)}</h4>
+        <p class="obiettivo-card-meta">${periodLabel} · media ${media.toFixed(2)} · ${count} voti</p>
+        <p class="obiettivo-card-needed">${escapeHtml(formatNeededGradeLabel(needed))}</p>
+        <p class="obiettivo-card-note">Media da prendere sui prossimi ${futureCount} voti.</p>
+      </article>
+    `;
+  }).join("");
+
+  results.innerHTML = `<div class="obiettivo-grid">${cards}</div>`;
 }
 
 function setVotiView(view) {
@@ -813,6 +952,7 @@ async function refreshAverageLeaderboardForCurrentSelection() {
     updateAverageLeaderboardPreferenceUI();
     updateAverageLeaderboardTabsVisibility();
     await syncAverageLeaderboardPreference();
+    updateAverageLeaderboardTabsVisibility();
     averageLeaderboardPage = 1;
     await loadAndRenderAverageLeaderboard();
   } catch (err) {
@@ -924,6 +1064,8 @@ async function saveMyAverage({ classCode, schoolCode, average, fullName, visible
 
   if (!res.ok) throw new Error("Errore nel salvataggio della media");
   if (data?.saved?.username) myUsername = data.saved.username;
+  const savedClass = String(data?.saved?.class_code || "").trim();
+  if (savedClass) myClassCode = savedClass.toUpperCase();
   return data;
 }
 
@@ -1137,88 +1279,6 @@ function showLoading(show, message) {
   if (!overlay) return;
   overlay.classList.toggle("hidden", !show);
   document.body.classList.toggle("is-loading", Boolean(show));
-}
-
-function formatDateYYYYMMDD(d) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}${mm}${dd}`;
-}
-
-function getWeekStartDate(offsetWeeks) {
-  const now = new Date();
-  const day = now.getDay();
-  const diffToMon = (day + 6) % 7;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - diffToMon + offsetWeeks * 7);
-  monday.setHours(0, 0, 0, 0);
-  return monday;
-}
-
-const agendaCache = new Map();
-
-async function fetchAgendaInterval(startYYYYMMDD, endYYYYMMDD, { prefetch = false } = {}) {
-  const cacheKey = `${startYYYYMMDD}-${endYYYYMMDD}`;
-  if (agendaCache.has(cacheKey)) return agendaCache.get(cacheKey);
-
-  const res = await fetch(apiUrl("/api/agenda"), {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ start: startYYYYMMDD, end: endYYYYMMDD }),
-  });
-
-  if (!res.ok) {
-    if (!prefetch) await handleAuthFail(res);
-    throw new Error("Error fetching agenda");
-  }
-
-  const data = await res.json();
-  agendaCache.set(cacheKey, data);
-  return data;
-}
-
-async function loadAgendaWeek(offsetWeeks) {
-  const startDate = getWeekStartDate(offsetWeeks);
-  const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 6);
-  const start = formatDateYYYYMMDD(startDate);
-  const end = formatDateYYYYMMDD(endDate);
-  return await fetchAgendaInterval(start, end);
-}
-
-function extractEvents(agendaData) {
-  if (!agendaData) return [];
-  if (Array.isArray(agendaData)) return agendaData;
-  if (Array.isArray(agendaData.agenda)) return agendaData.agenda;
-  if (agendaData.agenda && Array.isArray(agendaData.agenda.agenda)) return agendaData.agenda.agenda;
-  for (const k of Object.keys(agendaData)) {
-    if (Array.isArray(agendaData[k])) return agendaData[k];
-  }
-  return [];
-}
-
-async function logClasseFromFirstLesson({ maxWeeksToCheck = 52, startOffset = 0 } = {}) {
-  for (let offset = startOffset; offset < startOffset + maxWeeksToCheck; offset++) {
-    try {
-      const agendaData = await loadAgendaWeek(offset);
-      const events = extractEvents(agendaData);
-      const firstLesson = events.find((ev) => {
-        const classDesc = ev?.classDesc;
-        return typeof classDesc === "string" && classDesc.trim().length > 0;
-      });
-      if (firstLesson) {
-        const classDesc = firstLesson.classDesc.trim();
-        const firstChunk = classDesc.split(" ")[0]?.trim() || classDesc;
-        return firstChunk.toUpperCase();
-      }
-    } catch (err) {
-      console.error(`Errore nel fetch agenda settimana offset ${offset}:`, err);
-    }
-  }
-
-  return null;
 }
 
 async function handleAuthFail(res) {

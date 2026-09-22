@@ -1,4 +1,3 @@
-const agendaCache = new Map();
 const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
 const wsUrl = (path) => window.APP_CONFIG?.wsUrl?.(path) ?? path;
 
@@ -121,6 +120,7 @@ async function loadAssenzePageContent({ syncPreference = true } = {}) {
   updateLeaderboardTabsVisibility();
   if (syncPreference && (!window.SchoolYear || window.SchoolYear.isCurrentSchoolYear())) {
     await syncLeaderboardPreference();
+    updateLeaderboardTabsVisibility();
   }
 
   try {
@@ -355,89 +355,6 @@ function showLoading(show, message) {
   document.body.classList.toggle("is-loading", Boolean(show));
 }
 
-function formatDateYYYYMMDD(d) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}${mm}${dd}`;
-}
-
-function getWeekStartDate(offsetWeeks) {
-  const now = new Date();
-  const day = now.getDay();
-  const diffToMon = (day + 6) % 7;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - diffToMon + offsetWeeks * 7);
-  monday.setHours(0, 0, 0, 0);
-  return monday;
-}
-
-async function fetchAgendaInterval(startYYYYMMDD, endYYYYMMDD, { prefetch = false } = {}) {
-  const cacheKey = `${startYYYYMMDD}-${endYYYYMMDD}`;
-  if (agendaCache.has(cacheKey)) return agendaCache.get(cacheKey);
-
-  const res = await fetch(apiUrl("/api/agenda"), {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ start: startYYYYMMDD, end: endYYYYMMDD }),
-  });
-
-  if (!res.ok) {
-    if (!prefetch) await handleAuthFail(res);
-    throw new Error("Error fetching agenda");
-  }
-
-  const data = await res.json();
-  agendaCache.set(cacheKey, data);
-  return data;
-}
-
-async function loadAgendaWeek(offsetWeeks) {
-  const startDate = getWeekStartDate(offsetWeeks);
-  const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 6);
-  const start = formatDateYYYYMMDD(startDate);
-  const end = formatDateYYYYMMDD(endDate);
-  return await fetchAgendaInterval(start, end);
-}
-
-function extractEvents(agendaData) {
-  if (!agendaData) return [];
-  if (Array.isArray(agendaData)) return agendaData;
-  if (Array.isArray(agendaData.agenda)) return agendaData.agenda;
-  if (agendaData.agenda && Array.isArray(agendaData.agenda.agenda)) return agendaData.agenda.agenda;
-  for (const k of Object.keys(agendaData)) {
-    if (Array.isArray(agendaData[k])) return agendaData[k];
-  }
-  return [];
-}
-
-async function logClasseFromFirstLesson({ maxWeeksToCheck = 52, startOffset = 0 } = {}) {
-  for (let offset = startOffset; offset < startOffset + maxWeeksToCheck; offset++) {
-    try {
-      const agendaData = await loadAgendaWeek(offset);
-      const events = extractEvents(agendaData);
-      const firstLesson = events.find((ev) => {
-        const classDesc = ev?.classDesc;
-        return typeof classDesc === "string" && classDesc.trim().length > 0;
-      });
-      if (firstLesson) {
-        const classDesc = firstLesson.classDesc.trim();
-        const firstChunk = classDesc.split(" ")[0]?.trim() || classDesc;
-        const classCode = firstChunk.toUpperCase();
-        console.log("Classe:", classCode);
-        return classCode;
-      }
-    } catch (err) {
-      console.error(`Errore nel fetch agenda settimana offset ${offset}:`, err);
-    }
-  }
-
-  console.log("Classe: non trovata");
-  return null;
-}
-
 async function fetchAssenze() {
   const qs = window.SchoolYear?.schoolYearQuery?.() || "";
   const res = await fetch(apiUrl(`/api/assenze${qs ? `?${qs}` : ""}`), {
@@ -479,6 +396,8 @@ async function saveMyAbsenceHours({ classCode, schoolCode, hours, fullName, visi
 
   if (!res.ok) throw new Error("Errore nel salvataggio delle ore");
   if (data?.saved?.username) myUsername = data.saved.username;
+  const savedClass = String(data?.saved?.class_code || "").trim();
+  if (savedClass) myClassCode = savedClass.toUpperCase();
   return data;
 }
 
