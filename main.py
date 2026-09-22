@@ -26,7 +26,7 @@ import hashlib
 import copy
 import requests
 from math import ceil
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from threading import Lock
 from typing import Optional, Any
 from school_year import (
@@ -425,6 +425,20 @@ def init_db():
                 )
                 """
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_average_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL,
+                    school_year TEXT NOT NULL,
+                    subject_name TEXT NOT NULL,
+                    average REAL NOT NULL,
+                    day_key TEXT NOT NULL,
+                    recorded_at REAL NOT NULL,
+                    UNIQUE(username, school_year, subject_name, day_key)
+                )
+                """
+            )
 
             conn.commit()
 
@@ -586,6 +600,71 @@ def get_user_year_snapshot(*, username: str, school_year: str, kind: str) -> Opt
         return json.loads(row["payload"])
     except (TypeError, ValueError, json.JSONDecodeError):
         return None
+
+
+
+def save_average_history_point(
+    *,
+    username: str,
+    school_year: str,
+    subject_name: str,
+    average: float,
+) -> None:
+    """Salva al massimo un punto al giorno per utente/anno/materia."""
+    normalized_username = username.strip()
+    year = resolve_school_year(school_year)
+    subject = (subject_name or GENERAL_AVERAGE_SUBJECT).strip() or GENERAL_AVERAGE_SUBJECT
+    value = float(average)
+    if value <= 0 or not normalized_username:
+        return
+    day_key = time.strftime("%Y-%m-%d")
+    now = time.time()
+    with db_lock:
+        with get_db_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO user_average_history (
+                    username, school_year, subject_name, average, day_key, recorded_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(username, school_year, subject_name, day_key) DO UPDATE SET
+                    average = excluded.average,
+                    recorded_at = excluded.recorded_at
+                """,
+                (normalized_username, year, subject, value, day_key, now),
+            )
+            conn.commit()
+
+
+def list_average_history(
+    *,
+    username: str,
+    school_year: Optional[str] = None,
+    subject_name: Optional[str] = None,
+    limit: int = 120,
+) -> list[dict]:
+    year = resolve_school_year(school_year)
+    subject = (subject_name or GENERAL_AVERAGE_SUBJECT).strip() or GENERAL_AVERAGE_SUBJECT
+    with get_db_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT day_key, average, recorded_at, subject_name, school_year
+            FROM user_average_history
+            WHERE username = ? AND school_year = ? AND subject_name = ?
+            ORDER BY day_key ASC
+            LIMIT ?
+            """,
+            (username.strip(), year, subject, max(1, min(int(limit), 365))),
+        ).fetchall()
+    return [
+        {
+            "day": row["day_key"],
+            "average": row["average"],
+            "recorded_at": row["recorded_at"],
+            "subject_name": row["subject_name"],
+            "school_year": row["school_year"],
+        }
+        for row in rows
+    ]
 
 
 def payload_has_grades(voti_payload: Any) -> bool:
@@ -829,6 +908,7 @@ def delete_leaderboard_entry(username: str, school_year: Optional[str] = None) -
 
 
 def get_leaderboard_entry(username: str, school_year: Optional[str] = None):
+    """Voce dell'anno richiesto. Non riusa un altro anno: ore e classe non si trascinano."""
     normalized_username = username.strip()
     year = resolve_school_year(school_year)
     with get_db_connection() as conn:
@@ -839,16 +919,20 @@ def get_leaderboard_entry(username: str, school_year: Optional[str] = None):
             """,
             (normalized_username, year),
         ).fetchone()
-        if row is None:
-            # Fallback profilo: qualsiasi anno più recente.
-            row = conn.execute(
-                """
-                SELECT username, school_year, full_name, class_code, school_code, hours, visible_in_leaderboard, updated_at
-                FROM leaderboard_entries WHERE username = ?
-                ORDER BY updated_at DESC LIMIT 1
-                """,
-                (normalized_username,),
-            ).fetchone()
+    return row_to_entry(row)
+
+
+def get_latest_leaderboard_entry(username: str):
+    normalized_username = username.strip()
+    with get_db_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT username, school_year, full_name, class_code, school_code, hours, visible_in_leaderboard, updated_at
+            FROM leaderboard_entries WHERE username = ?
+            ORDER BY updated_at DESC LIMIT 1
+            """,
+            (normalized_username,),
+        ).fetchone()
     return row_to_entry(row)
 
 
@@ -1410,24 +1494,58 @@ def apply_badge_batch(*, badge_id: int, usernames: list[str], action: str) -> di
 def collect_known_users(query: Optional[str] = None, limit: int = 80) -> list[dict]:
     users: dict[str, dict] = {}
 
-    def add_user(username: Any, full_name: Any = None, class_code: Any = None, school_code: Any = None, source: str = "db"):
+    def add_user(
+        username: Any,
+        full_name: Any = None,
+        class_code: Any = None,
+        school_code: Any = None,
+        source: str = "db",
+        school_year: Optional[str] = None,
+    ):
         raw_username = str(username or "").strip()
         if not raw_username:
             return
         key = normalize_username(raw_username)
         existing = users.get(key, {})
+        incoming_class = normalize_class_code(class_code)
+        existing_class = existing.get("class_code")
+        existing_year = existing.get("_class_year")
+        current = current_school_year()
+        if incoming_class and (
+            not existing_class or (school_year == current and existing_year != current)
+        ):
+            chosen_class = incoming_class
+            chosen_year = school_year
+        else:
+            chosen_class = existing_class
+            chosen_year = existing_year
         users[key] = {
             "username": existing.get("username") or raw_username,
             "full_name": existing.get("full_name") or (str(full_name).strip() if full_name else None),
-            "class_code": existing.get("class_code") or (str(class_code).strip().upper() if class_code else None),
+            "class_code": chosen_class,
             "school_code": existing.get("school_code") or (str(school_code).strip().upper() if school_code else None),
             "sources": sorted(set(existing.get("sources", [])) | {source}),
+            "_class_year": chosen_year,
         }
 
     for row in list_leaderboard_entries(include_all_years=True):
-        add_user(row.get("username"), row.get("full_name"), row.get("class_code"), row.get("school_code"), "assenze")
+        add_user(
+            row.get("username"),
+            row.get("full_name"),
+            row.get("class_code"),
+            row.get("school_code"),
+            "assenze",
+            row.get("school_year"),
+        )
     for row in list_all_average_leaderboard_entries():
-        add_user(row.get("username"), row.get("full_name"), row.get("class_code"), row.get("school_code"), "voti")
+        add_user(
+            row.get("username"),
+            row.get("full_name"),
+            row.get("class_code"),
+            row.get("school_code"),
+            "voti",
+            row.get("school_year"),
+        )
     with sessions_lock:
         for sess in sessions.values():
             if sess.get("expires", 0) < time.time():
@@ -1457,6 +1575,7 @@ def collect_known_users(query: Optional[str] = None, limit: int = 80) -> list[di
         if needle and needle not in haystack:
             continue
         item["badges"] = list_user_badges(item.get("username"))
+        item.pop("_class_year", None)
         result.append(item)
     result.sort(key=lambda item: ((item.get("full_name") or item.get("username") or "").lower()))
     return result[: max(1, min(int(limit), 200))]
@@ -1546,35 +1665,73 @@ def destroy_session(session_id: Optional[str], admin_session_id: Optional[str] =
             admin_sessions.pop(admin_session_id, None)
 
 
+_CLASS_CODE_RE = re.compile(r"(\d{1,2})\s*([A-Z]{1,4})")
+# Quante settimane in avanti guardare sull'agenda per la classe dell'anno in corso.
+LIVE_CLASS_WEEKS = 8
+LIVE_CLASS_HIT_TTL = 6 * 60 * 60
+LIVE_CLASS_MISS_TTL = 10 * 60
+
+
+def normalize_class_code(value: Optional[str]) -> Optional[str]:
+    """Estrae un codice classe (es. 5EI) da '5EI', '5EI ELETTRONICA', '5 EI'.
+
+    Lo spazio ferma il match: altrimenti '5EI ELETTRONICA' diventa '5EIEL'.
+    """
+    raw = str(value or "").strip().upper()
+    if not raw:
+        return None
+    match = _CLASS_CODE_RE.search(raw)
+    if not match:
+        return None
+    return f"{match.group(1)}{match.group(2)}"
+
+
+def _rows_for_username_aliases(table: str, aliases: set[str]) -> list[sqlite3.Row]:
+    if not aliases or table not in {"leaderboard_entries", "average_leaderboard_entries_scoped"}:
+        return []
+    placeholders = ",".join("?" for _ in aliases)
+    with get_db_connection() as conn:
+        return conn.execute(
+            f"""
+            SELECT username, school_year, full_name, class_code, school_code, updated_at
+            FROM {table}
+            WHERE upper(trim(username)) IN ({placeholders})
+            ORDER BY updated_at DESC
+            """,
+            tuple(aliases),
+        ).fetchall()
+
+
 def _first_saved_profile_for_user(username: str, ident: Optional[Any] = None) -> dict:
-    """Recupera nome/classe/scuola già salvati nel DB locale, senza upstream."""
+    """Nome e scuola da qualsiasi anno. La classe solo se è dell'anno in corso.
+
+    La classe dell'anno precedente (4EI) non va riproposta a settembre: è un'altra classe.
+    """
     aliases = username_aliases(username, ident)
-    for alias in aliases:
-        item = get_leaderboard_entry(alias)
-        if item:
-            return {
-                "full_name": item.get("full_name"),
-                "class_code": item.get("class_code"),
-                "school_code": item.get("school_code"),
-            }
-    for row in list_all_average_leaderboard_entries():
-        if normalize_username(row.get("username")) in aliases:
-            return {
-                "full_name": row.get("full_name"),
-                "class_code": row.get("class_code"),
-                "school_code": row.get("school_code"),
-            }
-    return {"full_name": None, "class_code": None, "school_code": None}
+    current = current_school_year()
+    full_name = None
+    school_code = None
+    class_code = None
+    class_updated = -1.0
+    rows = _rows_for_username_aliases("leaderboard_entries", aliases)
+    rows.extend(_rows_for_username_aliases("average_leaderboard_entries_scoped", aliases))
+    for row in rows:
+        updated = float(row["updated_at"] or 0)
+        if full_name is None and row["full_name"]:
+            full_name = row["full_name"]
+        if school_code is None and row["school_code"]:
+            school_code = row["school_code"]
+        if (row["school_year"] or "") == current and row["class_code"] and updated >= class_updated:
+            class_code = normalize_class_code(row["class_code"]) or str(row["class_code"]).strip().upper()
+            class_updated = updated
+    return {"full_name": full_name, "class_code": class_code, "school_code": school_code}
 
 
 def _extract_class_code_from_card_fields(fields: dict) -> Optional[str]:
     for key in ("classDesc", "classCode", "classe", "clsDesc", "clsCode", "className"):
-        raw = str(fields.get(key) or "").strip().upper()
-        if not raw:
-            continue
-        raw = raw.replace(" ", "")
-        match = re.search(r"(\\d{1,2}[A-Z]{1,4})", raw)
-        return match.group(1) if match else raw[:16]
+        code = normalize_class_code(fields.get(key))
+        if code:
+            return code
     return None
 
 
@@ -1589,7 +1746,7 @@ def build_session_profile(u: Utente, card_res: Optional[dict] = None) -> dict:
         "easter_egg_eligible": is_easter_egg_username(username),
     }
 
-    # 1) Dati locali già salvati (zero richieste upstream).
+    # 1) Dati locali. La classe arriva solo dall'anno in corso, non da quello prima.
     saved = _first_saved_profile_for_user(username, getattr(u, "ident", None))
     profile.update({k: v for k, v in saved.items() if v})
 
@@ -1611,6 +1768,11 @@ def build_session_profile(u: Utente, card_res: Optional[dict] = None) -> dict:
                 profile["class_code"] = class_code
         except Exception:
             pass
+
+    # 3) Agenda dell'anno in corso: è l'unica fonte che segue il passaggio 4EI → 5EI.
+    detected = resolve_live_class_code(u)
+    if detected:
+        profile["class_code"] = detected
 
     return profile
 
@@ -2397,10 +2559,68 @@ def _extract_first_lesson_class_code(agenda_res: Any) -> Optional[str]:
     for event in events:
         if not isinstance(event, dict):
             continue
-        class_desc = str(event.get("classDesc") or "").strip()
-        if not class_desc:
+        code = normalize_class_code(event.get("classDesc"))
+        if code:
+            return code
+    return None
+
+
+def _monday_of(day: date) -> date:
+    return day - timedelta(days=day.weekday())
+
+
+def iter_live_class_ranges(ref: date, *, max_weeks: int = LIVE_CLASS_WEEKS):
+    """Finestre di 7 giorni nell'anno scolastico corrente, da oggi in avanti.
+
+    Non torna indietro all'anno prima: a settembre la prima lezione è già la classe nuova.
+    """
+    year = current_school_year(ref)
+    start_year = int(year.split("/")[0])
+    year_start = date(start_year, 9, 1)
+    year_end = date(start_year + 1, 8, 31)
+    cursor = max(_monday_of(ref), year_start)
+    for _ in range(max_weeks):
+        if cursor > year_end:
+            break
+        week_end = min(cursor + timedelta(days=6), year_end)
+        yield cursor.strftime("%Y%m%d"), week_end.strftime("%Y%m%d")
+        cursor = week_end + timedelta(days=1)
+
+
+def resolve_live_class_code(u: Utente, *, ref: Optional[date] = None) -> Optional[str]:
+    """Classe letta dalle lezioni dell'anno in corso. Cache lunga: cambia una volta l'anno."""
+    day = ref or date.today()
+    year = current_school_year(day)
+    key = _cache_key(["live-class", _cache_user_key(u), year, _monday_of(day).isoformat()])
+    cached = _get_cached_value(key, clone=False)
+    if isinstance(cached, str):
+        return cached or None
+
+    found: Optional[str] = None
+    for start, end in iter_live_class_ranges(day):
+        try:
+            payload = cached_agenda_json(u, start, end)
+        except Exception:
             continue
-        return class_desc.split(" ")[0].strip().upper() or None
+        found = _extract_first_lesson_class_code(payload)
+        if found:
+            break
+
+    _set_cached_value(
+        key,
+        found or "",
+        ttl=LIVE_CLASS_HIT_TTL if found else LIVE_CLASS_MISS_TTL,
+        clone=False,
+    )
+    return found
+
+
+def pick_current_class_code(*candidates: Optional[str]) -> Optional[str]:
+    """Prima la classe vista in agenda, poi quella richiesta, poi quella già salvata quest'anno."""
+    for value in candidates:
+        code = normalize_class_code(value)
+        if code:
+            return code
     return None
 
 
@@ -2425,6 +2645,8 @@ def get_user_profile_for_leaderboards(u: Utente, card_res: Optional[dict] = None
             or school_code
         )
         class_code = _extract_class_code_from_card_fields(card_fields) or class_code
+
+    class_code = pick_current_class_code(resolve_live_class_code(u), class_code)
 
     return {
         "full_name": full_name or None,
@@ -2902,13 +3124,43 @@ async def update_leaderboard(
 
         existing = get_leaderboard_entry(session_username, school_year=year)
         existing_hours = float(existing.get("hours") or 0) if existing else 0.0
+        class_code = pick_current_class_code(
+            resolve_live_class_code(u),
+            body.class_code,
+            profile.get("class_code"),
+            existing.get("class_code") if existing else None,
+        )
 
-        # Non sovrascrivere ore > 0 con un payload vuoto (estate / blip Spaggiari).
+        # Non sovrascrivere ore > 0 di QUESTO anno con un payload vuoto (blip Spaggiari).
+        # Le ore dell'anno precedente non contano: a settembre la classifica riparte.
         if computed_hours <= 0 and existing_hours > 0 and not payload_has_absences(assenze_payload):
-            if existing and bool(existing.get("visible_in_leaderboard")) != bool(body.visible_in_leaderboard):
-                update_leaderboard_visibility(session_username, bool(body.visible_in_leaderboard))
-                existing = get_leaderboard_entry(session_username, school_year=year)
+            class_changed = bool(
+                existing
+                and class_code
+                and normalize_class_code(existing.get("class_code")) != class_code
+            )
+            visibility_changed = bool(
+                existing
+                and bool(existing.get("visible_in_leaderboard")) != bool(body.visible_in_leaderboard)
+            )
+            if class_changed or visibility_changed:
+                saved = upsert_leaderboard_entry(
+                    username=session_username,
+                    full_name=body.full_name or profile.get("full_name") or existing.get("full_name"),
+                    class_code=class_code,
+                    school_code=body.school_code or profile.get("school_code") or existing.get("school_code"),
+                    hours=existing_hours,
+                    visible_in_leaderboard=bool(body.visible_in_leaderboard),
+                    school_year=year,
+                )
                 await broadcast_leaderboard_change("upsert", session_username.strip())
+                return {
+                    "ok": True,
+                    "saved": saved,
+                    "school_year": year,
+                    "skipped": True,
+                    "reason": "preserve_non_zero_hours",
+                }
             return {
                 "ok": True,
                 "saved": existing,
@@ -2920,7 +3172,7 @@ async def update_leaderboard(
         saved = upsert_leaderboard_entry(
             username=session_username,
             full_name=body.full_name or profile.get("full_name") or (existing.get("full_name") if existing else None),
-            class_code=body.class_code or profile.get("class_code") or (existing.get("class_code") if existing else None),
+            class_code=class_code,
             school_code=body.school_code or profile.get("school_code") or (existing.get("school_code") if existing else None),
             hours=computed_hours,
             visible_in_leaderboard=bool(body.visible_in_leaderboard),
@@ -3142,27 +3394,47 @@ async def update_average_leaderboard(
             school_year=year,
         )
         existing_average = float(existing.get("average") or 0) if existing else 0.0
+        class_code = pick_current_class_code(
+            resolve_live_class_code(u),
+            body.class_code,
+            profile.get("class_code"),
+            existing.get("class_code") if existing else None,
+        )
 
         # Medie 0 (nessun voto): non resettare medie già salvate e non creare voci a zero.
+        # Se la classe è quella dell'anno scorso, la aggiorniamo comunque.
         if computed_average <= 0:
             if existing and existing_average > 0:
-                if bool(existing.get("visible_in_leaderboard")) != bool(body.visible_in_leaderboard):
-                    update_average_leaderboard_visibility(
-                        session_username,
-                        normalized_subject,
-                        normalized_period_key,
-                        bool(body.visible_in_leaderboard),
-                    )
-                    existing = get_average_leaderboard_entry(
-                        session_username,
-                        normalized_subject,
-                        normalized_period_key,
+                class_changed = bool(
+                    class_code and normalize_class_code(existing.get("class_code")) != class_code
+                )
+                visibility_changed = bool(
+                    existing.get("visible_in_leaderboard")
+                ) != bool(body.visible_in_leaderboard)
+                saved = existing
+                if class_changed or visibility_changed:
+                    saved = upsert_average_leaderboard_entry(
+                        username=session_username,
+                        full_name=body.full_name or profile.get("full_name") or existing.get("full_name"),
+                        class_code=class_code,
+                        school_code=body.school_code or profile.get("school_code") or existing.get("school_code"),
+                        subject_name=normalized_subject,
+                        period_key=normalized_period_key,
+                        period_label=body.period_label or existing.get("period_label"),
+                        average=existing_average,
+                        visible_in_leaderboard=bool(body.visible_in_leaderboard),
                         school_year=year,
                     )
                     await broadcast_average_leaderboard_change("upsert", session_username.strip())
+                save_average_history_point(
+                    username=session_username,
+                    school_year=year,
+                    subject_name=GENERAL_AVERAGE_SUBJECT,
+                    average=existing_average,
+                )
                 return {
                     "ok": True,
-                    "saved": existing,
+                    "saved": saved,
                     "school_year": year,
                     "skipped": True,
                     "reason": "preserve_non_zero_average",
@@ -3178,7 +3450,7 @@ async def update_average_leaderboard(
         saved = upsert_average_leaderboard_entry(
             username=session_username,
             full_name=body.full_name or profile.get("full_name") or (existing.get("full_name") if existing else None),
-            class_code=body.class_code or profile.get("class_code") or (existing.get("class_code") if existing else None),
+            class_code=class_code,
             school_code=body.school_code or profile.get("school_code") or (existing.get("school_code") if existing else None),
             subject_name=normalized_subject,
             period_key=normalized_period_key,
@@ -3191,7 +3463,6 @@ async def update_average_leaderboard(
         # Aggiorna anche le medie per materia (stessa visibilità della media generale).
         subject_averages = calculate_subject_averages_from_payload(voti_payload)
         full_name = body.full_name or profile.get("full_name") or (existing.get("full_name") if existing else None)
-        class_code = body.class_code or profile.get("class_code") or (existing.get("class_code") if existing else None)
         school_code = body.school_code or profile.get("school_code") or (existing.get("school_code") if existing else None)
         for subject_name, subject_average in subject_averages.items():
             if float(subject_average) <= 0:
@@ -3208,6 +3479,13 @@ async def update_average_leaderboard(
                 visible_in_leaderboard=bool(body.visible_in_leaderboard),
                 school_year=year,
             )
+
+        save_average_history_point(
+            username=session_username,
+            school_year=year,
+            subject_name=GENERAL_AVERAGE_SUBJECT,
+            average=computed_average,
+        )
 
         await broadcast_average_leaderboard_change("upsert", session_username.strip())
 
@@ -3235,6 +3513,39 @@ def get_average_leaderboard_subjects(
         "school_year": year,
         "subjects": subjects,
         "default": GENERAL_AVERAGE_SUBJECT,
+    }
+
+
+@app.get("/average-history")
+def get_average_history(
+    school_year: Optional[str] = Query(default=None),
+    subject_name: Optional[str] = Query(default=None),
+    u: Utente = Depends(current_user),
+):
+    session_username = getattr(u, "uid", None)
+    if not session_username:
+        raise HTTPException(status_code=400, detail="Username sessione non disponibile")
+    year = resolve_school_year(school_year)
+    subject = (subject_name or GENERAL_AVERAGE_SUBJECT).strip()
+    points = list_average_history(
+        username=session_username,
+        school_year=year,
+        subject_name=subject,
+    )
+    if not points:
+        for alias in username_aliases(session_username, getattr(u, "ident", None)):
+            points = list_average_history(
+                username=alias,
+                school_year=year,
+                subject_name=subject,
+            )
+            if points:
+                break
+    return {
+        "ok": True,
+        "school_year": year,
+        "subject_name": subject,
+        "points": points,
     }
 
 
@@ -3660,7 +3971,7 @@ async def admin_leaderboard_visibility(
     if not updated:
         raise HTTPException(status_code=404, detail="Voce non trovata")
     await broadcast_leaderboard_change("upsert", username.strip())
-    item = get_leaderboard_entry(username)
+    item = get_leaderboard_entry(username) or get_latest_leaderboard_entry(username)
     return {"ok": True, "item": item}
 
 

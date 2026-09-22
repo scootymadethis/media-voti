@@ -24,30 +24,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       updateGreeting();
     }, 1000);
 
-    let agendaData = null;
-    let agendaFailed = false;
     try {
-      agendaData = await loadAgendaWeek(0);
+      const agendaData = await loadAgendaWeek(0);
       renderAgenda(agendaData);
     } catch (e) {
-      agendaFailed = true;
       console.error("agenda fetch failed", e);
-    }
-
-    const showSummer = window.SummerMode?.shouldShow?.({
-      agendaData,
-      agendaFailed,
-    });
-    if (showSummer) {
-      window.studentName = studentName;
-      window.SummerMode.show({ name: studentName });
-      window.LoadingScreen?.hide?.({ immediate: true });
-      // Non bloccare la UI estate dietro fetch/setup dashboard.
-      // La dashboard si prepara in background se l'utente esce dalla modalità.
-      void bootstrapDashboardPanels().catch((err) => {
-        console.error("dashboard background hydrate failed", err);
-      });
-      return;
     }
 
     await bootstrapDashboardPanels();
@@ -73,7 +54,16 @@ async function bootstrapDashboardPanels() {
       }),
     ]);
     if (lezioniData) renderLezioni(lezioniData);
-    if (votiData) renderVoti(votiData);
+    if (votiData) {
+      renderVoti(votiData);
+      try {
+        window.NewGradesAlert?.processVotiPayload?.(votiData, {
+          username: localStorage.getItem("username") || null,
+        });
+      } catch (err) {
+        console.warn("[dashboard] new grades alert failed", err);
+      }
+    }
     if (assenzeData) renderAssenze(assenzeData);
 
     const nextBtn = document.getElementById("nextWeek");
@@ -181,7 +171,7 @@ async function bootstrapDashboardPanels() {
     updateGreeting();
     await new Promise((res) => requestAnimationFrame(res));
 
-    window.LoadingScreen?.hide?.({ immediate: Boolean(document.body.classList.contains("summer-active")) });
+    window.LoadingScreen?.hide?.();
 
     if (typeof window.initSiteAnnouncementModal === "function") {
       await window.initSiteAnnouncementModal();
