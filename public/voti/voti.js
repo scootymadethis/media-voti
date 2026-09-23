@@ -587,14 +587,19 @@ async function loadVotiPageContent() {
 }
 
 function updateSchoolYearNote() {
-  const heroCopy = document.querySelector(".voti-hero > div");
-  if (!heroCopy) return;
+  const switcher = document.getElementById("schoolYearSwitcher");
+  const host = switcher?.parentNode || document.querySelector(".voti-leaderboard-section");
+  if (!host) return;
   let note = document.getElementById("schoolYearNote");
   if (!note) {
     note = document.createElement("p");
     note.id = "schoolYearNote";
     note.className = "school-year-note";
-    heroCopy.appendChild(note);
+    if (switcher?.parentNode) {
+      switcher.parentNode.insertBefore(note, switcher.nextSibling);
+    } else {
+      host.appendChild(note);
+    }
   }
   const year = window.SchoolYear?.getSelectedSchoolYear?.();
   const isCurrent = window.SchoolYear?.isCurrentSchoolYear?.() ?? true;

@@ -3,51 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spaggiari 2 - Voti</title>
-    <link rel="stylesheet" href="/common.css?v=10" />
+    <title>Aulera — Voti</title>
+    <link rel="stylesheet" href="/common.css?v=14" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
     <link rel="stylesheet" href="voti.css?v=10" />
   </head>
   <body>
-    <div class="navbar">
+    <header class="navbar has-menu">
       <div class="navbar-brand">
-        <div class="navbar-brand-mark" onclick="goToHome()">S2</div>
+        <div class="navbar-brand-mark" onclick="goToHome()">Au</div>
         <div>
-          <h1 class="title" onclick="goToHome()">Spaggiari 2</h1>
-          <p class="navbar-subtitle">Area voti</p>
+          <h1 class="title" onclick="goToHome()">Aulera</h1>
+          <p class="navbar-subtitle">Voti</p>
         </div>
       </div>
       <div class="navbar-right">
-        <div class="buttons" aria-label="Navigazione principale">
-          <button
-            type="button"
-            class="btn-easter-egg"
-            data-easter-egg-nav
-            hidden
-            aria-label="Easter egg"
-            title="Easter egg"
-            onclick="goToEasterEggGame()"
-          >
-            🤫
-          </button>
-          <button class="btn-secondary" onclick="goToOrario()">Orario</button>
-          <button id="votiBtn" class="btn-secondary" onclick="goToVoti()">
-            Voti
-          </button>
-          <button id="assenzeBtn" class="btn-secondary" onclick="goToAssenze()">
-            Assenze
-          </button>
-          <button
-            id="adminBtn"
-            class="btn-admin"
-            data-admin-nav
-            hidden
-            onclick="goToAdmin()"
-          >
-            Admin
-          </button>
-          <button id="logoutBtn" onclick="logout()">Logout</button>
-        </div>
+        <nav class="buttons" aria-label="Navigazione principale">
+          <button type="button" class="nav-link" id="homeBtn" onclick="goToHome()">Home</button>
+          <button type="button" class="nav-link" id="orarioBtn" onclick="goToOrario()">Orario</button>
+          <button type="button" class="nav-link is-current" id="votiBtn" onclick="goToVoti()">Voti</button>
+          <button type="button" class="nav-link" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
+          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
+          <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+          <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
+        </nav>
         <button
           id="navToggle"
           class="navbar-toggle"
@@ -59,7 +39,7 @@
           <span></span><span></span><span></span>
         </button>
       </div>
-    </div>
+    </header>
 
     <div
       id="mobileNavBackdrop"
@@ -70,7 +50,7 @@
       <div class="nav-drawer-header">
         <div>
           <h2>Menu</h2>
-          <p class="navbar-subtitle">Navigazione rapida</p>
+          <p class="navbar-subtitle">Stesse voci, stesso ordine</p>
         </div>
         <button
           id="navDrawerClose"
@@ -81,37 +61,25 @@
           ✕
         </button>
       </div>
-      <div class="buttons">
-        <button
-          type="button"
-          class="btn-easter-egg"
-          data-easter-egg-nav
-          hidden
-          aria-label="Easter egg"
-          onclick="goToEasterEggGame()"
-        >
-          🤫
-        </button>
-        <button class="btn-secondary" onclick="goToOrario()">Orario</button>
-        <button class="btn-secondary" onclick="goToVoti()">Voti</button>
-        <button class="btn-secondary" onclick="goToAssenze()">Assenze</button>
-        <button class="btn-admin" data-admin-nav hidden onclick="goToAdmin()">
-          Admin
-        </button>
-        <button onclick="logout()">Logout</button>
-      </div>
+      <nav class="buttons">
+          <button type="button" class="nav-link" onclick="goToHome()">Home</button>
+          <button type="button" class="nav-link" onclick="goToOrario()">Orario</button>
+          <button type="button" class="nav-link is-current" onclick="goToVoti()">Voti</button>
+          <button type="button" class="nav-link" onclick="goToAssenze()">Assenze</button>
+          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
+          <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+          <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
+      </nav>
     </aside>
 
-    <div class="main">
+    <div class="main" data-reveal>
 
-      <section class="voti-hero">
+      <section class="voti-hero" data-reveal>
         <div>
-          <span class="voti-kicker">Panoramica</span>
-          <h2 class="voti-title">I tuoi voti</h2>
-          <p class="voti-subtitle">Seleziona una materia e un periodo.</p>
+          <h2 class="voti-title">Voti</h2>
           <div id="votiExportActions" class="export-actions"></div>
         </div>
-        <div id="schoolYearSwitcher" class="school-year-switcher" hidden></div>
       </section>
 
       <div
@@ -137,7 +105,7 @@
         </button>
       </div>
 
-      <div class="voti-panels">
+      <div class="voti-panels" data-reveal>
         <div class="voti voti-panel is-active" data-voti-panel="voti">
           <div class="voti-list" id="votiList">
           <section class="voti-controls">
@@ -227,12 +195,10 @@
         </div>
       </div>
 
-      <section class="andamento-shell" aria-label="Andamento media">
+      <section class="andamento-shell" aria-label="Andamento media" data-reveal>
         <div class="andamento-header">
           <div>
-            <span class="andamento-kicker">Andamento</span>
-            <h3 class="andamento-title">Media generale nel tempo</h3>
-            <p class="andamento-subtitle">Un punto al giorno, aggiornato quando apri i voti.</p>
+            <h3 class="andamento-title">Media nel tempo</h3>
           </div>
           <div class="andamento-summary" id="andamentoSummary"></div>
         </div>
@@ -242,7 +208,7 @@
 
       <section
         class="grade-leaderboard-shell grade-leaderboard-shell--standalone voti-leaderboard-section"
-      >
+       data-reveal>
           <div class="leaderboard-header">
             <div>
               <h3 class="leaderboard-title" id="averageLeaderboardTitle">Classifica media generale</h3>
@@ -251,6 +217,11 @@
               </p>
             </div>
             <div class="leaderboard-mini-summary" id="myAverageBadge"></div>
+          </div>
+
+          <div class="leaderboard-year">
+            <span class="year-label">Anno scolastico</span>
+            <div id="schoolYearSwitcher" class="school-year-switcher" hidden></div>
           </div>
 
           <div class="leaderboard-subject-filter">
@@ -336,8 +307,7 @@
 
     <div class="footer">
       <span class="desc"
-        >This website is not affiliated in any way with ClasseViva
-        Spaggiari.</span
+        >Aulera non è affiliato a ClasseViva Spaggiari.</span
       >
       <span class="copyright"
         >&#169; Copyright 2026 github.com/scootymadethis</span

@@ -50,7 +50,7 @@
 }
 
 .announcement-body a {
-  color: #f87171;
+  color: #c4b5fd;
   text-decoration: underline;
 }
 
@@ -104,7 +104,7 @@
 
 .announcement-modal-footer button {
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.75rem 1.2rem;
   font-weight: 700;
   background: var(--primary-btn);

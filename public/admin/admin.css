@@ -122,7 +122,7 @@
   border: 1px solid var(--border);
   background: var(--surface-alt);
   color: var(--primary);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.55rem 1rem;
   font-weight: 600;
 }
@@ -190,7 +190,7 @@
 .admin-badge {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.2rem 0.55rem;
   font-size: 0.78rem;
   font-weight: 700;
@@ -279,14 +279,13 @@
 }
 
 .buttons .btn-admin {
-  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  background: transparent;
   border: none;
   color: #fff;
 }
 
 .buttons .btn-admin:hover {
-  background: linear-gradient(135deg, #6d28d9, #9333ea);
-  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.28);
+  background: var(--surface-alt);
 }
 
 @media (max-width: 860px) {
@@ -428,7 +427,7 @@
   display: inline-flex;
   align-items: center;
   border: 1px solid currentColor;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.18rem 0.5rem;
   font-size: 0.78rem;
   font-weight: 800;

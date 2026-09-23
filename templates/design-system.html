@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aulera — Design system</title>
+    <link rel="stylesheet" href="/common.css?v=14" />
+    <style>
+      .ds-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 56px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--border);
+        background: #161616;
+      }
+      .ds-top strong { font-weight: 650; }
+      .ds-top span { color: var(--muted); margin-left: 8px; font-size: 13px; }
+      .ds-layout {
+        display: grid;
+        grid-template-columns: 180px minmax(0, 1fr);
+        width: min(1100px, calc(100% - 32px));
+        margin: 0 auto;
+        align-items: start;
+      }
+      .ds-nav {
+        position: sticky;
+        top: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 20px 0;
+      }
+      .ds-nav a {
+        color: var(--secondary);
+        font-size: 13px;
+        padding: 6px 8px;
+        border-radius: var(--radius-sm);
+      }
+      .ds-nav a:hover { color: var(--primary); background: var(--surface-alt); }
+      .ds-main { padding: 20px 0 64px 28px; display: flex; flex-direction: column; gap: 36px; }
+      .ds-main h1 { font-size: 1.35rem; }
+      .ds-main h2 { font-size: 1.05rem; margin-bottom: 10px; }
+      .ds-main p.note { color: var(--secondary); font-size: 13px; margin-bottom: 12px; max-width: 62ch; }
+      .swatches, .stack, .row, .type-list { display: flex; flex-wrap: wrap; gap: 8px; }
+      .swatch {
+        width: 148px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+        background: var(--surface);
+      }
+      .swatch i { display: block; height: 36px; }
+      .swatch b, .swatch em { display: block; padding: 6px 8px 0; font-style: normal; font-size: 12px; font-weight: 560; }
+      .swatch em { color: var(--muted); padding-bottom: 8px; font-weight: 450; }
+      .token-table, .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .token-table th, .token-table td, .data-table th, .data-table td {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      .token-table th, .data-table th { color: var(--muted); font-weight: 560; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--secondary); }
+      .field { display: flex; flex-direction: column; gap: 4px; min-width: 220px; }
+      .field label { font-size: 13px; font-weight: 560; }
+      .field input, .field select {
+        min-height: 36px;
+        padding: 0 10px;
+      }
+      .hint { color: var(--muted); font-size: 12px; }
+      .err { color: var(--danger); font-size: 12px; }
+      .check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+      .alert {
+        border: 1px solid var(--border);
+        border-left-width: 3px;
+        border-radius: var(--radius-sm);
+        padding: 10px 12px;
+        background: var(--surface);
+        max-width: 520px;
+      }
+      .alert strong { display: block; margin-bottom: 2px; }
+      .alert p { color: var(--secondary); font-size: 13px; }
+      .alert.bad { border-left-color: var(--danger); }
+      .alert.warn { border-left-color: var(--warning); }
+      .alert.ok { border-left-color: var(--success); }
+      .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
+      .tabs button { border-radius: 0; background: transparent; color: var(--secondary); border: none; border-bottom: 2px solid transparent; }
+      .tabs button[aria-selected="true"] { color: var(--primary); border-bottom-color: var(--brand); }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 22px;
+        padding: 0 6px;
+        border-radius: var(--radius-xs);
+        border: 1px solid var(--border-strong);
+        font-size: 12px;
+        font-weight: 560;
+      }
+      .badge.brand { color: #fff; background: var(--brand); border-color: var(--brand); }
+      .empty, .loading-sample {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        max-width: 420px;
+        background: var(--surface);
+      }
+      .radius-row span {
+        display: inline-flex;
+        width: 72px;
+        height: 36px;
+        border: 1px solid var(--border-strong);
+        background: var(--surface-alt);
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        color: var(--secondary);
+      }
+      @media (max-width: 760px) {
+        .ds-layout { grid-template-columns: 1fr; }
+        .ds-nav { position: static; flex-direction: row; flex-wrap: wrap; padding-bottom: 0; }
+        .ds-main { padding-left: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="ds-top">
+      <div><strong>Aulera</strong><span>Design system</span></div>
+      <a class="btn-secondary" href="/dashboard/">Dashboard</a>
+    </header>
+    <div class="ds-layout">
+      <nav class="ds-nav" aria-label="Sezioni">
+        <a href="#colori">Colori</a>
+        <a href="#tipo">Tipo</a>
+        <a href="#raggi">Raggi</a>
+        <a href="#pulsanti">Pulsanti</a>
+        <a href="#campi">Campi</a>
+        <a href="#messaggi">Messaggi</a>
+        <a href="#tabella">Tabella</a>
+        <a href="#stati">Stati</a>
+      </nav>
+      <main class="ds-main">
+        <section>
+          <h1>Riferimento interno</h1>
+          <p class="note">Token e controlli usati nel registro. Il rosso è riservato ad azioni, selezione e stato attivo.</p>
+        </section>
+
+        <section id="colori">
+          <h2>Colori</h2>
+          <div class="swatches">
+            <div class="swatch"><i style="background:#121212"></i><b>Sfondo</b><em>--bg</em></div>
+            <div class="swatch"><i style="background:#1b1b1b"></i><b>Superficie</b><em>--surface</em></div>
+            <div class="swatch"><i style="background:#232323"></i><b>Superficie alt</b><em>--surface-alt</em></div>
+            <div class="swatch"><i style="background:#f4f4f5"></i><b>Testo</b><em>--primary</em></div>
+            <div class="swatch"><i style="background:#a1a1aa"></i><b>Secondario</b><em>--secondary</em></div>
+            <div class="swatch"><i style="background:#71717a"></i><b>Muted</b><em>--muted</em></div>
+            <div class="swatch"><i style="background:#2e2e2e"></i><b>Bordo</b><em>--border</em></div>
+            <div class="swatch"><i style="background:#dc2626"></i><b>Brand</b><em>--brand</em></div>
+            <div class="swatch"><i style="background:#b91c1c"></i><b>Brand hover</b><em>--brand-hover</em></div>
+            <div class="swatch"><i style="background:#991b1b"></i><b>Brand active</b><em>--brand-active</em></div>
+            <div class="swatch"><i style="background:#be123c"></i><b>Danger</b><em>--danger</em></div>
+            <div class="swatch"><i style="background:#16a34a"></i><b>Successo</b><em>--success</em></div>
+          </div>
+        </section>
+
+        <section id="tipo">
+          <h2>Tipo</h2>
+          <p class="note">Outfit, tre pesi: 450 corpo, 560 etichette, 650 titoli.</p>
+          <div class="type-list" style="flex-direction:column;align-items:flex-start">
+            <div style="font-size:1.5rem;font-weight:650">Titolo pagina · 1.5rem</div>
+            <div style="font-size:1.05rem;font-weight:650">Titolo sezione · 1.05rem</div>
+            <div style="font-size:15px;font-weight:450">Corpo. Voti, assenze, orario.</div>
+            <div style="font-size:13px;font-weight:560;color:var(--secondary)">Etichetta · 13px</div>
+            <div style="font-size:12px;color:var(--muted)">Nota · 12px</div>
+          </div>
+        </section>
+
+        <section id="raggi">
+          <h2>Raggi e spazio</h2>
+          <p class="note">4px controlli minimi, 6px pulsanti e campi, 8px pannelli, 10px dialoghi. Le superfici grandi non usano capsule.</p>
+          <div class="radius-row row">
+            <span style="border-radius:4px">4</span>
+            <span style="border-radius:6px">6</span>
+            <span style="border-radius:8px">8</span>
+            <span style="border-radius:10px">10</span>
+          </div>
+          <table class="token-table" style="margin-top:12px">
+            <thead><tr><th>Token</th><th>Uso</th></tr></thead>
+            <tbody>
+              <tr><td><code>--radius-xs</code></td><td>Badge, scrollbar</td></tr>
+              <tr><td><code>--radius-sm</code></td><td>Pulsanti, input, tab</td></tr>
+              <tr><td><code>--radius-md</code></td><td>Pannelli, menu</td></tr>
+              <tr><td><code>--radius-lg</code></td><td>Modali</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="pulsanti">
+          <h2>Pulsanti</h2>
+          <div class="row">
+            <button class="btn-primary" type="button">Primario</button>
+            <button class="btn-secondary" type="button">Secondario</button>
+            <button class="nav-link is-current" type="button">Attivo</button>
+            <button class="nav-link" type="button">Voce</button>
+            <button class="nav-exit nav-link" type="button">Esci</button>
+            <button class="btn-primary" type="button" disabled>Disabilitato</button>
+          </div>
+        </section>
+
+        <section id="campi">
+          <h2>Campi</h2>
+          <div class="row" style="align-items:flex-start">
+            <div class="field">
+              <label for="ds-name">Nome</label>
+              <input id="ds-name" type="text" value="4EI" />
+            </div>
+            <div class="field">
+              <label for="ds-year">Anno</label>
+              <select id="ds-year"><option>2025/26</option><option>2024/25</option></select>
+              <span class="hint">Solo anni già presenti nel registro.</span>
+            </div>
+            <div class="field">
+              <label for="ds-bad">Media</label>
+              <input id="ds-bad" type="text" value="12" aria-invalid="true" style="border-color:var(--danger)" />
+              <span class="err">Inserisci un valore fra 1 e 10.</span>
+            </div>
+          </div>
+          <div class="stack" style="margin-top:14px;flex-direction:column;align-items:flex-start">
+            <label class="check"><input type="checkbox" checked /> Mostrami in classifica</label>
+            <label class="check"><input type="radio" name="ds-scope" checked /> La mia classe</label>
+            <label class="check"><input type="radio" name="ds-scope" /> Globale</label>
+            <label class="check"><input type="checkbox" role="switch" /> Notifiche voti</label>
+          </div>
+        </section>
+
+        <section id="messaggi">
+          <h2>Messaggi</h2>
+          <div class="stack" style="flex-direction:column">
+            <div class="alert bad"><strong>Password errata</strong><p>Controlla le credenziali e riprova.</p></div>
+            <div class="alert warn"><strong>Anno precedente</strong><p>Stai consultando dati salvati.</p></div>
+            <div class="alert ok"><strong>Salvato</strong><p>La preferenza di classifica è aggiornata.</p></div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <span class="badge brand">Attivo</span>
+            <span class="badge">Bozza</span>
+            <span class="badge">Nascosto</span>
+          </div>
+          <div class="tabs" style="margin-top:16px" role="tablist">
+            <button type="button" aria-selected="true">Voti</button>
+            <button type="button" aria-selected="false">Previsione</button>
+          </div>
+        </section>
+
+        <section id="tabella">
+          <h2>Tabella</h2>
+          <table class="data-table">
+            <thead>
+              <tr><th>Nome</th><th>Classe</th><th>Media</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Esempio</td><td>4EI</td><td>7.80</td><td><button class="btn-secondary" type="button">Apri</button></td></tr>
+              <tr><td colspan="4" style="color:var(--muted)">Nessun risultato per questa ricerca.</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="stati">
+          <h2>Stati</h2>
+          <div class="row" style="align-items:stretch">
+            <div class="empty"><strong>Nessun voto</strong><p class="note">Non ci sono voti salvati per questo anno.</p></div>
+            <div class="loading-sample">
+              <div class="loading-progress" style="margin-bottom:8px"><div class="loading-progress-bar" style="width:40%"></div></div>
+              <div style="display:flex;gap:8px;align-items:center"><span class="spinner"></span><span>Caricamento voti</span></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

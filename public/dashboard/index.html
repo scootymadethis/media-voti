@@ -3,51 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spaggiari 2 - made by scooty</title>
-    <link rel="stylesheet" href="/common.css?v=9" />
+    <title>Aulera</title>
+    <link rel="stylesheet" href="/common.css?v=14" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
     <link rel="stylesheet" href="dashboard.css?v=6" />
   </head>
   <body>
-    <div class="navbar">
+    <header class="navbar has-menu">
       <div class="navbar-brand">
-        <div class="navbar-brand-mark" onclick="goToHome()">S2</div>
+        <div class="navbar-brand-mark" onclick="goToHome()">Au</div>
         <div>
-          <h1 class="title" onclick="goToHome()">Spaggiari 2</h1>
-          <p class="navbar-subtitle">Dashboard scolastica</p>
+          <h1 class="title" onclick="goToHome()">Aulera</h1>
+          <p class="navbar-subtitle">Dashboard</p>
         </div>
       </div>
       <div class="navbar-right">
-        <div class="buttons" aria-label="Navigazione principale">
-          <button
-            type="button"
-            class="btn-easter-egg"
-            data-easter-egg-nav
-            hidden
-            aria-label="Easter egg"
-            title="Easter egg"
-            onclick="goToEasterEggGame()"
-          >
-            🤫
-          </button>
-          <button class="btn-secondary" onclick="goToOrario()">Orario</button>
-          <button id="votiBtn" class="btn-secondary" onclick="goToVoti()">
-            Voti
-          </button>
-          <button id="assenzeBtn" class="btn-secondary" onclick="goToAssenze()">
-            Assenze
-          </button>
-          <button
-            id="adminBtn"
-            class="btn-admin"
-            data-admin-nav
-            hidden
-            onclick="goToAdmin()"
-          >
-            Admin
-          </button>
-          <button id="logoutBtn" onclick="logout()">Logout</button>
-        </div>
+        <nav class="buttons" aria-label="Navigazione principale">
+          <button type="button" class="nav-link is-current" id="homeBtn" onclick="goToHome()">Home</button>
+          <button type="button" class="nav-link" id="orarioBtn" onclick="goToOrario()">Orario</button>
+          <button type="button" class="nav-link" id="votiBtn" onclick="goToVoti()">Voti</button>
+          <button type="button" class="nav-link" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
+          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
+          <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+          <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
+        </nav>
         <button
           id="navToggle"
           class="navbar-toggle"
@@ -59,7 +39,7 @@
           <span></span><span></span><span></span>
         </button>
       </div>
-    </div>
+    </header>
 
     <div
       id="mobileNavBackdrop"
@@ -70,7 +50,7 @@
       <div class="nav-drawer-header">
         <div>
           <h2>Menu</h2>
-          <p class="navbar-subtitle">Muoviti più velocemente</p>
+          <p class="navbar-subtitle">Stesse voci, stesso ordine</p>
         </div>
         <button
           id="navDrawerClose"
@@ -81,33 +61,24 @@
           ✕
         </button>
       </div>
-      <div class="buttons">
-        <button
-          type="button"
-          class="btn-easter-egg"
-          data-easter-egg-nav
-          hidden
-          aria-label="Easter egg"
-          onclick="goToEasterEggGame()"
-        >
-          🤫
-        </button>
-        <button class="btn-secondary" onclick="goToOrario()">Orario</button>
-        <button class="btn-secondary" onclick="goToVoti()">Voti</button>
-        <button class="btn-secondary" onclick="goToAssenze()">Assenze</button>
-        <button class="btn-admin" data-admin-nav hidden onclick="goToAdmin()">
-          Admin
-        </button>
-        <button onclick="logout()">Logout</button>
-      </div>
+      <nav class="buttons">
+          <button type="button" class="nav-link is-current" onclick="goToHome()">Home</button>
+          <button type="button" class="nav-link" onclick="goToOrario()">Orario</button>
+          <button type="button" class="nav-link" onclick="goToVoti()">Voti</button>
+          <button type="button" class="nav-link" onclick="goToAssenze()">Assenze</button>
+          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
+          <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+          <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
+      </nav>
     </aside>
 
-    <div class="main">
+    <div class="main" data-reveal>
       <h1 class="greeting" id="greeting"></h1>
       <p class="time" id="time"></p>
       <p class="date" id="date"></p>
 
-      <div class="agenda" id="agenda">
+      <div class="agenda" id="agenda" data-reveal>
         <div class="agenda-header">
           <h2 class="agenda-title">Prossimi eventi</h2>
           <div class="agenda-controls">
@@ -140,7 +111,7 @@
         </div>
       </div>
 
-      <div class="side-row">
+      <div class="side-row" data-reveal>
         <div class="lezioni" id="lezioni">
           <div class="lezioni-header">
             <h2 class="lezioni-title">Lezioni di oggi</h2>
@@ -159,7 +130,7 @@
         </div>
       </div>
 
-      <div class="side-row">
+      <div class="side-row" data-reveal>
         <div class="media-generale" id="media-generale">
           <div class="media-generale-header">
             <h2 class="media-generale-title">Le tue medie</h2>
@@ -197,8 +168,7 @@
 
     <div class="footer">
       <span class="desc"
-        >This website is not affiliated in any way with ClasseViva
-        Spaggiari.</span
+        >Aulera non è affiliato a ClasseViva Spaggiari.</span
       >
       <span class="copyright"
         >&#169; Copyright 2026 github.com/scootymadethis</span

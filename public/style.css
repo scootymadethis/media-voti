@@ -1,32 +1,36 @@
-body {
-  display: grid;
-  place-items: center;
-  padding: 32px 16px 140px;
-}
-
 .auth-page {
-  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 16px 32px;
 }
 
-.title {
-  font-size: clamp(2.5rem, 8vw, 5.4rem);
+.auth-brand {
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 22px;
+}
+
+.auth-brand .title {
+  font-size: 1.75rem;
+  line-height: 1.1;
+}
+
+.auth-brand .kicker {
+  margin-bottom: 10px;
 }
 
 .login {
-  width: min(460px, 100%);
+  width: min(400px, 100%);
   margin: 0 auto;
-  padding: 28px;
-  border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent),
-    var(--surface);
+  padding: 20px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
   border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  box-shadow: var(--shadow);
+  gap: 14px;
+  box-shadow: none;
 }
 
 .login-text {
@@ -59,8 +63,7 @@ body {
 
 .username:focus,
 .password:focus {
-  border-color: rgba(220, 38, 38, 0.65);
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18);
+  border-color: rgba(var(--accent-rgb), 0.7);
 }
 
 .login-btn {
@@ -74,19 +77,29 @@ body {
   color: var(--secondary);
 }
 
-.credenziali-model-open {
-  color: var(--primary-btn);
+.credenziali-model-open,
+.text-link {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  color: var(--accent-2);
   text-decoration: underline;
+  text-underline-offset: 3px;
   cursor: pointer;
+  font-weight: 560;
+  border-radius: 0;
 }
 
 @media (max-width: 480px) {
-  body {
-    padding-top: 20px;
+  .auth-page {
+    padding-top: 48px;
   }
 
-  .title {
-    margin-bottom: 20px;
+  .auth-brand .title {
+    margin-bottom: 0;
   }
 
   .login {
@@ -183,12 +196,11 @@ body {
 
 /* Focus Styles */
 .ios-checkbox input:focus + .checkbox-wrapper .checkbox-bg {
-  box-shadow: 0 0 0 4px var(--checkbox-bg);
 }
 
 .ios-checkbox.red {
-  --checkbox-color: var(--primary-btn);
-  --checkbox-bg: #fee2e2;
+  --checkbox-color: var(--brand);
+  --checkbox-bg: rgba(220, 38, 38, 0.28);
 }
 
 /* Animation */
@@ -203,7 +215,7 @@ body {
 }
 
 .ios-checkbox input:checked + .checkbox-wrapper {
-  animation: bounce 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: none;
 }
 
 .password-field {
@@ -212,22 +224,22 @@ body {
 }
 
 .password-field .password {
-  padding-right: 3.2rem;
+  padding-right: 5.5rem;
 }
 
 .toggle-password {
   position: absolute;
   top: 50%;
-  right: 12px;
+  right: 8px;
   transform: translateY(-50%);
   border: none;
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
-  font-size: 1.1rem;
-  display: grid;
-  place-items: center;
-  padding: 0;
+  font-size: 12px;
+  font-weight: 560;
+  min-height: 0;
+  padding: 4px;
 }
 
 .toggle-password:hover {
