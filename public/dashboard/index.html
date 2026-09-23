@@ -2,11 +2,11 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Aulera</title>
-    <link rel="stylesheet" href="/common.css?v=14" />
-    <link rel="stylesheet" href="/announcement-modal.css?v=3" />
-    <link rel="stylesheet" href="dashboard.css?v=6" />
+    <link rel="stylesheet" href="/common.css?v=21" />
+    <link rel="stylesheet" href="/announcement-modal.css?v=4" />
+    <link rel="stylesheet" href="dashboard.css?v=7" />
   </head>
   <body>
     <header class="navbar has-menu">
@@ -14,179 +14,117 @@
         <div class="navbar-brand-mark" onclick="goToHome()">Au</div>
         <div>
           <h1 class="title" onclick="goToHome()">Aulera</h1>
-          <p class="navbar-subtitle">Dashboard</p>
         </div>
       </div>
-      <div class="navbar-right">
-        <nav class="buttons" aria-label="Navigazione principale">
-          <button type="button" class="nav-link is-current" id="homeBtn" onclick="goToHome()">Home</button>
-          <button type="button" class="nav-link" id="orarioBtn" onclick="goToOrario()">Orario</button>
-          <button type="button" class="nav-link" id="votiBtn" onclick="goToVoti()">Voti</button>
-          <button type="button" class="nav-link" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
-          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
-                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
-          <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
-          <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
-        </nav>
-        <button
-          id="navToggle"
-          class="navbar-toggle"
-          type="button"
-          aria-label="Apri menu"
-          aria-expanded="false"
-          aria-controls="mobileNavDrawer"
-        >
+      <nav class="buttons nav-center" aria-label="Navigazione principale">
+        <button type="button" class="nav-link is-current" id="homeBtn" onclick="goToHome()">Home</button>
+        <button type="button" class="nav-link" id="orarioBtn" onclick="goToOrario()">Orario</button>
+        <button type="button" class="nav-link" id="votiBtn" onclick="goToVoti()">Voti</button>
+        <button type="button" class="nav-link" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
+      </nav>
+      <div class="navbar-actions">
+        <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">Segreto</button>
+        <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+        <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
+        <button id="navToggle" class="navbar-toggle" type="button" aria-label="Altro" aria-expanded="false" aria-controls="mobileNavDrawer">
           <span></span><span></span><span></span>
         </button>
       </div>
     </header>
 
-    <div
-      id="mobileNavBackdrop"
-      class="nav-drawer-backdrop"
-      aria-hidden="true"
-    ></div>
+    <div id="mobileNavBackdrop" class="nav-drawer-backdrop" aria-hidden="true"></div>
     <aside id="mobileNavDrawer" class="nav-drawer" aria-hidden="true">
       <div class="nav-drawer-header">
-        <div>
-          <h2>Menu</h2>
-          <p class="navbar-subtitle">Stesse voci, stesso ordine</p>
-        </div>
-        <button
-          id="navDrawerClose"
-          class="nav-drawer-close"
-          type="button"
-          aria-label="Chiudi menu"
-        >
-          ✕
-        </button>
+        <h2>Account</h2>
+        <button id="navDrawerClose" class="nav-drawer-close" type="button" aria-label="Chiudi">✕</button>
       </div>
       <nav class="buttons">
-          <button type="button" class="nav-link is-current" onclick="goToHome()">Home</button>
-          <button type="button" class="nav-link" onclick="goToOrario()">Orario</button>
-          <button type="button" class="nav-link" onclick="goToVoti()">Voti</button>
-          <button type="button" class="nav-link" onclick="goToAssenze()">Assenze</button>
-          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
-                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
-          <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
-          <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
+        <button type="button" class="nav-link is-current" onclick="goToHome()">Home</button>
+        <button type="button" class="nav-link" onclick="goToOrario()">Orario</button>
+        <button type="button" class="nav-link" onclick="goToVoti()">Voti</button>
+        <button type="button" class="nav-link" onclick="goToAssenze()">Assenze</button>
+        <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" onclick="goToEasterEggGame()">Segreto</button>
+        <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+        <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
       </nav>
     </aside>
 
-    <div class="main" data-reveal>
-      <h1 class="greeting" id="greeting"></h1>
-      <p class="time" id="time"></p>
-      <p class="date" id="date"></p>
-
-      <div class="agenda" id="agenda" data-reveal>
-        <div class="agenda-header">
-          <h2 class="agenda-title">Prossimi eventi</h2>
-          <div class="agenda-controls">
-            <button id="prevWeek" class="agenda-arrow" aria-label="Indietro">
-              ‹
-            </button>
-            <button id="nextWeek" class="agenda-arrow" aria-label="Avanti">
-              ›
-            </button>
-          </div>
+    <div class="main dash">
+      <header class="dash-hero" data-reveal>
+        <div>
+          <h1 class="greeting" id="greeting"></h1>
+          <p class="date" id="date"></p>
         </div>
-        <div class="agenda-viewport">
-          <div class="agenda-track">
-            <div class="giorno" data-day-index="0">
-              <span class="giorno-name">Lunedi</span>
-            </div>
-            <div class="giorno" data-day-index="1">
-              <span class="giorno-name">Martedi</span>
-            </div>
-            <div class="giorno" data-day-index="2">
-              <span class="giorno-name">Mercoledi</span>
-            </div>
-            <div class="giorno" data-day-index="3">
-              <span class="giorno-name">Giovedi</span>
-            </div>
-            <div class="giorno" data-day-index="4">
-              <span class="giorno-name">Venerdi</span>
-            </div>
-          </div>
-        </div>
-      </div>
+        <p class="time" id="time"></p>
+      </header>
 
-      <div class="side-row" data-reveal>
-        <div class="lezioni" id="lezioni">
+      <div class="bento">
+        <section class="lezioni bento-lessons" id="lezioni" data-reveal>
           <div class="lezioni-header">
             <h2 class="lezioni-title">Lezioni di oggi</h2>
           </div>
           <div class="lezioni-viewport"><div class="lezioni-track"></div></div>
-        </div>
+        </section>
 
-        <div class="voti" id="voti">
-          <div class="voti-header">
-            <h2 class="voti-title">Voti recenti</h2>
-            <button id="openVotiPage" class="voti-open" aria-label="Apri voti">
-              ›
-            </button>
-          </div>
-          <div class="voti-viewport"><div class="voti-track"></div></div>
-        </div>
-      </div>
-
-      <div class="side-row" data-reveal>
-        <div class="media-generale" id="media-generale">
+        <section class="media-generale bento-media" id="media-generale" data-reveal>
           <div class="media-generale-header">
-            <h2 class="media-generale-title">Le tue medie</h2>
-            <button
-              id="openVotiPage"
-              class="media-generale-open"
-              aria-label="Apri voti"
-            >
-              ›
-            </button>
+            <h2 class="media-generale-title">Media</h2>
+            <button type="button" class="media-generale-open" data-open-voti aria-label="Apri voti">›</button>
           </div>
           <div class="media-generale-viewport">
             <div class="media-generale-value"></div>
             <div class="media-generale-value-primo"></div>
             <div class="media-generale-value-secondo"></div>
           </div>
-        </div>
+        </section>
 
-        <div class="assenze" id="assenze">
+        <section class="assenze bento-absences" id="assenze" data-reveal>
           <div class="assenze-header">
-            <h2 class="assenze-title">Le tue assenze</h2>
-            <button
-              id="openAssenzePage"
-              class="assenze-open"
-              aria-label="Apri assenze"
-              onclick="goToAssenze()"
-            >
-              ›
-            </button>
+            <h2 class="assenze-title">Assenze</h2>
+            <button type="button" class="assenze-open" id="openAssenzePage" aria-label="Apri assenze" onclick="goToAssenze()">›</button>
           </div>
           <div class="assenze-viewport"><div class="assenze-track"></div></div>
-        </div>
+        </section>
+
+        <section class="agenda bento-agenda" id="agenda" data-reveal>
+          <div class="agenda-header">
+            <h2 class="agenda-title">Prossimi eventi</h2>
+            <div class="agenda-controls">
+              <button id="prevWeek" class="agenda-arrow" aria-label="Indietro">‹</button>
+              <button id="nextWeek" class="agenda-arrow" aria-label="Avanti">›</button>
+            </div>
+          </div>
+          <div class="agenda-viewport">
+            <div class="agenda-track">
+              <div class="giorno" data-day-index="0"><span class="giorno-name">Lunedi</span></div>
+              <div class="giorno" data-day-index="1"><span class="giorno-name">Martedi</span></div>
+              <div class="giorno" data-day-index="2"><span class="giorno-name">Mercoledi</span></div>
+              <div class="giorno" data-day-index="3"><span class="giorno-name">Giovedi</span></div>
+              <div class="giorno" data-day-index="4"><span class="giorno-name">Venerdi</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="voti bento-grades" id="voti" data-reveal>
+          <div class="voti-header">
+            <h2 class="voti-title">Voti recenti</h2>
+            <button type="button" class="voti-open" data-open-voti aria-label="Apri voti">›</button>
+          </div>
+          <div class="voti-viewport"><div class="voti-track"></div></div>
+        </section>
       </div>
     </div>
 
     <div class="footer">
-      <span class="desc"
-        >Aulera non è affiliato a ClasseViva Spaggiari.</span
-      >
-      <span class="copyright"
-        >&#169; Copyright 2026 github.com/scootymadethis</span
-      >
+      <span class="desc">Aulera non è affiliato a ClasseViva Spaggiari.</span>
+      <span class="copyright">&#169; Copyright 2026 github.com/scootymadethis</span>
     </div>
 
     <div id="entryModal" class="modal" aria-hidden="true">
-      <div
-        class="modal-content"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="entryModalTitle"
-      >
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="entryModalTitle">
         <div class="modal-header">
           <h3 id="entryModalTitle">Titolo</h3>
-          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">
-            ✕
-          </button>
+          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">✕</button>
         </div>
         <div class="modal-body">
           <p id="entryModalTeacher" class="modal-teacher"></p>
@@ -196,20 +134,9 @@
       </div>
     </div>
 
-    <div
-      id="loading-overlay"
-      class="loading-overlay hidden"
-      aria-hidden="true"
-      aria-busy="false"
-    >
+    <div id="loading-overlay" class="loading-overlay hidden" aria-hidden="true" aria-busy="false">
       <div class="loading-card" role="status" aria-live="polite">
-        <div
-          class="loading-progress"
-          role="progressbar"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          aria-valuenow="0"
-        >
+        <div class="loading-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <div id="loadingProgressBar" class="loading-progress-bar"></div>
         </div>
         <div class="loading-card-body">
@@ -222,10 +149,11 @@
     <script src="/session-auth.js?v=3"></script>
     <script src="/config.js?v=2"></script>
     <script src="/loading.js?v=2"></script>
-    <script src="/nav.js?v=2"></script>
+    <script src="/nav.js?v=4"></script>
+    <script src="/motion.js?v=1"></script>
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
     <script src="/nuovo-voto.js?v=1"></script>
-    <script src="dashboard.js?v=13"></script>
+    <script src="dashboard.js?v=14"></script>
   </body>
 </html>

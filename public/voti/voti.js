@@ -403,19 +403,21 @@ function renderAndamentoChart(points) {
   const area = `${line} L${coords[coords.length - 1][0].toFixed(1)},${height - padY} L${coords[0][0].toFixed(1)},${height - padY} Z`;
   const dots = coords.map((c, i) => {
     const label = `${points[i].day}: ${values[i].toFixed(2)}`;
-    return `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="3.5" fill="#f87171"><title>${label}</title></circle>`;
+    return `<circle class="chart-dot" style="animation-delay:${i * 45}ms" cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="3.5" fill="#fb7185"><title>${label}</title></circle>`;
   }).join("");
 
+  chart.classList.remove("is-drawn");
+  chart.dataset.drawArmed = "";
   chart.innerHTML = `
     <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
       <defs>
         <linearGradient id="andamentoFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="rgba(220,38,38,0.35)" />
-          <stop offset="100%" stop-color="rgba(220,38,38,0)" />
+          <stop offset="0%" stop-color="rgba(225,29,46,0.38)" />
+          <stop offset="100%" stop-color="rgba(225,29,46,0)" />
         </linearGradient>
       </defs>
-      <path d="${area}" fill="url(#andamentoFill)"></path>
-      <path d="${line}" fill="none" stroke="#f87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+      <path class="chart-area" d="${area}" fill="url(#andamentoFill)"></path>
+      <path class="chart-line" pathLength="1" d="${line}" fill="none" stroke="#fb7185" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
       ${dots}
     </svg>
   `;
@@ -746,6 +748,7 @@ function renderActualVoti(voti, periodoLabel = "Periodo", materia = "") {
   if (!votiDiv) return;
 
   votiDiv.innerHTML = "";
+  votiDiv.classList.remove("is-in");
 
   let media = 0;
   let votiLength = voti.length;
@@ -767,12 +770,16 @@ function renderActualVoti(voti, periodoLabel = "Periodo", materia = "") {
       }
     }
 
+    const teacher = voto.authorName || voto.teacherName || "";
+    const when = voto.evtDate ? new Date(voto.evtDate).toLocaleDateString("it-IT") : "";
     votoDiv.innerHTML = `
-      <div class="voto-score grade-${votoColor}">${voto.displayValue}</div>
+      <div class="voto-score grade-${votoColor}">${escapeHtml(voto.displayValue || "")}</div>
       <div class="voto-meta">
-        <div class="voto-desc">${voto.notesForFamily || "Valutazione registrata"}</div>
+        <div class="voto-subject">${escapeHtml(voto.subjectDesc || materia || "")}</div>
+        <div class="voto-desc">${escapeHtml(voto.notesForFamily || "Valutazione registrata")}</div>
+        ${teacher ? `<div class="voto-teacher">${escapeHtml(teacher)}</div>` : ""}
       </div>
-      <div class="voto-date">${new Date(voto.evtDate).toLocaleDateString("it-IT")}</div>
+      <div class="voto-date">${escapeHtml(when)}</div>
     `;
     votoDiv.onclick = () => openEntryModal(voto);
     votiDiv.appendChild(votoDiv);
@@ -789,6 +796,7 @@ function renderActualVoti(voti, periodoLabel = "Periodo", materia = "") {
 
   media = votiLength > 0 ? media / votiLength : 0;
   renderMedia(media.toFixed(2));
+  requestAnimationFrame(() => votiDiv.classList.add("is-in"));
   void refreshAverageLeaderboardForCurrentSelection();
 }
 
@@ -1608,6 +1616,9 @@ function goToHome() {
 
 function goToOrario() {
   window.location.href = "/orario/";
+}
+function goToVoti() {
+  window.location.href = "/voti/";
 }
 function goToAssenze() {
   window.location.href = "/assenze/";

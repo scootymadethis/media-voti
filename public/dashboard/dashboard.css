@@ -1,728 +1,218 @@
-.main {
-  position: relative;
-}
-
-.greeting {
-  font-size: 1.5rem;
-  margin: 4px 0 0;
-  line-height: 1.2;
-}
-
-.time,
-.date {
-  color: var(--secondary);
-  font-size: clamp(1rem, 2vw, 1.1rem);
-}
-
-.time {
-  margin-top: 8px;
-}
-
-.date {
-  display: block;
-  margin-top: 4px;
-  text-align: left;
-}
-
-.agenda,
-.lezioni,
-.voti,
-.media-generale,
-.assenze {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: none;
-}
-
-.agenda {
-  margin-top: 24px;
-  padding: 22px;
-}
-
-.agenda-header,
-.lezioni-header,
-.voti-header,
-.media-generale-header,
-.assenze-header {
+.dash-hero {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin: 6px 0 18px;
+}
+.greeting { font-size: clamp(1.8rem, 3.4vw, 2.6rem); }
+.date { margin-top: 6px; color: var(--text-secondary); text-transform: capitalize; }
+.time {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
 }
 
-.agenda-title,
-.lezioni-title,
-.voti-title,
-.media-generale-title,
-.assenze-title {
-  font-size: clamp(1.25rem, 3vw, 1.65rem);
+.bento {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.95fr);
+  grid-template-areas:
+    "lessons media"
+    "lessons absences"
+    "agenda agenda"
+    "grades grades";
+  gap: 16px;
 }
+.bento-lessons { grid-area: lessons; }
+.bento-media { grid-area: media; }
+.bento-absences { grid-area: absences; }
+.bento-agenda { grid-area: agenda; }
+.bento-grades { grid-area: grades; }
 
-.agenda-controls {
-  display: flex;
-  gap: 8px;
-  flex: 0 0 auto;
-}
-
-.agenda-arrow,
-.voti-open,
-.media-generale-open,
-.assenze-open {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-alt);
-  color: var(--primary);
-  flex: 0 0 auto;
-}
-
-.agenda-viewport,
-.lezioni-viewport,
-.voti-viewport,
-.media-generale-viewport,
-.assenze-viewport {
-  overflow: hidden;
-}
-
-.agenda-track {
-  display: flex;
-  gap: 14px;
-  transition: transform 320ms ease;
-  align-items: stretch;
-}
-
-.giorno {
-  background: var(--surface-alt);
-  border-radius: 18px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
+.agenda, .lezioni, .voti, .media-generale, .assenze {
+  padding: 18px 18px 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 26%),
+    var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-inset);
   min-width: 0;
 }
+.media-generale, .assenze { cursor: pointer; }
+.media-generale:hover, .assenze:hover { border-color: rgba(255, 255, 255, 0.18); }
 
-.giorno-name {
-  font-size: 1rem;
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-
-.entries-container,
-.lezioni-track,
-.voti-track,
-.assenze-track {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.entry,
-.assenze-entry {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  padding: 14px;
-}
-
-.entry {
-  cursor: pointer;
-}
-
-.entry:hover {
-  border-color: rgba(220, 38, 38, 0.4);
-}
-
-.subject,
-.voti-subject,
-.assenza-date {
-  font-weight: 700;
-}
-
-.teacher,
-.text,
-.reason,
-.empty-note,
-.label,
-.date {
-  color: var(--secondary);
-}
-
-.teacher {
-  display: block;
-  margin-top: 4px;
-  font-size: 0.92rem;
-}
-
-.text {
-  display: block;
-  margin-top: 6px;
-  font-size: 0.95rem;
-  overflow-wrap: anywhere;
-}
-
-.side-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 18px;
-}
-
-.lezioni,
-.voti,
-.media-generale,
-.assenze {
-  padding: 20px;
-}
-
-.lezioni-track,
-.voti-track,
-.assenze-track {
-  max-height: 360px;
-  overflow-y: auto;
-}
-
-.voti-entry,
-.assenze-entry {
+.agenda-header, .lezioni-header, .voti-header, .media-generale-header, .assenze-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.agenda-title, .lezioni-title, .voti-title, .media-generale-title, .assenze-title {
+  font-size: 1.12rem;
+}
+.agenda-controls { display: flex; gap: 6px; }
+.agenda-arrow, .voti-open, .media-generale-open, .assenze-open {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+.agenda-arrow:hover, .voti-open:hover, .media-generale-open:hover, .assenze-open:hover {
+  border-color: rgba(225, 29, 46, 0.45);
+}
+
+.agenda-viewport { overflow: hidden; }
+.agenda-track { display: flex; gap: 12px; align-items: stretch; transition: transform 420ms var(--ease-out); }
+.giorno {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+}
+.giorno.is-today {
+  border-color: rgba(225, 29, 46, 0.45);
+  background: linear-gradient(180deg, rgba(225, 29, 46, 0.12), rgba(255, 255, 255, 0.03));
+}
+.giorno-name { display: block; margin-bottom: 10px; font-weight: 700; font-size: 0.92rem; }
+.entries-container, .lezioni-track, .voti-track, .assenze-track { display: flex; flex-direction: column; gap: 8px; }
+.lezioni-viewport, .voti-viewport, .assenze-viewport { max-height: 430px; overflow: auto; }
+
+.entry, .lezione-entry, .voti-entry, .assenze-entry {
+  padding: 10px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0;
+  background: transparent;
+}
+.entry { cursor: pointer; }
+.entry:hover { background: rgba(255, 255, 255, 0.03); }
+.subject, .voti-subject, .assenza-date { font-weight: 700; }
+.teacher, .text, .reason, .empty-note, .label, .date { color: var(--text-secondary); }
+.teacher, .text { display: block; margin-top: 3px; font-size: 0.9rem; }
+.voti-entry, .assenze-entry { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lezione-entry { position: relative; padding-left: 12px; }
+.lezione-entry::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.lezione-entry:first-child::before {
+  background: var(--brand-red);
+  box-shadow: 0 0 10px var(--brand-red-glow);
 }
 
 .grade-circle {
-  width: 52px;
-  min-width: 52px;
-  height: 52px;
-  border-radius: 50%;
+  width: 46px;
+  min-width: 46px;
+  height: 46px;
+  border-radius: 14px;
   display: grid;
   place-items: center;
-  font-weight: 800;
-  color: #111;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
-
-.grade-green { background: var(--success); }
-.grade-yellow { background: var(--warning); }
-.grade-red { background: var(--error); }
-.grade-blue { background: var(--info); }
-.grade-orange { background: #fb923c; }
+.assenza-warning { color: var(--warning); display: inline-flex; margin-right: 6px; }
+.assenza-badge { display: flex; align-items: center; }
 
 .media-generale-viewport {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  align-items: stretch;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: end;
 }
-
-.media-generale-value,
-.media-generale-value-primo,
-.media-generale-value-secondo {
-  min-height: clamp(140px, 22vw, 220px);
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 16px;
-}
-
+.media-generale-value { grid-column: 1 / -1; }
 .media-generale-container {
-  --p: 0%;
-  --ring-color: var(--error);
-  width: min(150px, 100%);
-  aspect-ratio: 1;
+  width: 112px;
+  height: 112px;
+  margin-bottom: 6px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background:
-    radial-gradient(circle closest-side, var(--surface-alt) 72%, transparent 73%),
-    conic-gradient(var(--ring-color) var(--p), rgba(255,255,255,0.08) 0);
+  background: conic-gradient(var(--ring-color) var(--p), rgba(255, 255, 255, 0.08) 0);
+  position: relative;
 }
-
+.media-generale-value-primo .media-generale-container,
+.media-generale-value-secondo .media-generale-container { width: 72px; height: 72px; }
+.media-generale-container::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: #121216;
+}
+.media-generale-value-primo .media-generale-container::after,
+.media-generale-value-secondo .media-generale-container::after { inset: 6px; }
 .actual-media-generale-value {
-  font-size: clamp(1.5rem, 4vw, 2.2rem);
-  font-weight: 800;
+  position: relative;
+  z-index: 1;
+  font-size: 1.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
+.media-generale-value-primo .actual-media-generale-value,
+.media-generale-value-secondo .actual-media-generale-value { font-size: 1rem; }
+.label { display: block; font-size: 0.78rem; }
 
-.assenza-subject {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.assenza-reason {
-  margin-top: 6px;
-  overflow-wrap: anywhere;
-}
-
-.assenza-badge {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.assenza-warning {
-  color: var(--warning);
-  display: inline-flex;
-}
-
-@media (max-width: 1100px) {
-  .side-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Telefono in verticale: media generale sopra, due periodi sotto */
-@media (max-width: 720px) and (orientation: portrait),
-  (max-width: 520px) {
-  .media-generale {
-    height: auto !important;
-  }
-
-  .media-generale-viewport {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas:
-      "general general"
-      "first second";
-    gap: 10px;
-  }
-
-  .media-generale-value {
-    grid-area: general;
-  }
-
-  .media-generale-value-primo {
-    grid-area: first;
-  }
-
-  .media-generale-value-secondo {
-    grid-area: second;
-  }
-
-  .media-generale-value,
-  .media-generale-value-primo,
-  .media-generale-value-secondo {
-    min-height: 140px;
-  }
-}
-
-/* Tablet/telefono in orizzontale: tre medie affiancate */
-@media (orientation: landscape) {
-  .media-generale {
-    height: auto !important;
-  }
-
-  .media-generale-viewport {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-areas: none;
-  }
-
-  .media-generale-value,
-  .media-generale-value-primo,
-  .media-generale-value-secondo {
-    grid-area: auto;
-    min-height: clamp(120px, 28vh, 180px);
-  }
-}
-
-@media (max-width: 760px) {
-  .agenda,
-  .lezioni,
-  .voti,
-  .media-generale,
-  .assenze {
-    padding: 16px;
-  }
-}
-
-@media (max-width: 520px) {
-  .agenda-header,
-  .lezioni-header,
-  .voti-header,
-  .media-generale-header,
-  .assenze-header {
-    align-items: center;
-    flex-direction: row;
-  }
-
-  .voti-entry,
-  .assenze-entry {
-    align-items: center;
-    flex-direction: row;
-  }
-
-  .agenda-controls,
-  .assenza-badge {
-    width: auto;
-    justify-content: flex-end;
-  }
-
-  .grade-circle {
-    width: 48px;
-    min-width: 48px;
-    height: 48px;
-  }
-}
-
-
-@media (max-width: 700px) {
-  .greeting {
-    font-size: clamp(1.75rem, 7vw, 2.35rem);
-    margin-top: 14px;
-    margin-bottom: 0;
-  }
-
-  .time {
-    margin-top: 12px;
-  }
-
-  .date {
-    margin-top: 6px;
-  }
-
-  .agenda,
-  .lezioni,
-  .voti,
-  .media-generale,
-  .assenze {
-    padding: 16px;
-  }
-
-  .agenda-header,
-  .lezioni-header,
-  .voti-header,
-  .media-generale-header,
-  .assenze-header {
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .agenda-title,
-  .lezioni-title,
-  .voti-title,
-  .media-generale-title,
-  .assenze-title {
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-
-  .giorno {
-    padding: 14px;
-  }
-
-  .entry,
-  .assenze-entry,
-  .voti-entry {
-    padding: 12px;
-  }
-
-}
-
-@media (max-width: 480px) {
-  .agenda {
-    padding: 14px;
-  }
-
-  .agenda-title,
-  .lezioni-title,
-  .voti-title,
-  .media-generale-title,
-  .assenze-title {
-    font-size: 1.24rem;
-    line-height: 1.15;
-  }
-
-  .agenda-arrow,
-  .voti-open,
-  .media-generale-open,
-  .assenze-open {
-    width: 38px;
-    height: 38px;
-  }
-
-  .giorno {
-    border-radius: 16px;
-    padding: 12px;
-  }
-
-  .giorno-name {
-    font-size: 0.95rem;
-  }
-
-  .subject,
-  .voti-subject,
-  .assenza-date {
-    font-size: 0.95rem;
-  }
-
-  .teacher,
-  .text,
-  .reason,
-  .empty-note,
-  .label,
-  .date,
-  .assenza-reason {
-    font-size: 0.88rem;
-  }
-
-  .grade-circle {
-    width: 46px;
-    min-width: 46px;
-    height: 46px;
-  }
-
-  .voti-entry,
-  .assenze-entry {
-    align-items: center;
-  }
-
-  .media-generale-viewport {
-    gap: 8px;
-  }
-
-  .media-generale-value,
-  .media-generale-value-primo,
-  .media-generale-value-secondo {
-    min-height: 126px;
-    padding: 10px 8px;
-    gap: 8px;
-  }
-
-  .media-generale-container {
-    width: min(84px, 100%);
-  }
-
-  .actual-media-generale-value {
-    font-size: 1rem;
-  }
-}
-
-
-/* Mobile refinements */
-@media (max-width: 640px) {
-  .agenda-title,
-  .lezioni-title,
-  .voti-title,
-  .media-generale-title,
-  .assenze-title {
-    font-size: 1.32rem;
-  }
-
-  .media-generale-value,
-  .media-generale-value-primo,
-  .media-generale-value-secondo {
-    border-radius: 14px;
-  }
-
-  .label {
-    font-size: 0.8rem;
-    text-align: center;
-  }
-
-  .assenza-date {
-    text-align: left;
-  }
-}
-
-@media (max-width: 420px) {
-  .greeting {
-    font-size: clamp(1.6rem, 8vw, 2.1rem);
-  }
-
-  .time,
-  .date {
-    font-size: 0.96rem;
-  }
-
-  .agenda-title,
-  .lezioni-title,
-  .voti-title,
-  .media-generale-title,
-  .assenze-title {
-    font-size: 1.22rem;
-  }
-
-  .media-generale-viewport {
-    gap: 6px;
-  }
-
-  .media-generale-value,
-  .media-generale-value-primo,
-  .media-generale-value-secondo {
-    min-height: 118px;
-    padding: 8px 6px;
-    gap: 6px;
-  }
-
-  .media-generale-container {
-    width: min(74px, 100%);
-  }
-
-  .actual-media-generale-value {
-    font-size: 0.92rem;
-  }
-
-  .agenda-arrow,
-  .voti-open,
-  .media-generale-open,
-  .assenze-open {
-    width: 34px;
-    height: 34px;
-  }
-}
-
-@media (max-width: 720px) and (orientation: portrait),
-  (max-width: 520px) {
-  .media-generale-value,
-  .media-generale-value-primo,
-  .media-generale-value-secondo {
-    padding: 12px 8px;
-    gap: 8px;
-  }
-
-  .media-generale-container {
-    width: min(116px, 100%);
-  }
-
-  .actual-media-generale-value {
-    font-size: 1.65rem;
-  }
-
-  .label {
-    font-size: 0.88rem;
-    line-height: 1.2;
-  }
-}
-
-@media (max-width: 480px) {
-  .media-generale-viewport {
-    gap: 8px;
-  }
-
-  .media-generale-value,
-  .media-generale-value-primo,
-  .media-generale-value-secondo {
-    padding: 10px 6px;
-    gap: 6px;
-  }
-
-  .media-generale-container {
-    width: min(96px, 100%);
-  }
-
-  .actual-media-generale-value {
-    font-size: 1.35rem;
-  }
-
-  .label {
-    font-size: 0.8rem;
-  }
-}
-
-/* Alert nuovi voti */
 .new-grades-banner {
-  margin: 18px 0 8px;
-  background:
-    var(--surface);
-  border: 1px solid var(--border);
+  margin: 0 0 16px;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  overflow: hidden;
+  border: 1px solid rgba(225, 29, 46, 0.35);
+  background: linear-gradient(180deg, rgba(225, 29, 46, 0.16), rgba(255, 255, 255, 0.03));
 }
-
-.new-grades-banner-inner {
-  padding: 18px 20px;
-  display: grid;
-  gap: 14px;
-}
-
-.new-grades-kicker {
-  display: inline-flex;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  background: rgba(220, 38, 38, 0.14);
-  color: #ddd6fe;
-  font-size: 0.8rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.new-grades-title {
-  font-size: clamp(1.15rem, 2.4vw, 1.45rem);
-  margin: 0 0 4px;
-  line-height: 1.25;
-}
-
-.new-grades-subtitle,
-.new-grades-more {
-  margin: 0;
-  color: var(--secondary);
-  font-size: 0.92rem;
-}
-
-.new-grades-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 8px;
-}
-
-.new-grades-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
+.new-grades-banner-inner { padding: 16px 18px; display: grid; gap: 12px; }
+.new-grades-kicker { color: #fecdd3; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.new-grades-title { font-size: 1.25rem; }
+.new-grades-subtitle, .new-grades-more { color: var(--text-secondary); }
+.new-grades-list { list-style: none; display: grid; gap: 8px; }
+.new-grades-item { display: flex; align-items: center; gap: 10px; }
 .new-grades-score {
-  min-width: 44px;
-  height: 44px;
+  min-width: 42px;
+  height: 42px;
   border-radius: 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   font-weight: 700;
-  font-size: 1rem;
 }
-
-.new-grades-subject {
-  font-weight: 600;
-  color: var(--primary);
-}
-
-.new-grades-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
+.new-grades-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .nav-new-grades-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   min-width: 18px;
   height: 18px;
   margin-left: 6px;
   padding: 0 5px;
-  border-radius: var(--radius-sm);
-  background: var(--primary-btn);
-  color: #fff;
-  font-size: 0.7rem;
+  border-radius: 999px;
+  background: var(--brand-red);
+  color: white;
+  font-size: 0.68rem;
   font-weight: 700;
-  line-height: 1;
-  vertical-align: middle;
 }
 
-@media (max-width: 640px) {
-  .new-grades-banner-inner {
-    padding: 16px;
+@media (max-width: 1024px) {
+  .bento { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 800px) {
+  .dash-hero { align-items: flex-start; flex-direction: column; }
+  .bento {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "lessons"
+      "media"
+      "absences"
+      "agenda"
+      "grades";
   }
+  .lezioni-viewport, .voti-viewport, .assenze-viewport { max-height: none; }
 }

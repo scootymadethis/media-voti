@@ -327,6 +327,7 @@ function renderAgenda(agendaData) {
     entriesContainer.className = "entries-container";
 
     const key = formatDateYYYYMMDD(d);
+    el.classList.toggle("is-today", key === formatDateYYYYMMDD(new Date()));
     (eventsByDate[key] || []).forEach((ev) => {
       const subject = ev.subjectDesc || ev.subject || ev.title || "Evento";
       const teacher =
@@ -432,17 +433,15 @@ function updateTimeAndDate() {
   if (timeEl) {
     const hours = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
-    timeEl.textContent = `Ora: ${hours}:${minutes}`;
+    timeEl.textContent = `${hours}:${minutes}`;
   }
   if (dateEl) {
-    dateEl.textContent =
-      "Data: " +
-      now.toLocaleDateString("it-IT", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+    const label = now.toLocaleDateString("it-IT", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+    dateEl.textContent = label.charAt(0).toLocaleUpperCase("it-IT") + label.slice(1);
   }
 }
 
@@ -816,8 +815,18 @@ function createMediaContainer(media) {
 }
 
 document.addEventListener("click", (e) => {
-  const btn = e.target.closest?.("#openVotiPage");
-  if (btn) window.location.href = "/voti/";
+  const btn = e.target.closest?.("[data-open-voti]");
+  if (btn) {
+    window.location.href = "/voti/";
+    return;
+  }
+  if (e.target.closest?.("#media-generale") && !e.target.closest("button")) {
+    window.location.href = "/voti/";
+    return;
+  }
+  if (e.target.closest?.("#assenze") && !e.target.closest("button, a")) {
+    window.location.href = "/assenze/";
+  }
 });
 
 async function handleAuthFail(res) {
