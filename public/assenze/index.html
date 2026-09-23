@@ -3,51 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spaggiari 2 - Assenze</title>
-    <link rel="stylesheet" href="/common.css?v=10" />
+    <title>Aulera — Assenze</title>
+    <link rel="stylesheet" href="/common.css?v=13" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
     <link rel="stylesheet" href="assenze.css?v=6" />
   </head>
   <body>
-    <div class="navbar">
+    <header class="navbar has-menu">
       <div class="navbar-brand">
-        <div class="navbar-brand-mark" onclick="goToHome()">S2</div>
+        <div class="navbar-brand-mark" onclick="goToHome()">Au</div>
         <div>
-          <h1 class="title" onclick="goToHome()">Spaggiari 2</h1>
-          <p class="navbar-subtitle">Area assenze</p>
+          <h1 class="title" onclick="goToHome()">Aulera</h1>
+          <p class="navbar-subtitle">Assenze</p>
         </div>
       </div>
       <div class="navbar-right">
-        <div class="buttons" aria-label="Navigazione principale">
-          <button
-            type="button"
-            class="btn-easter-egg"
-            data-easter-egg-nav
-            hidden
-            aria-label="Easter egg"
-            title="Easter egg"
-            onclick="goToEasterEggGame()"
-          >
-            🤫
-          </button>
-          <button class="btn-secondary" onclick="goToOrario()">Orario</button>
-          <button id="votiBtn" class="btn-secondary" onclick="goToVoti()">
-            Voti
-          </button>
-          <button id="assenzeBtn" class="btn-secondary" onclick="goToAssenze()">
-            Assenze
-          </button>
-          <button
-            id="adminBtn"
-            class="btn-admin"
-            data-admin-nav
-            hidden
-            onclick="goToAdmin()"
-          >
-            Admin
-          </button>
-          <button id="logoutBtn" onclick="logout()">Logout</button>
-        </div>
+        <nav class="buttons" aria-label="Navigazione principale">
+          <button type="button" class="nav-link" id="homeBtn" onclick="goToHome()">Home</button>
+          <button type="button" class="nav-link" id="orarioBtn" onclick="goToOrario()">Orario</button>
+          <button type="button" class="nav-link" id="votiBtn" onclick="goToVoti()">Voti</button>
+          <button type="button" class="nav-link is-current" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
+          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+          <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+          <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
+        </nav>
         <button
           id="navToggle"
           class="navbar-toggle"
@@ -59,7 +38,7 @@
           <span></span><span></span><span></span>
         </button>
       </div>
-    </div>
+    </header>
 
     <div
       id="mobileNavBackdrop"
@@ -70,7 +49,7 @@
       <div class="nav-drawer-header">
         <div>
           <h2>Menu</h2>
-          <p class="navbar-subtitle">Navigazione rapida</p>
+          <p class="navbar-subtitle">Stesse voci, stesso ordine</p>
         </div>
         <button
           id="navDrawerClose"
@@ -81,30 +60,20 @@
           ✕
         </button>
       </div>
-      <div class="buttons">
-        <button
-          type="button"
-          class="btn-easter-egg"
-          data-easter-egg-nav
-          hidden
-          aria-label="Easter egg"
-          onclick="goToEasterEggGame()"
-        >
-          🤫
-        </button>
-        <button class="btn-secondary" onclick="goToOrario()">Orario</button>
-        <button class="btn-secondary" onclick="goToVoti()">Voti</button>
-        <button class="btn-secondary" onclick="goToAssenze()">Assenze</button>
-        <button class="btn-admin" data-admin-nav hidden onclick="goToAdmin()">
-          Admin
-        </button>
-        <button onclick="logout()">Logout</button>
-      </div>
+      <nav class="buttons">
+          <button type="button" class="nav-link" onclick="goToHome()">Home</button>
+          <button type="button" class="nav-link" onclick="goToOrario()">Orario</button>
+          <button type="button" class="nav-link" onclick="goToVoti()">Voti</button>
+          <button type="button" class="nav-link is-current" onclick="goToAssenze()">Assenze</button>
+          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+          <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+          <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
+      </nav>
     </aside>
 
-    <div class="main">
+    <div class="main" data-reveal>
 
-      <section class="leaderboard-shell panel">
+      <section class="leaderboard-shell panel" data-reveal>
         <div class="leaderboard-header">
           <div>
             <h2 class="leaderboard-title">Classifica ore di assenza</h2>
@@ -115,7 +84,10 @@
           <div class="leaderboard-badge" id="myHoursBadge">-- ore</div>
         </div>
 
-        <div id="schoolYearSwitcher" class="school-year-switcher" hidden></div>
+        <div class="leaderboard-year">
+          <span class="year-label">Anno scolastico</span>
+          <div id="schoolYearSwitcher" class="school-year-switcher" hidden></div>
+        </div>
         <div id="assenzeExportActions" class="export-actions"></div>
 
         <div class="leaderboard-warning">
@@ -194,9 +166,9 @@
 
     <div class="footer">
       <span class="desc"
-        >This website is not affiliated in any way with ClasseViva
-        Spaggiari.</span
+        >Aulera non è affiliato a ClasseViva Spaggiari.</span
       >
+      <a class="footer-link" href="/design/">Design system</a>
       <span class="copyright"
         >&#169; Copyright 2026 github.com/scootymadethis</span
       >
@@ -234,5 +206,6 @@
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
     <script src="assenze.js?v=12"></script>
+      <script src="/motion.js?v=3"></script>
   </body>
 </html>

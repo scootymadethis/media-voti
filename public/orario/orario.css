@@ -124,7 +124,8 @@
   list-style: none;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: #1a1a1c;
+  background: rgba(14, 16, 28, 0.94);
+  backdrop-filter: blur(18px);
   box-shadow: var(--shadow-lg);
   z-index: 30;
 }

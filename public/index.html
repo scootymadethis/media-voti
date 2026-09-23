@@ -1,17 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="it">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spaggiari 2 - made by scooty</title>
-    <link rel="stylesheet" href="/common.css?v=6" />
-    <link rel="stylesheet" href="style.css?v=4" />
+    <title>Aulera</title>
+    <link rel="stylesheet" href="/common.css?v=13" />
+    <link rel="stylesheet" href="style.css?v=5" />
   </head>
   <body class="auth-page">
-    <h1 class="title">Spaggiari 2</h1>
+    <header class="auth-brand" data-reveal>
+      <p class="kicker">Registro</p>
+      <h1 class="title">Aulera</h1>
+    </header>
 
-    <form id="loginForm" class="login">
-      <h2 class="login-text">Il tuo registro</h2>
+    <form id="loginForm" class="login" data-reveal>
+      <h2 class="login-text">Entra nel registro</h2>
       <div class="fields">
         <input
           type="text"
@@ -66,9 +69,9 @@
         </div>
         <p>
           Ho letto e accetto
-          <span class="credenziali-model-open"
-            >l'informativa sul trattamento dei dati</span
-          >
+          <button type="button" class="text-link credenziali-model-open">
+            l'informativa sul trattamento dei dati
+          </button>
         </p>
       </span>
       <input type="submit" class="login-btn" value="Accedi" />
@@ -196,15 +199,11 @@
     </div>
 
     <div class="footer">
-      <span class="desc"
-        >This website is not affiliated in any way with ClasseViva
-        Spaggiari.</span
-      >
-      <span class="copyright"
-        >&#169; Copyright 2026 github.com/scootymadethis</span
-      >
+      <span class="desc">Aulera non è affiliato a ClasseViva Spaggiari.</span>
+      <a class="footer-link" href="/design/">Design system</a>
     </div>
 
+    <script src="/motion.js?v=3"></script>
     <script src="/session-auth.js?v=3"></script>
     <script src="/config.js?v=2"></script>
     <script src="app.js?v=5"></script>

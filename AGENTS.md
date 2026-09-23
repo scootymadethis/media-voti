@@ -3,7 +3,7 @@
 ## Cursor Cloud specific instructions
 
 ### What this is
-Single product ("Spaggiari 2" / repo `media-voti`): a FastAPI backend (`main.py`) plus a
+Single product ("Aulera", repo `media-voti`, previously shown as Spaggiari 2): a FastAPI backend (`main.py`) plus a
 static vanilla-JS frontend (`public/`) and a SQLite DB. It is an unofficial client for the
 Italian ClasseViva/Spaggiari school register. Python deps are in `requirements.txt`
 (installed into `.venv` by the update script). The `package.json` is only for the optional

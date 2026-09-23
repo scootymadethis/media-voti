@@ -2,7 +2,7 @@
   "name": "spaggiari2-mobile",
   "private": true,
   "version": "1.0.0",
-  "description": "Build Android per Spaggiari 2 con Capacitor",
+  "description": "Build Android per Aulera con Capacitor",
   "scripts": {
     "cap:init:android": "npx cap add android",
     "cap:sync": "npx cap sync android",

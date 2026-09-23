@@ -131,7 +131,7 @@
 }
 
 .entry:hover {
-  border-color: rgba(220, 38, 38, 0.4);
+  border-color: rgba(139, 124, 255, 0.4);
 }
 
 .subject,
@@ -627,7 +627,7 @@
 .new-grades-banner {
   margin: 18px 0 8px;
   background:
-    radial-gradient(circle at top right, rgba(220, 38, 38, 0.18), transparent 42%),
+    radial-gradient(circle at top right, rgba(139, 124, 255, 0.18), transparent 42%),
     var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -645,8 +645,8 @@
   display: inline-flex;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(220, 38, 38, 0.14);
-  color: #fca5a5;
+  background: rgba(139, 124, 255, 0.14);
+  color: #ddd6fe;
   font-size: 0.8rem;
   font-weight: 700;
   margin-bottom: 8px;

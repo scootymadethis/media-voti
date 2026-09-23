@@ -145,7 +145,7 @@
         <div class="new-grades-copy">
           <span class="new-grades-kicker">Novità</span>
           <h2 class="new-grades-title">${count === 1 ? "C’è un nuovo voto" : `Ci sono ${count} nuovi voti`}</h2>
-          <p class="new-grades-subtitle">Dal tuo ultimo accesso su Spaggiari 2.</p>
+          <p class="new-grades-subtitle">Dal tuo ultimo accesso su Aulera.</p>
         </div>
         <ul class="new-grades-list">${preview}</ul>
         ${more}

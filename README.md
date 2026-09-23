@@ -1,4 +1,6 @@
-# media-voti
+# Aulera
+
+Interfaccia del registro (repo `media-voti`). Il design system è in `/design/`.
 
 Small FastAPI + frontend project to query ClasseViva-like API and present data.
 

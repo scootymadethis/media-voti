@@ -3,58 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spaggiari 2 - Orario</title>
-    <link rel="stylesheet" href="/common.css?v=8" />
+    <title>Aulera — Orario</title>
+    <link rel="stylesheet" href="/common.css?v=13" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
     <link rel="stylesheet" href="orario.css?v=3" />
   </head>
   <body>
-    <div class="navbar">
+    <header class="navbar has-menu">
       <div class="navbar-brand">
-        <div class="navbar-brand-mark" onclick="goToHome()">S2</div>
+        <div class="navbar-brand-mark" onclick="goToHome()">Au</div>
         <div>
-          <h1 class="title" onclick="goToHome()">Spaggiari 2</h1>
-          <p class="navbar-subtitle">Orario scolastico</p>
+          <h1 class="title" onclick="goToHome()">Aulera</h1>
+          <p class="navbar-subtitle">Orario</p>
         </div>
       </div>
       <div class="navbar-right">
-        <div class="buttons" aria-label="Navigazione principale">
-          <button
-            type="button"
-            class="btn-easter-egg"
-            data-easter-egg-nav
-            hidden
-            aria-label="Easter egg"
-            title="Easter egg"
-            onclick="goToEasterEggGame()"
-          >
-            🤫
-          </button>
-          <button
-            id="orarioBtn"
-            class="btn-primary"
-            type="button"
-            onclick="goToOrario()"
-          >
-            Orario
-          </button>
-          <button class="btn-secondary" type="button" onclick="goToVoti()">
-            Voti
-          </button>
-          <button class="btn-secondary" type="button" onclick="goToAssenze()">
-            Assenze
-          </button>
-          <button
-            class="btn-admin"
-            data-admin-nav
-            hidden
-            type="button"
-            onclick="goToAdmin()"
-          >
-            Admin
-          </button>
-          <button id="logoutBtn" type="button" onclick="logout()">Logout</button>
-        </div>
+        <nav class="buttons" aria-label="Navigazione principale">
+          <button type="button" class="nav-link" id="homeBtn" onclick="goToHome()">Home</button>
+          <button type="button" class="nav-link is-current" id="orarioBtn" onclick="goToOrario()">Orario</button>
+          <button type="button" class="nav-link" id="votiBtn" onclick="goToVoti()">Voti</button>
+          <button type="button" class="nav-link" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
+          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+          <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+          <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
+        </nav>
         <button
           id="navToggle"
           class="navbar-toggle"
@@ -66,7 +38,7 @@
           <span></span><span></span><span></span>
         </button>
       </div>
-    </div>
+    </header>
 
     <div
       id="mobileNavBackdrop"
@@ -77,7 +49,7 @@
       <div class="nav-drawer-header">
         <div>
           <h2>Menu</h2>
-          <p class="navbar-subtitle">Navigazione rapida</p>
+          <p class="navbar-subtitle">Stesse voci, stesso ordine</p>
         </div>
         <button
           id="navDrawerClose"
@@ -88,29 +60,19 @@
           ✕
         </button>
       </div>
-      <div class="buttons">
-        <button
-          type="button"
-          class="btn-easter-egg"
-          data-easter-egg-nav
-          hidden
-          aria-label="Easter egg"
-          onclick="goToEasterEggGame()"
-        >
-          🤫
-        </button>
-        <button class="btn-primary" onclick="goToOrario()">Orario</button>
-        <button class="btn-secondary" onclick="goToVoti()">Voti</button>
-        <button class="btn-secondary" onclick="goToAssenze()">Assenze</button>
-        <button class="btn-admin" data-admin-nav hidden onclick="goToAdmin()">
-          Admin
-        </button>
-        <button onclick="logout()">Logout</button>
-      </div>
+      <nav class="buttons">
+          <button type="button" class="nav-link" onclick="goToHome()">Home</button>
+          <button type="button" class="nav-link is-current" onclick="goToOrario()">Orario</button>
+          <button type="button" class="nav-link" onclick="goToVoti()">Voti</button>
+          <button type="button" class="nav-link" onclick="goToAssenze()">Assenze</button>
+          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+          <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+          <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
+      </nav>
     </aside>
 
-    <div class="main">
-      <header class="orario-page-header">
+    <div class="main" data-reveal>
+      <header class="orario-page-header" data-reveal>
         <p class="orario-kicker">Istituto Marconi</p>
         <h1 class="orario-title">
           Orario classe <span id="orarioClassTitle">—</span>
@@ -136,7 +98,7 @@
       </section>
 
       <div id="orarioAppContent" class="orario-app-content">
-      <div class="orario-toolbar panel">
+      <div class="orario-toolbar panel" data-reveal>
         <div class="orario-class-picker">
           <label for="orarioClassInput">Cambia classe</label>
           <div id="orarioClassCombobox" class="orario-combobox">
@@ -176,7 +138,7 @@
         <p id="orarioStatus" class="orario-status" aria-live="polite"></p>
       </div>
 
-      <div id="orarioGridMount" class="orario-grid-wrap">
+      <div id="orarioGridMount" class="orario-grid-wrap" data-reveal>
         <div class="orario-empty-state">Seleziona una classe per vedere l'orario.</div>
       </div>
       </div>
@@ -212,5 +174,6 @@
     <script src="/easter-egg.js?v=3"></script>
     <script src="/announcement-modal.js?v=3"></script>
     <script src="orario.js?v=4"></script>
+      <script src="/motion.js?v=3"></script>
   </body>
 </html>

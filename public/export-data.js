@@ -137,7 +137,7 @@
       </tr>
     `).join("");
     openPrintWindow({
-      title: "Voti Spaggiari 2",
+      title: "Voti Aulera",
       subtitle: `Anno scolastico ${escapeHtml(year || "corrente")} · ${grades.length} voti`,
       tableHtml: `<table><thead><tr><th>Data</th><th>Materia</th><th>Voto</th><th>Periodo</th><th>Docente</th></tr></thead><tbody>${rows || "<tr><td colspan='5'>Nessun voto</td></tr>"}</tbody></table>`,
     });
@@ -156,7 +156,7 @@
       </tr>
     `).join("");
     openPrintWindow({
-      title: "Assenze Spaggiari 2",
+      title: "Assenze Aulera",
       subtitle: `Anno scolastico ${escapeHtml(year || "corrente")} · ${events.length} eventi`,
       tableHtml: `<table><thead><tr><th>Data</th><th>Codice</th><th>Ore</th><th>Nota</th></tr></thead><tbody>${rows || "<tr><td colspan='4'>Nessuna assenza</td></tr>"}</tbody></table>`,
     });
