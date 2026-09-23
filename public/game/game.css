@@ -50,7 +50,7 @@
 .game-launcher-actions .btn-primary,
 .game-launcher-actions .btn-secondary {
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.8rem 1.25rem;
   font-weight: 700;
   min-width: 160px;

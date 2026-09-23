@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aulera — Assenze</title>
-    <link rel="stylesheet" href="/common.css?v=13" />
+    <link rel="stylesheet" href="/common.css?v=14" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
     <link rel="stylesheet" href="assenze.css?v=6" />
   </head>
@@ -24,6 +24,7 @@
           <button type="button" class="nav-link" id="votiBtn" onclick="goToVoti()">Voti</button>
           <button type="button" class="nav-link is-current" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
           <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
           <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
           <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
         </nav>
@@ -66,6 +67,7 @@
           <button type="button" class="nav-link" onclick="goToVoti()">Voti</button>
           <button type="button" class="nav-link is-current" onclick="goToAssenze()">Assenze</button>
           <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
           <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
           <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
       </nav>
@@ -168,7 +170,6 @@
       <span class="desc"
         >Aulera non è affiliato a ClasseViva Spaggiari.</span
       >
-      <a class="footer-link" href="/design/">Design system</a>
       <span class="copyright"
         >&#169; Copyright 2026 github.com/scootymadethis</span
       >
@@ -206,6 +207,5 @@
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
     <script src="assenze.js?v=12"></script>
-      <script src="/motion.js?v=3"></script>
   </body>
 </html>

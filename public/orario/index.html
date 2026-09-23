@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aulera — Orario</title>
-    <link rel="stylesheet" href="/common.css?v=13" />
+    <link rel="stylesheet" href="/common.css?v=14" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
     <link rel="stylesheet" href="orario.css?v=3" />
   </head>
@@ -24,6 +24,7 @@
           <button type="button" class="nav-link" id="votiBtn" onclick="goToVoti()">Voti</button>
           <button type="button" class="nav-link" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
           <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
           <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
           <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
         </nav>
@@ -66,6 +67,7 @@
           <button type="button" class="nav-link" onclick="goToVoti()">Voti</button>
           <button type="button" class="nav-link" onclick="goToAssenze()">Assenze</button>
           <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
           <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
           <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
       </nav>
@@ -174,6 +176,5 @@
     <script src="/easter-egg.js?v=3"></script>
     <script src="/announcement-modal.js?v=3"></script>
     <script src="orario.js?v=4"></script>
-      <script src="/motion.js?v=3"></script>
   </body>
 </html>

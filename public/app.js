@@ -183,7 +183,7 @@ togglePasswordBtn?.addEventListener("click", () => {
   const isHidden = passwordInput.type === "password";
 
   passwordInput.type = isHidden ? "text" : "password";
-  togglePasswordBtn.textContent = !isHidden ? "🙈" : "🐵";
+  togglePasswordBtn.textContent = isHidden ? "Nascondi" : "Mostra";
   togglePasswordBtn.setAttribute(
     "aria-label",
     isHidden ? "Nascondi password" : "Mostra password",

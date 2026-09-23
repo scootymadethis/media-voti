@@ -5,7 +5,7 @@
 .orario-kicker {
   display: inline-flex;
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: rgba(148, 163, 184, 0.12);
   color: #94a3b8;
   font-size: 0.85rem;
@@ -125,7 +125,6 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   background: rgba(14, 16, 28, 0.94);
-  backdrop-filter: blur(18px);
   box-shadow: var(--shadow-lg);
   z-index: 30;
 }
@@ -207,13 +206,13 @@
   font-weight: 800;
   letter-spacing: 0.02em;
   color: #e2e8f0;
-  background: linear-gradient(180deg, #2a3340 0%, #1f2733 100%);
+  background: var(--surface-alt);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .orario-day-col.is-today .orario-day-head {
-  background: linear-gradient(180deg, #334155 0%, #243041 100%);
-  box-shadow: inset 0 -2px 0 #94a3b8;
+  background: var(--surface-alt);
+  box-shadow: inset 0 -2px 0 var(--brand);
 }
 
 .orario-slot {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aulera — Voti</title>
-    <link rel="stylesheet" href="/common.css?v=13" />
+    <link rel="stylesheet" href="/common.css?v=14" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
     <link rel="stylesheet" href="voti.css?v=10" />
   </head>
@@ -24,6 +24,7 @@
           <button type="button" class="nav-link is-current" id="votiBtn" onclick="goToVoti()">Voti</button>
           <button type="button" class="nav-link" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
           <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
           <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
           <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
         </nav>
@@ -66,6 +67,7 @@
           <button type="button" class="nav-link is-current" onclick="goToVoti()">Voti</button>
           <button type="button" class="nav-link" onclick="goToAssenze()">Assenze</button>
           <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
           <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
           <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
       </nav>
@@ -75,9 +77,7 @@
 
       <section class="voti-hero" data-reveal>
         <div>
-          <span class="voti-kicker">Panoramica</span>
-          <h2 class="voti-title">I tuoi voti</h2>
-          <p class="voti-subtitle">Seleziona una materia e un periodo.</p>
+          <h2 class="voti-title">Voti</h2>
           <div id="votiExportActions" class="export-actions"></div>
         </div>
       </section>
@@ -198,9 +198,7 @@
       <section class="andamento-shell" aria-label="Andamento media" data-reveal>
         <div class="andamento-header">
           <div>
-            <span class="andamento-kicker">Andamento</span>
-            <h3 class="andamento-title">Media generale nel tempo</h3>
-            <p class="andamento-subtitle">Un punto al giorno, aggiornato quando apri i voti.</p>
+            <h3 class="andamento-title">Media nel tempo</h3>
           </div>
           <div class="andamento-summary" id="andamentoSummary"></div>
         </div>
@@ -311,7 +309,6 @@
       <span class="desc"
         >Aulera non è affiliato a ClasseViva Spaggiari.</span
       >
-      <a class="footer-link" href="/design/">Design system</a>
       <span class="copyright"
         >&#169; Copyright 2026 github.com/scootymadethis</span
       >
@@ -349,6 +346,5 @@
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
     <script src="voti.js?v=18"></script>
-      <script src="/motion.js?v=3"></script>
   </body>
 </html>

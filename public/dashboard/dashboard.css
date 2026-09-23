@@ -3,9 +3,9 @@
 }
 
 .greeting {
-  font-size: clamp(2rem, 5vw, 3rem);
-  margin: 10px 0 0;
-  line-height: 1.15;
+  font-size: 1.5rem;
+  margin: 4px 0 0;
+  line-height: 1.2;
 }
 
 .time,
@@ -31,8 +31,8 @@
 .assenze {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-md);
+  box-shadow: none;
 }
 
 .agenda {
@@ -72,7 +72,7 @@
 .assenze-open {
   width: 42px;
   height: 42px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--surface-alt);
   color: var(--primary);
@@ -131,7 +131,7 @@
 }
 
 .entry:hover {
-  border-color: rgba(139, 124, 255, 0.4);
+  border-color: rgba(220, 38, 38, 0.4);
 }
 
 .subject,
@@ -627,7 +627,6 @@
 .new-grades-banner {
   margin: 18px 0 8px;
   background:
-    radial-gradient(circle at top right, rgba(139, 124, 255, 0.18), transparent 42%),
     var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -644,8 +643,8 @@
 .new-grades-kicker {
   display: inline-flex;
   padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(139, 124, 255, 0.14);
+  border-radius: var(--radius-sm);
+  background: rgba(220, 38, 38, 0.14);
   color: #ddd6fe;
   font-size: 0.8rem;
   font-weight: 700;
@@ -713,7 +712,7 @@
   height: 18px;
   margin-left: 6px;
   padding: 0 5px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--primary-btn);
   color: #fff;
   font-size: 0.7rem;

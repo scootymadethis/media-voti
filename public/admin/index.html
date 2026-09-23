@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aulera — Admin</title>
-    <link rel="stylesheet" href="/common.css?v=13" />
+    <link rel="stylesheet" href="/common.css?v=14" />
     <link rel="stylesheet" href="/announcement-modal.css?v=3" />
     <link rel="stylesheet" href="admin.css?v=4" />
   </head>
@@ -24,6 +24,7 @@
           <button type="button" class="nav-link" id="votiBtn" onclick="goToVoti()">Voti</button>
           <button type="button" class="nav-link" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
           <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+          <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
           <button type="button" class="nav-link is-current btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
           <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
         </nav>
@@ -66,6 +67,7 @@
           <button type="button" class="nav-link" onclick="goToVoti()">Voti</button>
           <button type="button" class="nav-link" onclick="goToAssenze()">Assenze</button>
           <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+          <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
           <button type="button" class="nav-link is-current btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
           <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
       </nav>
@@ -278,7 +280,6 @@
 
     <div class="footer">
       <span class="desc">Area riservata all'amministratore.</span>
-      <a class="footer-link" href="/design/">Design system</a>
       <span class="copyright">&#169; Copyright 2026 github.com/scootymadethis</span>
     </div>
 
@@ -312,6 +313,5 @@
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
     <script src="admin.js?v=7"></script>
-      <script src="/motion.js?v=3"></script>
   </body>
 </html>

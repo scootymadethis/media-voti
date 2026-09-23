@@ -15,8 +15,8 @@
 .voti-kicker {
   display: inline-flex;
   padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(139, 124, 255, 0.12);
+  border-radius: var(--radius-sm);
+  background: rgba(220, 38, 38, 0.12);
   color: #ddd6fe;
   font-size: 0.85rem;
   font-weight: 700;
@@ -59,7 +59,7 @@
   border: 1px solid var(--border);
   background: var(--surface-alt);
   color: var(--primary);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.72rem 1.15rem;
   font-weight: 700;
   transition: 0.2s ease;
@@ -67,14 +67,12 @@
 
 .voti-view-tab:hover {
   background: rgba(255,255,255,0.08);
-  transform: translateY(-1px);
 }
 
 .voti-view-tab.active {
   background: var(--primary-btn);
   border-color: transparent;
   color: #fff;
-  box-shadow: 0 10px 24px rgba(139, 124, 255, 0.18);
 }
 
 .voti-panels {
@@ -166,7 +164,6 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background:
-    radial-gradient(circle at top left, rgba(139, 124, 255, 0.12), transparent 40%),
     rgba(255, 255, 255, 0.02);
   padding: 18px;
 }
@@ -174,8 +171,8 @@
 .obiettivo-kicker {
   display: inline-flex;
   padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(139, 124, 255, 0.14);
+  border-radius: var(--radius-sm);
+  background: rgba(220, 38, 38, 0.14);
   color: #ddd6fe;
   font-size: 0.8rem;
   font-weight: 700;
@@ -287,9 +284,7 @@
 
 .control-card {
   padding: 18px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent),
-    var(--surface-alt);
+  background: var(--surface-alt);
 }
 
 .control-card-header {
@@ -338,8 +333,7 @@
 
 .subject-select:focus,
 .subject-select:hover {
-  border-color: rgba(139, 124, 255, 0.5);
-  box-shadow: 0 0 0 4px rgba(139, 124, 255, 0.12);
+  border-color: rgba(220, 38, 38, 0.5);
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -385,10 +379,8 @@
 
 .periodo:hover,
 .periodo.selected {
-  background: linear-gradient(135deg, #6d5efc, #0f766e);
+  background: var(--brand);
   border-color: transparent;
-  transform: translateY(-1px);
-  box-shadow: 0 14px 28px rgba(139, 124, 255, 0.18);
 }
 
 .periodo-text {
@@ -406,9 +398,7 @@
 .actual-voti,
 .average,
 .needed-grade-calculator {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent),
-    var(--surface-alt);
+  background: var(--surface-alt);
   border-radius: 20px;
   padding: 16px;
 }
@@ -439,8 +429,7 @@
 }
 
 .voto:hover {
-  transform: translateY(-2px);
-  border-color: rgba(139, 124, 255, 0.45);
+  border-color: rgba(220, 38, 38, 0.45);
   background: rgba(255, 255, 255, 0.045);
 }
 
@@ -593,13 +582,11 @@
 
 .needed-grade-calculator input[type="number"]:hover,
 .needed-grade-calculator input[type="number"]:focus {
-  border-color: rgba(139, 124, 255, 0.5);
-  box-shadow: 0 0 0 4px rgba(139, 124, 255, 0.12);
+  border-color: rgba(220, 38, 38, 0.5);
   background: rgba(255, 255, 255, 0.06);
 }
 
 .needed-grade-calculator input[type="number"]:focus {
-  transform: translateY(-1px);
 }
 
 .needed-grade-calculator input[type="number"]::-webkit-outer-spin-button,
@@ -617,7 +604,7 @@
   padding: 0 18px;
   border: 0;
   border-radius: 16px;
-  background: linear-gradient(135deg, #6d5efc, #0f766e);
+  background: var(--brand);
   color: #fff;
   font-size: 1rem;
   font-weight: 800;
@@ -626,7 +613,6 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 14px 28px rgba(139, 124, 255, 0.18);
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
@@ -635,21 +621,16 @@
 }
 
 .calculate-grade:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 34px rgba(139, 124, 255, 0.24);
   filter: brightness(1.03);
 }
 
 .calculate-grade:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 4px rgba(139, 124, 255, 0.12),
-    0 14px 28px rgba(139, 124, 255, 0.18);
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
 
 .calculate-grade:active {
   transform: translateY(0);
-  box-shadow: 0 8px 18px rgba(139, 124, 255, 0.16);
 }
 
 .calculate-grade:disabled {
@@ -777,9 +758,7 @@
 .grade-leaderboard-shell {
   margin-top: 18px;
   padding: 22px;
-  background:
-    linear-gradient(180deg, rgba(139, 124, 255, 0.08), transparent 22%),
-    var(--surface);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
@@ -805,10 +784,10 @@
 }
 
 .grade-leaderboard-shell .leaderboard-badge {
-  background: rgba(139, 124, 255, 0.12);
+  background: rgba(220, 38, 38, 0.12);
   color: #fff;
-  border: 1px solid rgba(139, 124, 255, 0.32);
-  border-radius: 999px;
+  border: 1px solid rgba(220, 38, 38, 0.32);
+  border-radius: var(--radius-sm);
   padding: 0.7rem 1rem;
   font-weight: 800;
   white-space: nowrap;
@@ -836,7 +815,7 @@
   border: 1px solid var(--border);
   background: var(--surface-alt);
   color: var(--primary);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.72rem 1rem;
   font-weight: 700;
   transition: 0.2s ease;
@@ -844,14 +823,12 @@
 
 .grade-leaderboard-shell .leaderboard-tab:hover {
   background: rgba(255,255,255,0.08);
-  transform: translateY(-1px);
 }
 
 .grade-leaderboard-shell .leaderboard-tab.active {
   background: var(--primary-btn);
   border-color: transparent;
   color: #fff;
-  box-shadow: 0 10px 24px rgba(139, 124, 255, 0.18);
 }
 
 .grade-leaderboard-shell .leaderboard-search {
@@ -875,7 +852,7 @@
 
 .grade-leaderboard-shell .leaderboard-search-input:focus {
   outline: none;
-  border-color: rgba(139, 124, 255, 0.45);
+  border-color: rgba(220, 38, 38, 0.45);
   background: rgba(255,255,255,0.06);
 }
 
@@ -904,14 +881,13 @@
 }
 
 .grade-leaderboard-shell .leaderboard-row:hover {
-  transform: translateY(-1px);
   background: rgba(255,255,255,0.06);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
 .grade-leaderboard-shell .leaderboard-row.is-me {
-  background: linear-gradient(90deg, rgba(139, 124, 255, 0.14), transparent 70%), var(--surface-alt);
-  border-color: rgba(139, 124, 255, 0.25);
+  background: var(--surface-alt);
+  border-color: rgba(220, 38, 38, 0.25);
 }
 
 .grade-leaderboard-shell .rank-pill {
@@ -929,19 +905,19 @@
 }
 
 .grade-leaderboard-shell .rank-pill.rank-1 {
-  background: linear-gradient(135deg, #facc15, #ca8a04);
+  background: #eab308;
   color: #171717;
   border-color: transparent;
 }
 
 .grade-leaderboard-shell .rank-pill.rank-2 {
-  background: linear-gradient(135deg, #d1d5db, #9ca3af);
+  background: #d4d4d8;
   color: #171717;
   border-color: transparent;
 }
 
 .grade-leaderboard-shell .rank-pill.rank-3 {
-  background: linear-gradient(135deg, #d97706, #92400e);
+  background: #d97706;
   color: #fff;
   border-color: transparent;
 }
@@ -965,7 +941,7 @@
   background: rgba(59, 130, 246, 0.16);
   border: 1px solid rgba(59, 130, 246, 0.24);
   padding: 0.18rem 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
 }
 
 .grade-leaderboard-shell .leaderboard-class {
@@ -1061,9 +1037,7 @@
 .grade-leaderboard-shell {
   margin-top: 0;
   padding: 22px;
-  background:
-    linear-gradient(180deg, rgba(139, 124, 255, 0.08), transparent 22%),
-    var(--surface);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
@@ -1123,7 +1097,7 @@
   border: 1px solid var(--border);
   background: var(--surface-alt);
   color: var(--primary);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.72rem 1rem;
   font-weight: 700;
   transition: 0.2s ease;
@@ -1131,14 +1105,12 @@
 
 .grade-leaderboard-shell .leaderboard-tab:hover {
   background: rgba(255,255,255,0.08);
-  transform: translateY(-1px);
 }
 
 .grade-leaderboard-shell .leaderboard-tab.active {
   background: var(--primary-btn);
   border-color: transparent;
   color: #fff;
-  box-shadow: 0 10px 24px rgba(139, 124, 255, 0.18);
 }
 
 .grade-leaderboard-shell .leaderboard-search {
@@ -1162,7 +1134,7 @@
 
 .grade-leaderboard-shell .leaderboard-search-input:focus {
   outline: none;
-  border-color: rgba(139, 124, 255, 0.45);
+  border-color: rgba(220, 38, 38, 0.45);
   background: rgba(255,255,255,0.06);
 }
 
@@ -1191,14 +1163,13 @@
 }
 
 .grade-leaderboard-shell .leaderboard-row:hover {
-  transform: translateY(-1px);
   background: rgba(255,255,255,0.06);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
 .grade-leaderboard-shell .leaderboard-row.is-me {
-  background: linear-gradient(90deg, rgba(139, 124, 255, 0.14), transparent 70%), var(--surface-alt);
-  border-color: rgba(139, 124, 255, 0.25);
+  background: var(--surface-alt);
+  border-color: rgba(220, 38, 38, 0.25);
 }
 
 .grade-leaderboard-shell .rank-pill {
@@ -1216,19 +1187,19 @@
 }
 
 .grade-leaderboard-shell .rank-pill.rank-1 {
-  background: linear-gradient(135deg, #facc15, #ca8a04);
+  background: #eab308;
   color: #171717;
   border-color: transparent;
 }
 
 .grade-leaderboard-shell .rank-pill.rank-2 {
-  background: linear-gradient(135deg, #d1d5db, #9ca3af);
+  background: #d4d4d8;
   color: #171717;
   border-color: transparent;
 }
 
 .grade-leaderboard-shell .rank-pill.rank-3 {
-  background: linear-gradient(135deg, #d97706, #92400e);
+  background: #d97706;
   color: #fff;
   border-color: transparent;
 }
@@ -1252,7 +1223,7 @@
   background: rgba(59, 130, 246, 0.16);
   border: 1px solid rgba(59, 130, 246, 0.24);
   padding: 0.18rem 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
 }
 
 .grade-leaderboard-shell .leaderboard-class {
@@ -1362,7 +1333,7 @@
   display: inline-flex;
   align-items: center;
   border: 1px solid currentColor;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.18rem 0.5rem;
   font-size: 0.78rem;
   font-weight: 800;
@@ -1438,7 +1409,6 @@
   margin: 18px 0 22px;
   padding: 20px;
   background:
-    radial-gradient(circle at top right, rgba(139, 124, 255, 0.14), transparent 42%),
     var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -1456,8 +1426,8 @@
 .andamento-kicker {
   display: inline-flex;
   padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(139, 124, 255, 0.14);
+  border-radius: var(--radius-sm);
+  background: rgba(220, 38, 38, 0.14);
   color: #ddd6fe;
   font-size: 0.8rem;
   font-weight: 700;

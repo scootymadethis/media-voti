@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aulera</title>
-    <link rel="stylesheet" href="/common.css?v=13" />
+    <link rel="stylesheet" href="/common.css?v=14" />
     <link rel="stylesheet" href="game.css?v=4" />
   </head>
   <body>
@@ -23,6 +23,7 @@
           <button type="button" class="nav-link" id="votiBtn" onclick="goToVoti()">Voti</button>
           <button type="button" class="nav-link" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
           <button type="button" class="nav-link is-current btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
           <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
           <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
         </nav>
@@ -65,6 +66,7 @@
           <button type="button" class="nav-link" onclick="goToVoti()">Voti</button>
           <button type="button" class="nav-link" onclick="goToAssenze()">Assenze</button>
           <button type="button" class="nav-link is-current btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
+                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
           <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
           <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
       </nav>
@@ -85,6 +87,5 @@
     <script src="/nav.js?v=2"></script>
     <script src="/easter-egg.js?v=2"></script>
     <script src="game.js?v=5"></script>
-      <script src="/motion.js?v=3"></script>
   </body>
 </html>

@@ -48,6 +48,10 @@
     window.location.href = "/admin/";
   };
 
+  window.goToDesign = function goToDesign() {
+    window.location.href = "/design/";
+  };
+
   window.initAdminNav = function initAdminNav() {
     hideAdminNavButtons();
     refreshAdminNavFromServer();

@@ -1,9 +1,7 @@
 .leaderboard-shell {
   padding: 22px;
   margin-top: 8px;
-  background:
-    linear-gradient(180deg, rgba(139, 124, 255, 0.08), transparent 22%),
-    var(--surface);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
@@ -29,10 +27,10 @@
 }
 
 .leaderboard-badge {
-  background: rgba(139, 124, 255, 0.12);
+  background: rgba(220, 38, 38, 0.12);
   color: #fff;
-  border: 1px solid rgba(139, 124, 255, 0.32);
-  border-radius: 999px;
+  border: 1px solid rgba(220, 38, 38, 0.32);
+  border-radius: var(--radius-sm);
   padding: 0.7rem 1rem;
   font-weight: 800;
   white-space: nowrap;
@@ -60,7 +58,7 @@
   border: 1px solid var(--border);
   background: var(--surface-alt);
   color: var(--primary);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.72rem 1rem;
   font-weight: 700;
   transition: 0.2s ease;
@@ -68,14 +66,12 @@
 
 .leaderboard-tab:hover {
   background: rgba(255,255,255,0.08);
-  transform: translateY(-1px);
 }
 
 .leaderboard-tab.active {
   background: var(--primary-btn);
   border-color: transparent;
   color: #fff;
-  box-shadow: 0 10px 24px rgba(139, 124, 255, 0.18);
 }
 
 .leaderboard-search {
@@ -99,7 +95,7 @@
 
 .leaderboard-search-input:focus {
   outline: none;
-  border-color: rgba(139, 124, 255, 0.45);
+  border-color: rgba(220, 38, 38, 0.45);
   background: rgba(255,255,255,0.06);
 }
 
@@ -131,16 +127,14 @@
 }
 
 .leaderboard-row:hover {
-  transform: translateY(-1px);
   background: rgba(255,255,255,0.06);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
 .leaderboard-row.is-me {
   background:
-    linear-gradient(90deg, rgba(139, 124, 255, 0.14), transparent 70%),
     var(--surface-alt);
-  border-color: rgba(139, 124, 255, 0.25);
+  border-color: rgba(220, 38, 38, 0.25);
 }
 
 .rank-pill {
@@ -158,19 +152,19 @@
 }
 
 .rank-pill.rank-1 {
-  background: linear-gradient(135deg, #facc15, #ca8a04);
+  background: #eab308;
   color: #171717;
   border-color: transparent;
 }
 
 .rank-pill.rank-2 {
-  background: linear-gradient(135deg, #d1d5db, #9ca3af);
+  background: #d4d4d8;
   color: #171717;
   border-color: transparent;
 }
 
 .rank-pill.rank-3 {
-  background: linear-gradient(135deg, #d97706, #92400e);
+  background: #d97706;
   color: #fff;
   border-color: transparent;
 }
@@ -198,7 +192,7 @@
   background: rgba(59, 130, 246, 0.16);
   border: 1px solid rgba(59, 130, 246, 0.24);
   padding: 0.18rem 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
 }
 
 .leaderboard-class {
@@ -310,7 +304,7 @@
   display: inline-flex;
   align-items: center;
   border: 1px solid currentColor;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.18rem 0.5rem;
   font-size: 0.78rem;
   font-weight: 800;

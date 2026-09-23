@@ -12,6 +12,7 @@ from fastapi import (
     BackgroundTasks,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel, Field
@@ -4085,6 +4086,32 @@ async def admin_badge_batch(body: BadgeBatchBody, _: Utente = Depends(current_ad
     await broadcast_leaderboard_change("badge", "*")
     await broadcast_average_leaderboard_change("badge", "*")
     return {"ok": True, **result}
+
+TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
+
+
+def _read_template(name: str) -> str:
+    with open(os.path.join(TEMPLATES_DIR, name), encoding="utf-8") as handle:
+        return handle.read()
+
+
+def _design_system_response(session_id: Optional[str]):
+    try:
+        user = get_session_user(session_id)
+        username = get_session_username(user)
+    except HTTPException:
+        return RedirectResponse(url="/?auth=auth-required", status_code=302)
+    if not is_admin_username(username):
+        return HTMLResponse(_read_template("forbidden.html"), status_code=403)
+    return HTMLResponse(_read_template("design-system.html"))
+
+
+@app.get("/design", include_in_schema=False)
+@app.get("/design/", include_in_schema=False)
+def design_system_page(session_id: Optional[str] = Cookie(default=None)):
+    """Riferimento visivo interno. Il ruolo è lo stesso degli admin (`is_admin_username`)."""
+    return _design_system_response(session_id)
+
 
 if DEV_MODE and os.path.isdir(PUBLIC_DIR):
     app.mount("/", StaticFiles(directory=PUBLIC_DIR, html=True), name="public")
