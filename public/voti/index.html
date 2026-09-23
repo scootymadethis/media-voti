@@ -2,189 +2,98 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Aulera — Voti</title>
-    <link rel="stylesheet" href="/common.css?v=14" />
-    <link rel="stylesheet" href="/announcement-modal.css?v=3" />
-    <link rel="stylesheet" href="voti.css?v=10" />
+    <link rel="stylesheet" href="/common.css?v=21" />
+    <link rel="stylesheet" href="/announcement-modal.css?v=4" />
+    <link rel="stylesheet" href="voti.css?v=11" />
   </head>
   <body>
     <header class="navbar has-menu">
       <div class="navbar-brand">
         <div class="navbar-brand-mark" onclick="goToHome()">Au</div>
-        <div>
-          <h1 class="title" onclick="goToHome()">Aulera</h1>
-          <p class="navbar-subtitle">Voti</p>
-        </div>
+        <div><h1 class="title" onclick="goToHome()">Aulera</h1></div>
       </div>
-      <div class="navbar-right">
-        <nav class="buttons" aria-label="Navigazione principale">
-          <button type="button" class="nav-link" id="homeBtn" onclick="goToHome()">Home</button>
-          <button type="button" class="nav-link" id="orarioBtn" onclick="goToOrario()">Orario</button>
-          <button type="button" class="nav-link is-current" id="votiBtn" onclick="goToVoti()">Voti</button>
-          <button type="button" class="nav-link" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
-          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
-                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
-          <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
-          <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
-        </nav>
-        <button
-          id="navToggle"
-          class="navbar-toggle"
-          type="button"
-          aria-label="Apri menu"
-          aria-expanded="false"
-          aria-controls="mobileNavDrawer"
-        >
-          <span></span><span></span><span></span>
-        </button>
+      <nav class="buttons nav-center" aria-label="Navigazione principale">
+        <button type="button" class="nav-link" id="homeBtn" onclick="goToHome()">Home</button>
+        <button type="button" class="nav-link" id="orarioBtn" onclick="goToOrario()">Orario</button>
+        <button type="button" class="nav-link is-current" id="votiBtn" onclick="goToVoti()">Voti</button>
+        <button type="button" class="nav-link" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
+      </nav>
+      <div class="navbar-actions">
+        <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" onclick="goToEasterEggGame()">Segreto</button>
+        <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+        <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
+        <button id="navToggle" class="navbar-toggle" type="button" aria-label="Altro" aria-expanded="false" aria-controls="mobileNavDrawer"><span></span><span></span><span></span></button>
       </div>
     </header>
 
-    <div
-      id="mobileNavBackdrop"
-      class="nav-drawer-backdrop"
-      aria-hidden="true"
-    ></div>
+    <div id="mobileNavBackdrop" class="nav-drawer-backdrop" aria-hidden="true"></div>
     <aside id="mobileNavDrawer" class="nav-drawer" aria-hidden="true">
       <div class="nav-drawer-header">
-        <div>
-          <h2>Menu</h2>
-          <p class="navbar-subtitle">Stesse voci, stesso ordine</p>
-        </div>
-        <button
-          id="navDrawerClose"
-          class="nav-drawer-close"
-          type="button"
-          aria-label="Chiudi menu"
-        >
-          ✕
-        </button>
+        <h2>Account</h2>
+        <button id="navDrawerClose" class="nav-drawer-close" type="button" aria-label="Chiudi">✕</button>
       </div>
       <nav class="buttons">
-          <button type="button" class="nav-link" onclick="goToHome()">Home</button>
-          <button type="button" class="nav-link" onclick="goToOrario()">Orario</button>
-          <button type="button" class="nav-link is-current" onclick="goToVoti()">Voti</button>
-          <button type="button" class="nav-link" onclick="goToAssenze()">Assenze</button>
-          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
-                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
-          <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
-          <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
+        <button type="button" class="nav-link" onclick="goToHome()">Home</button>
+        <button type="button" class="nav-link" onclick="goToOrario()">Orario</button>
+        <button type="button" class="nav-link is-current" onclick="goToVoti()">Voti</button>
+        <button type="button" class="nav-link" onclick="goToAssenze()">Assenze</button>
+        <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" onclick="goToEasterEggGame()">Segreto</button>
+        <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+        <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
       </nav>
     </aside>
 
-    <div class="main" data-reveal>
-
-      <section class="voti-hero" data-reveal>
+    <div class="main">
+      <header class="page-header" data-reveal>
         <div>
-          <h2 class="voti-title">Voti</h2>
-          <div id="votiExportActions" class="export-actions"></div>
+          <h1 class="page-title">Voti</h1>
+          <p id="schoolYearNote" class="school-year-note" hidden></p>
         </div>
-      </section>
+        <div id="schoolYearSwitcher" class="school-year-switcher" hidden></div>
+      </header>
 
-      <div
-        class="voti-view-switch"
-        role="tablist"
-        aria-label="Sezione area voti"
-      >
-        <button
-          type="button"
-          class="voti-view-tab active"
-          data-voti-view="voti"
-          aria-selected="true"
-        >
-          Voti
-        </button>
-        <button
-          type="button"
-          class="voti-view-tab"
-          data-voti-view="previsione"
-          aria-selected="false"
-        >
-          Previsione pagella
-        </button>
+      <div class="voti-view-switch segmented" role="tablist" aria-label="Sezione area voti" data-reveal>
+        <button type="button" class="voti-view-tab active" data-voti-view="voti" aria-selected="true">Voti</button>
+        <button type="button" class="voti-view-tab" data-voti-view="previsione" aria-selected="false">Previsione pagella</button>
       </div>
 
-      <div class="voti-panels" data-reveal>
+      <div class="voti-panels">
         <div class="voti voti-panel is-active" data-voti-panel="voti">
           <div class="voti-list" id="votiList">
-          <section class="voti-controls">
-            <div class="control-card subject-card">
-              <div class="control-card-header">
-                <span class="control-eyebrow">Materia</span>
-                <h3>Scegli dal menu</h3>
-              </div>
+            <section class="voti-controls data-toolbar" data-reveal>
               <label class="subject-select-wrap" for="materiaSelect">
-                <select
-                  id="materiaSelect"
-                  class="subject-select"
-                  aria-label="Seleziona materia"
-                >
+                <select id="materiaSelect" class="subject-select" aria-label="Seleziona materia">
                   <option value="">Seleziona una materia</option>
                 </select>
                 <span class="subject-select-icon" aria-hidden="true">⌄</span>
               </label>
+              <div class="voti-periodo segmented" role="tablist" aria-label="Selezione periodo"></div>
+            </section>
+
+            <div class="voti-workspace" data-reveal>
+              <section class="grades-surface">
+                <header class="module-header">
+                  <h2 class="module-title">I tuoi voti</h2>
+                  <div id="votiExportActions" class="export-actions"></div>
+                </header>
+                <div class="actual-voti"></div>
+              </section>
+              <aside class="voti-rail">
+                <div class="average"></div>
+                <div class="needed-grade-calculator">
+                  <span class="needed-grade-calculator-label">Calcolatore media</span>
+                  <label for="wanted-average">Media desiderata</label>
+                  <input type="number" name="wanted-average" class="wanted-average" id="wanted-average" placeholder="Media desiderata" aria-label="Media desiderata" min="1" max="10" step="0.01" value="6" />
+                  <label for="grades-number">Numero di voti</label>
+                  <input type="number" name="grades-number" id="grades-number" class="grades-number" placeholder="Numero di voti" aria-label="Numero di voti" min="1" max="5" step="1" value="1" />
+                  <button class="calculate-grade" id="calculate-grade">Calcola</button>
+                  <p class="error" id="error"></p>
+                  <div class="result" id="result"></div>
+                </div>
+              </aside>
             </div>
-
-            <div class="control-card period-card">
-              <div class="control-card-header">
-                <span class="control-eyebrow">Periodo</span>
-                <h3>Filtro disponibile</h3>
-              </div>
-              <div
-                class="voti-periodo"
-                role="tablist"
-                aria-label="Selezione periodo"
-              ></div>
-            </div>
-          </section>
-
-          <div class="voti-values">
-            <div class="actual-voti"></div>
-            <div class="side-section">
-              <div class="average"></div>
-              <div class="needed-grade-calculator">
-                <span class="needed-grade-calculator-label"
-                  >Calcolatore Media</span
-                >
-                <label for="wanted-average">Media desiderata:</label>
-                <input
-                  type="number"
-                  name="wanted-average"
-                  class="wanted-average"
-                  id="wanted-average"
-                  placeholder="Media desiderata"
-                  aria-label="Media desiderata"
-                  min="1"
-                  max="10"
-                  step="0.01"
-                  value="6"
-                />
-
-                <label for="grades-number">Numero di voti:</label>
-                <input
-                  type="number"
-                  name="grades-number"
-                  id="grades-number"
-                  class="grades-number"
-                  placeholder="Numero di voti"
-                  aria-label="Numero di voti"
-                  min="1"
-                  max="5"
-                  step="1"
-                  value="1"
-                />
-
-                <button class="calculate-grade" id="calculate-grade">
-                  Calcola
-                </button>
-                <p class="error" id="error"></p>
-                <div class="result" id="result"></div>
-              </div>
-
-            </div>
-          </div>
-
           </div>
         </div>
 
@@ -197,137 +106,80 @@
 
       <section class="andamento-shell" aria-label="Andamento media" data-reveal>
         <div class="andamento-header">
-          <div>
-            <h3 class="andamento-title">Media nel tempo</h3>
-          </div>
+          <h3 class="andamento-title">Media nel tempo</h3>
           <div class="andamento-summary" id="andamentoSummary"></div>
         </div>
         <div id="andamentoChart" class="andamento-chart" role="img" aria-label="Grafico andamento media"></div>
         <p id="andamentoEmpty" class="andamento-empty" hidden>Ancora pochi dati: torna nei prossimi giorni per vedere la curva.</p>
       </section>
 
-      <section
-        class="grade-leaderboard-shell grade-leaderboard-shell--standalone voti-leaderboard-section"
-       data-reveal>
-          <div class="leaderboard-header">
-            <div>
-              <h3 class="leaderboard-title" id="averageLeaderboardTitle">Classifica media generale</h3>
-              <p class="leaderboard-subtitle" id="averageLeaderboardSubtitle">
-                Ordinata in base alla media generale salvata nella dashboard
-              </p>
-            </div>
-            <div class="leaderboard-mini-summary" id="myAverageBadge"></div>
+      <section class="grade-leaderboard-shell grade-leaderboard-shell--standalone voti-leaderboard-section" data-reveal>
+        <div class="leaderboard-header">
+          <div>
+            <h3 class="leaderboard-title" id="averageLeaderboardTitle">Classifica media generale</h3>
+            <p class="leaderboard-subtitle" id="averageLeaderboardSubtitle">Ordinata in base alla media generale salvata nella dashboard</p>
           </div>
+          <div class="leaderboard-mini-summary" id="myAverageBadge"></div>
+        </div>
 
-          <div class="leaderboard-year">
-            <span class="year-label">Anno scolastico</span>
-            <div id="schoolYearSwitcher" class="school-year-switcher" hidden></div>
+        <div class="leaderboard-subject-filter">
+          <label class="leaderboard-subject-label" for="averageLeaderboardSubjectSelect">Materia</label>
+          <div class="subject-select-wrap leaderboard-subject-wrap">
+            <select id="averageLeaderboardSubjectSelect" class="subject-select" aria-label="Seleziona materia classifica">
+              <option value="Media generale">Media generale</option>
+            </select>
+            <span class="subject-select-icon" aria-hidden="true">⌄</span>
           </div>
+        </div>
 
-          <div class="leaderboard-subject-filter">
-            <label class="leaderboard-subject-label" for="averageLeaderboardSubjectSelect">
-              Materia
-            </label>
-            <div class="subject-select-wrap leaderboard-subject-wrap">
-              <select
-                id="averageLeaderboardSubjectSelect"
-                class="subject-select"
-                aria-label="Seleziona materia classifica"
-              >
-                <option value="Media generale">Media generale</option>
-              </select>
-              <span class="subject-select-icon" aria-hidden="true">⌄</span>
-            </div>
+        <div class="leaderboard-tools">
+          <div class="leaderboard-tabs segmented" aria-label="Tipo classifica media generale">
+            <button id="averageTabClassBtn" class="leaderboard-tab active" type="button">La mia classe</button>
+            <button id="averageTabGlobalBtn" class="leaderboard-tab" type="button">Globale</button>
           </div>
-
-          <div class="leaderboard-preferences panel-subsection">
-            <div>
-              <div class="leaderboard-preferences-title">Visibilità in classifica</div>
-              <div id="averageLeaderboardVisibilityText" class="leaderboard-preferences-text">
-                Puoi scegliere se comparire oppure no nella classifica.
-              </div>
-            </div>
-            <button id="toggleAverageLeaderboardVisibilityBtn" class="btn-secondary" type="button">
-              Cambia impostazione
-            </button>
-          </div>
-
-          <div class="leaderboard-tabs" aria-label="Tipo classifica media generale">
-            <button id="averageTabClassBtn" class="leaderboard-tab active" type="button">
-              La mia classe
-            </button>
-            <button id="averageTabGlobalBtn" class="leaderboard-tab" type="button">
-              Globale
-            </button>
-          </div>
-
           <div class="leaderboard-search">
-            <input
-              id="averageLeaderboardSearchInput"
-              class="leaderboard-search-input"
-              type="search"
-              placeholder="Cerca per nome o classe..."
-              autocomplete="off"
-              aria-label="Cerca nella classifica media"
-            />
+            <input id="averageLeaderboardSearchInput" class="leaderboard-search-input" type="search" placeholder="Cerca per nome o classe..." autocomplete="off" aria-label="Cerca nella classifica media" />
           </div>
+        </div>
 
-          <div id="averageLeaderboardMeta" class="leaderboard-meta"></div>
-          <div id="averageLeaderboardList" class="leaderboard-list"></div>
-
-          <div class="leaderboard-pagination">
-            <button id="averagePrevPageBtn" class="btn-secondary" type="button">
-              ← Precedente
-            </button>
-            <span id="averagePageIndicator" class="page-indicator">Pagina 1</span>
-            <button id="averageNextPageBtn" class="btn-secondary" type="button">
-              Successiva →
-            </button>
+        <div class="leaderboard-preferences">
+          <div>
+            <div class="leaderboard-preferences-title">Visibilità</div>
+            <div id="averageLeaderboardVisibilityText" class="leaderboard-preferences-text">Puoi scegliere se comparire oppure no nella classifica.</div>
           </div>
+          <button id="toggleAverageLeaderboardVisibilityBtn" class="btn-secondary" type="button">Cambia impostazione</button>
+        </div>
+
+        <div id="averageLeaderboardMeta" class="leaderboard-meta"></div>
+        <div id="averageLeaderboardList" class="leaderboard-list"></div>
+        <div class="leaderboard-pagination">
+          <button id="averagePrevPageBtn" class="btn-secondary" type="button">Precedente</button>
+          <span id="averagePageIndicator" class="page-indicator">Pagina 1</span>
+          <button id="averageNextPageBtn" class="btn-secondary" type="button">Successiva</button>
+        </div>
       </section>
     </div>
 
     <div id="entryModal" class="modal" aria-hidden="true">
-      <div class="modal-content">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="entryModalTitle">
         <div class="modal-header">
           <h3 id="entryModalTitle" class="modal-subject">Dettagli</h3>
-          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">
-            &times;
-          </button>
+          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">✕</button>
         </div>
-        <div
-          id="entryModalTeacher"
-          class="modal-teacher"
-          aria-hidden="true"
-        ></div>
+        <div id="entryModalTeacher" class="modal-teacher" aria-hidden="true"></div>
         <div class="modal-label">Testo:</div>
         <div id="entryModalText" class="modal-text"></div>
       </div>
     </div>
 
     <div class="footer">
-      <span class="desc"
-        >Aulera non è affiliato a ClasseViva Spaggiari.</span
-      >
-      <span class="copyright"
-        >&#169; Copyright 2026 github.com/scootymadethis</span
-      >
+      <span class="desc">Aulera non è affiliato a ClasseViva Spaggiari.</span>
+      <span class="copyright">&#169; Copyright 2026 github.com/scootymadethis</span>
     </div>
 
-    <div
-      id="loading-overlay"
-      class="loading-overlay hidden"
-      aria-hidden="true"
-      aria-busy="false"
-    >
+    <div id="loading-overlay" class="loading-overlay hidden" aria-hidden="true" aria-busy="false">
       <div class="loading-card" role="status" aria-live="polite">
-        <div
-          class="loading-progress"
-          role="progressbar"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          aria-valuenow="0"
-        >
+        <div class="loading-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <div id="loadingProgressBar" class="loading-progress-bar"></div>
         </div>
         <div class="loading-card-body">
@@ -340,11 +192,12 @@
     <script src="/config.js?v=2"></script>
     <script src="/session-auth.js?v=3"></script>
     <script src="/loading.js?v=1"></script>
-    <script src="/school-year.js?v=1"></script>
-    <script src="/export-data.js?v=1"></script>
-    <script src="/nav.js?v=2"></script>
+    <script src="/school-year.js?v=2"></script>
+    <script src="/export-data.js?v=2"></script>
+    <script src="/nav.js?v=4"></script>
+    <script src="/motion.js?v=1"></script>
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
-    <script src="voti.js?v=18"></script>
+    <script src="voti.js?v=19"></script>
   </body>
 </html>

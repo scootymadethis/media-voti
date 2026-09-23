@@ -176,11 +176,43 @@
     container.dataset.exportMounted = "1";
     container.classList.add("export-actions");
     container.innerHTML = `
-      <button type="button" class="btn-secondary export-btn" data-export="csv">Esporta CSV</button>
-      <button type="button" class="btn-secondary export-btn" data-export="pdf">Esporta PDF</button>
+      <div class="export-menu">
+        <button type="button" class="btn-secondary export-trigger" aria-haspopup="menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10M8 10l4 4 4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Esporta
+        </button>
+        <div class="export-popover" role="menu" hidden>
+          <button type="button" role="menuitem" data-export="csv">Esporta CSV</button>
+          <button type="button" role="menuitem" data-export="pdf">Esporta PDF</button>
+        </div>
+      </div>
     `;
-    container.querySelector('[data-export="csv"]')?.addEventListener("click", () => onCsv?.());
-    container.querySelector('[data-export="pdf"]')?.addEventListener("click", () => onPdf?.());
+    const menu = container.querySelector(".export-menu");
+    const trigger = container.querySelector(".export-trigger");
+    const popover = container.querySelector(".export-popover");
+    const setOpen = (open) => {
+      trigger?.setAttribute("aria-expanded", open ? "true" : "false");
+      if (popover) popover.hidden = !open;
+      menu?.classList.toggle("is-open", open);
+    };
+    trigger?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      setOpen(popover?.hidden !== false);
+    });
+    container.querySelector('[data-export="csv"]')?.addEventListener("click", () => {
+      setOpen(false);
+      onCsv?.();
+    });
+    container.querySelector('[data-export="pdf"]')?.addEventListener("click", () => {
+      setOpen(false);
+      onPdf?.();
+    });
+    document.addEventListener("click", (event) => {
+      if (!container.contains(event.target)) setOpen(false);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") setOpen(false);
+    });
   }
 
   window.DataExport = {

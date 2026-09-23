@@ -102,7 +102,7 @@ async function loadAssenzePageContent({ syncPreference = true } = {}) {
   try {
     const res = await fetchAssenze();
     cachedAssenzePayload = res;
-    assenzeData = res?.assenze?.events ?? [];
+    assenzeData = window.DataExport?.extractAbsenceEvents?.(res) ?? res?.assenze?.events ?? [];
   } catch (err) {
     console.error("Errore durante il recupero delle assenze:", err);
     cachedAssenzePayload = null;
@@ -114,6 +114,7 @@ async function loadAssenzePageContent({ syncPreference = true } = {}) {
 
   const badge = document.getElementById("myHoursBadge");
   if (badge) badge.textContent = `${myLeaderboardHours} ore`;
+  renderPersonalAbsences(assenzeData);
 
   leaderboardVisible = await loadLeaderboardPreference();
   updateLeaderboardPreferenceUI();
@@ -129,6 +130,110 @@ async function loadAssenzePageContent({ syncPreference = true } = {}) {
     console.error("Errore durante il caricamento della classifica:", err);
     renderLeaderboardEmpty("Impossibile caricare la classifica.");
   }
+}
+
+function eventHours(assenza) {
+  const code = assenza?.evtCode;
+  if (code === "ABA0") return 6;
+  if (code === "ABU0" || code === "ABR0" || code === "ABR1") {
+    return assenza?.evtValue != null ? Number(assenza.evtValue) || 0 : 0;
+  }
+  if (assenza?.evtValue != null && assenza.evtValue !== "") return Number(assenza.evtValue) || 0;
+  return null;
+}
+
+function eventKind(code) {
+  if (code === "ABA0") return "Assenza";
+  if (code === "ABU0") return "Uscita";
+  if (code === "ABR0" || code === "ABR1") return "Ritardo";
+  return code || "Evento";
+}
+
+function justifiedLabel(event) {
+  if (event.isJustified === true || event.justifReasonCode || event.justifReasonDesc) {
+    return { text: "Giustificata", cls: "" };
+  }
+  if (event.isJustified === false) return { text: "Non giustificata", cls: "is-no" };
+  return null;
+}
+
+function renderPersonalAbsences(events) {
+  const stats = document.getElementById("absenceStats");
+  const timeline = document.getElementById("absenceTimeline");
+  const list = Array.isArray(events) ? events : [];
+  const knowsJustification = list.some(
+    (event) => event.isJustified != null || event.justifReasonDesc || event.justifReasonCode,
+  );
+  const justified = list.filter(
+    (event) => event.isJustified === true || event.justifReasonCode || event.justifReasonDesc,
+  ).length;
+
+  if (stats) {
+    const cards = [
+      ["Ore", myLeaderboardHours],
+      ["Eventi", list.length],
+    ];
+    if (knowsJustification) cards.push(["Giustificate", justified]);
+    stats.innerHTML = cards
+      .map(
+        ([label, value]) =>
+          `<div class="absence-stat"><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>`,
+      )
+      .join("");
+  }
+  if (!timeline) return;
+  if (!list.length) {
+    timeline.innerHTML = `<p class="empty-note">Nessuna assenza registrata per questo anno.</p>`;
+    return;
+  }
+
+  const sorted = [...list].sort((a, b) =>
+    String(b.evtDate || b.date || "").localeCompare(String(a.evtDate || a.date || "")),
+  );
+  const groups = new Map();
+  sorted.forEach((event) => {
+    const raw = event.evtDate || event.date || "";
+    const date = raw ? new Date(raw) : null;
+    const valid = date && !Number.isNaN(date.getTime());
+    const monthKey = valid ? `${date.getFullYear()}-${date.getMonth()}` : "unknown";
+    const monthLabel = valid
+      ? date.toLocaleDateString("it-IT", { month: "long", year: "numeric" })
+      : "Data non disponibile";
+    if (!groups.has(monthKey)) groups.set(monthKey, { label: monthLabel, items: [] });
+    groups.get(monthKey).items.push({ event, date: valid ? date : null });
+  });
+
+  timeline.innerHTML = [...groups.values()]
+    .map((group) => {
+      const rows = group.items
+        .map(({ event, date }) => {
+          const day = date
+            ? `${String(date.getDate()).padStart(2, "0")} ${date
+                .toLocaleDateString("it-IT", { month: "short" })
+                .replace(".", "")
+                .toUpperCase()}`
+            : "—";
+          const hours = eventHours(event);
+          const note = event.justifReasonDesc || event.notes || event.nota || "";
+          const flag = justifiedLabel(event);
+          return `
+            <article class="absence-event">
+              <div class="absence-day">${escapeHtml(day)}</div>
+              <div>
+                <div class="absence-kind">${escapeHtml(eventKind(event.evtCode))}</div>
+                ${note ? `<div class="absence-note">${escapeHtml(note)}</div>` : ""}
+              </div>
+              <div class="absence-meta">
+                ${hours != null ? `<div class="absence-hours">${escapeHtml(hours)} ore</div>` : ""}
+                ${flag ? `<span class="absence-flag ${flag.cls}">${escapeHtml(flag.text)}</span>` : ""}
+              </div>
+            </article>`;
+        })
+        .join("");
+      const label = group.label.charAt(0).toLocaleUpperCase("it-IT") + group.label.slice(1);
+      return `<section class="absence-month"><h3 class="absence-month-label">${escapeHtml(label)}</h3>${rows}</section>`;
+    })
+    .join("");
 }
 
 function updateAssenzeSchoolYearNote() {

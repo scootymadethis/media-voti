@@ -4,12 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aulera</title>
-    <link rel="stylesheet" href="/common.css?v=14" />
-    <link rel="stylesheet" href="style.css?v=5" />
+    <link rel="stylesheet" href="/common.css?v=21" />
+    <link rel="stylesheet" href="style.css?v=6" />
   </head>
   <body class="auth-page">
     <header class="auth-brand" data-reveal>
+      <div class="auth-mark">Au</div>
       <h1 class="title">Aulera</h1>
+      <p class="auth-kicker">Il registro, con un'altra luce.</p>
     </header>
 
     <form id="loginForm" class="login" data-reveal>
@@ -47,7 +49,7 @@
       </div>
       <p class="gestione-credenziali-text"></p>
 
-      <span style="display: flex; gap: 8px; align-items: center">
+      <span class="login-consent">
         <div class="checkbox-container">
           <label class="ios-checkbox red">
             <input type="checkbox" required />
@@ -202,6 +204,7 @@
     </div>
     <script src="/session-auth.js?v=3"></script>
     <script src="/config.js?v=2"></script>
+    <script src="/motion.js?v=1"></script>
     <script src="app.js?v=5"></script>
   </body>
 </html>

@@ -71,11 +71,13 @@
   function mountSwitcher(container, { onChange } = {}) {
     if (!container) return null;
 
+    const closeMenu = () => container.classList.remove("is-open");
+
     const render = () => {
       const years = yearsCache || [];
       container.innerHTML = "";
       container.classList.add("school-year-switcher");
-      container.setAttribute("role", "tablist");
+      container.classList.remove("is-open");
       container.setAttribute("aria-label", "Anno scolastico");
 
       if (!years.length) {
@@ -83,6 +85,25 @@
         return;
       }
       container.hidden = false;
+      container.classList.toggle("is-many", years.length > 4);
+
+      const selected = years.find((year) => year.id === getSelectedSchoolYear()) || years[0];
+      const trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "school-year-trigger";
+      trigger.setAttribute("aria-haspopup", "listbox");
+      trigger.setAttribute("aria-expanded", "false");
+      trigger.innerHTML = `<span>${selected?.label || labelFor(selected?.id || "")}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      trigger.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const open = container.classList.toggle("is-open");
+        trigger.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+
+      const menu = document.createElement("div");
+      menu.className = "school-year-menu segmented";
+      menu.setAttribute("role", "tablist");
+      menu.setAttribute("aria-label", "Anno scolastico");
 
       years.forEach((year) => {
         const btn = document.createElement("button");
@@ -94,20 +115,30 @@
         btn.classList.toggle("active", active);
         btn.setAttribute("aria-selected", active ? "true" : "false");
         btn.textContent = year.label || labelFor(year.id);
-        if (year.is_current) {
-          btn.title = "Anno scolastico corrente";
-        }
+        if (year.is_current) btn.title = "Anno scolastico corrente";
         btn.addEventListener("click", async () => {
+          closeMenu();
           if (year.id === getSelectedSchoolYear()) return;
           setSelectedSchoolYear(year.id);
           render();
-          if (typeof onChange === "function") {
-            await onChange(year.id);
-          }
+          if (typeof onChange === "function") await onChange(year.id);
         });
-        container.appendChild(btn);
+        menu.appendChild(btn);
       });
+
+      container.append(trigger, menu);
+      window.AuleraMotion?.bindSegmented?.(container);
     };
+
+    if (!container.dataset.yearDismissBound) {
+      container.dataset.yearDismissBound = "1";
+      document.addEventListener("click", (event) => {
+        if (!container.contains(event.target)) closeMenu();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeMenu();
+      });
+    }
 
     return {
       async init() {

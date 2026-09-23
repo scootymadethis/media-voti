@@ -2,164 +2,84 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Aulera — Orario</title>
-    <link rel="stylesheet" href="/common.css?v=14" />
-    <link rel="stylesheet" href="/announcement-modal.css?v=3" />
-    <link rel="stylesheet" href="orario.css?v=3" />
+    <link rel="stylesheet" href="/common.css?v=21" />
+    <link rel="stylesheet" href="/announcement-modal.css?v=4" />
+    <link rel="stylesheet" href="orario.css?v=4" />
   </head>
   <body>
     <header class="navbar has-menu">
       <div class="navbar-brand">
         <div class="navbar-brand-mark" onclick="goToHome()">Au</div>
-        <div>
-          <h1 class="title" onclick="goToHome()">Aulera</h1>
-          <p class="navbar-subtitle">Orario</p>
-        </div>
+        <div><h1 class="title" onclick="goToHome()">Aulera</h1></div>
       </div>
-      <div class="navbar-right">
-        <nav class="buttons" aria-label="Navigazione principale">
-          <button type="button" class="nav-link" id="homeBtn" onclick="goToHome()">Home</button>
-          <button type="button" class="nav-link is-current" id="orarioBtn" onclick="goToOrario()">Orario</button>
-          <button type="button" class="nav-link" id="votiBtn" onclick="goToVoti()">Voti</button>
-          <button type="button" class="nav-link" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
-          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
-                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
-          <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
-          <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
-        </nav>
-        <button
-          id="navToggle"
-          class="navbar-toggle"
-          type="button"
-          aria-label="Apri menu"
-          aria-expanded="false"
-          aria-controls="mobileNavDrawer"
-        >
-          <span></span><span></span><span></span>
-        </button>
+      <nav class="buttons nav-center" aria-label="Navigazione principale">
+        <button type="button" class="nav-link" id="homeBtn" onclick="goToHome()">Home</button>
+        <button type="button" class="nav-link is-current" id="orarioBtn" onclick="goToOrario()">Orario</button>
+        <button type="button" class="nav-link" id="votiBtn" onclick="goToVoti()">Voti</button>
+        <button type="button" class="nav-link" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
+      </nav>
+      <div class="navbar-actions">
+        <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" onclick="goToEasterEggGame()">Segreto</button>
+        <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+        <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
+        <button id="navToggle" class="navbar-toggle" type="button" aria-label="Altro" aria-expanded="false" aria-controls="mobileNavDrawer"><span></span><span></span><span></span></button>
       </div>
     </header>
 
-    <div
-      id="mobileNavBackdrop"
-      class="nav-drawer-backdrop"
-      aria-hidden="true"
-    ></div>
+    <div id="mobileNavBackdrop" class="nav-drawer-backdrop" aria-hidden="true"></div>
     <aside id="mobileNavDrawer" class="nav-drawer" aria-hidden="true">
       <div class="nav-drawer-header">
-        <div>
-          <h2>Menu</h2>
-          <p class="navbar-subtitle">Stesse voci, stesso ordine</p>
-        </div>
-        <button
-          id="navDrawerClose"
-          class="nav-drawer-close"
-          type="button"
-          aria-label="Chiudi menu"
-        >
-          ✕
-        </button>
+        <h2>Account</h2>
+        <button id="navDrawerClose" class="nav-drawer-close" type="button" aria-label="Chiudi">✕</button>
       </div>
       <nav class="buttons">
-          <button type="button" class="nav-link" onclick="goToHome()">Home</button>
-          <button type="button" class="nav-link is-current" onclick="goToOrario()">Orario</button>
-          <button type="button" class="nav-link" onclick="goToVoti()">Voti</button>
-          <button type="button" class="nav-link" onclick="goToAssenze()">Assenze</button>
-          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
-                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
-          <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
-          <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
+        <button type="button" class="nav-link" onclick="goToHome()">Home</button>
+        <button type="button" class="nav-link is-current" onclick="goToOrario()">Orario</button>
+        <button type="button" class="nav-link" onclick="goToVoti()">Voti</button>
+        <button type="button" class="nav-link" onclick="goToAssenze()">Assenze</button>
+        <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" onclick="goToEasterEggGame()">Segreto</button>
+        <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+        <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
       </nav>
     </aside>
 
-    <div class="main" data-reveal>
-      <header class="orario-page-header" data-reveal>
-        <p class="orario-kicker">Istituto Marconi</p>
-        <h1 class="orario-title">
-          Orario classe <span id="orarioClassTitle">—</span>
-        </h1>
-        <p class="orario-subtitle">
-          Griglia settimanale con evidenziazione dell'ora in corso
-        </p>
+    <div class="main">
+      <header class="page-header orario-page-header" data-reveal>
+        <div>
+          <p class="page-kicker orario-kicker">Istituto Marconi</p>
+          <h1 class="page-title orario-title">Orario <span id="orarioClassTitle">—</span></h1>
+        </div>
+        <div class="orario-class-picker">
+          <label for="orarioClassInput">Classe</label>
+          <div id="orarioClassCombobox" class="orario-combobox">
+            <input id="orarioClassInput" class="orario-combobox-input" name="orarioClass" type="search" placeholder="Cerca classe, es. 4EI" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="orarioClassMenu" />
+            <button id="orarioClassToggle" class="orario-combobox-toggle" type="button" aria-label="Apri elenco classi" aria-expanded="false">⌄</button>
+            <ul id="orarioClassMenu" class="orario-combobox-menu" role="listbox" hidden></ul>
+          </div>
+        </div>
       </header>
 
-      <section
-        id="orarioSchoolGate"
-        class="orario-gate panel hidden"
-        aria-live="polite"
-      >
+      <section id="orarioSchoolGate" class="orario-gate panel hidden" aria-live="polite">
         <h2>Orario non disponibile</h2>
-        <p id="orarioSchoolGateText">
-          Al momento la funzione orario è disponibile solo per gli studenti
-          dell'Istituto Marconi.
-        </p>
-        <button type="button" class="btn-secondary" onclick="goToHome()">
-          Torna alla dashboard
-        </button>
+        <p id="orarioSchoolGateText">Al momento la funzione orario è disponibile solo per gli studenti dell'Istituto Marconi.</p>
+        <button type="button" class="btn-secondary" onclick="goToHome()">Torna alla dashboard</button>
       </section>
 
       <div id="orarioAppContent" class="orario-app-content">
-      <div class="orario-toolbar panel" data-reveal>
-        <div class="orario-class-picker">
-          <label for="orarioClassInput">Cambia classe</label>
-          <div id="orarioClassCombobox" class="orario-combobox">
-            <input
-              id="orarioClassInput"
-              class="orario-combobox-input"
-              name="orarioClass"
-              type="search"
-              placeholder="Cerca classe, es. 4EI"
-              autocomplete="off"
-              spellcheck="false"
-              role="combobox"
-              aria-expanded="false"
-              aria-controls="orarioClassMenu"
-            />
-            <button
-              id="orarioClassToggle"
-              class="orario-combobox-toggle"
-              type="button"
-              aria-label="Apri elenco classi"
-              aria-expanded="false"
-            >
-              ▼
-            </button>
-            <ul
-              id="orarioClassMenu"
-              class="orario-combobox-menu"
-              role="listbox"
-              hidden
-            ></ul>
-          </div>
-          <p class="orario-class-hint">
-            Di default viene usata la tua classe. La scelta resta
-            salvata nel browser.
-          </p>
-        </div>
         <p id="orarioStatus" class="orario-status" aria-live="polite"></p>
-      </div>
-
-      <div id="orarioGridMount" class="orario-grid-wrap" data-reveal>
-        <div class="orario-empty-state">Seleziona una classe per vedere l'orario.</div>
-      </div>
+        <p class="orario-class-hint">Di default viene usata la tua classe. La scelta resta salvata nel browser.</p>
+        <p class="orario-scroll-hint">Scorri in orizzontale per vedere tutta la settimana.</p>
+        <div id="orarioGridMount" class="orario-grid-wrap" data-reveal>
+          <div class="orario-empty-state">Seleziona una classe per vedere l'orario.</div>
+        </div>
       </div>
     </div>
 
-    <div
-      id="loading-overlay"
-      class="loading-overlay hidden"
-      aria-hidden="true"
-      aria-busy="false"
-    >
+    <div id="loading-overlay" class="loading-overlay hidden" aria-hidden="true" aria-busy="false">
       <div class="loading-card" role="status" aria-live="polite">
-        <div
-          class="loading-progress"
-          role="progressbar"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          aria-valuenow="0"
-        >
+        <div class="loading-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <div id="loadingProgressBar" class="loading-progress-bar"></div>
         </div>
         <div class="loading-card-body">
@@ -172,7 +92,8 @@
     <script src="/session-auth.js?v=3"></script>
     <script src="/config.js?v=3"></script>
     <script src="/loading.js?v=1"></script>
-    <script src="/nav.js?v=3"></script>
+    <script src="/nav.js?v=4"></script>
+    <script src="/motion.js?v=1"></script>
     <script src="/easter-egg.js?v=3"></script>
     <script src="/announcement-modal.js?v=3"></script>
     <script src="orario.js?v=4"></script>

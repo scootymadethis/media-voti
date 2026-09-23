@@ -2,148 +2,104 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Aulera — Assenze</title>
-    <link rel="stylesheet" href="/common.css?v=14" />
-    <link rel="stylesheet" href="/announcement-modal.css?v=3" />
-    <link rel="stylesheet" href="assenze.css?v=6" />
+    <link rel="stylesheet" href="/common.css?v=21" />
+    <link rel="stylesheet" href="/announcement-modal.css?v=4" />
+    <link rel="stylesheet" href="assenze.css?v=7" />
   </head>
   <body>
     <header class="navbar has-menu">
       <div class="navbar-brand">
         <div class="navbar-brand-mark" onclick="goToHome()">Au</div>
-        <div>
-          <h1 class="title" onclick="goToHome()">Aulera</h1>
-          <p class="navbar-subtitle">Assenze</p>
-        </div>
+        <div><h1 class="title" onclick="goToHome()">Aulera</h1></div>
       </div>
-      <div class="navbar-right">
-        <nav class="buttons" aria-label="Navigazione principale">
-          <button type="button" class="nav-link" id="homeBtn" onclick="goToHome()">Home</button>
-          <button type="button" class="nav-link" id="orarioBtn" onclick="goToOrario()">Orario</button>
-          <button type="button" class="nav-link" id="votiBtn" onclick="goToVoti()">Voti</button>
-          <button type="button" class="nav-link is-current" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
-          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
-                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
-          <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
-          <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
-        </nav>
-        <button
-          id="navToggle"
-          class="navbar-toggle"
-          type="button"
-          aria-label="Apri menu"
-          aria-expanded="false"
-          aria-controls="mobileNavDrawer"
-        >
-          <span></span><span></span><span></span>
-        </button>
+      <nav class="buttons nav-center" aria-label="Navigazione principale">
+        <button type="button" class="nav-link" id="homeBtn" onclick="goToHome()">Home</button>
+        <button type="button" class="nav-link" id="orarioBtn" onclick="goToOrario()">Orario</button>
+        <button type="button" class="nav-link" id="votiBtn" onclick="goToVoti()">Voti</button>
+        <button type="button" class="nav-link is-current" id="assenzeBtn" onclick="goToAssenze()">Assenze</button>
+      </nav>
+      <div class="navbar-actions">
+        <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" onclick="goToEasterEggGame()">Segreto</button>
+        <button type="button" class="nav-link btn-admin" id="adminBtn" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+        <button type="button" class="nav-link nav-exit" id="logoutBtn" onclick="logout()">Esci</button>
+        <button id="navToggle" class="navbar-toggle" type="button" aria-label="Altro" aria-expanded="false" aria-controls="mobileNavDrawer"><span></span><span></span><span></span></button>
       </div>
     </header>
 
-    <div
-      id="mobileNavBackdrop"
-      class="nav-drawer-backdrop"
-      aria-hidden="true"
-    ></div>
+    <div id="mobileNavBackdrop" class="nav-drawer-backdrop" aria-hidden="true"></div>
     <aside id="mobileNavDrawer" class="nav-drawer" aria-hidden="true">
       <div class="nav-drawer-header">
-        <div>
-          <h2>Menu</h2>
-          <p class="navbar-subtitle">Stesse voci, stesso ordine</p>
-        </div>
-        <button
-          id="navDrawerClose"
-          class="nav-drawer-close"
-          type="button"
-          aria-label="Chiudi menu"
-        >
-          ✕
-        </button>
+        <h2>Account</h2>
+        <button id="navDrawerClose" class="nav-drawer-close" type="button" aria-label="Chiudi">✕</button>
       </div>
       <nav class="buttons">
-          <button type="button" class="nav-link" onclick="goToHome()">Home</button>
-          <button type="button" class="nav-link" onclick="goToOrario()">Orario</button>
-          <button type="button" class="nav-link" onclick="goToVoti()">Voti</button>
-          <button type="button" class="nav-link is-current" onclick="goToAssenze()">Assenze</button>
-          <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" title="Easter egg" onclick="goToEasterEggGame()">🤫</button>
-                    <button type="button" class="nav-link" data-admin-nav hidden onclick="goToDesign()">Design</button>
-          <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
-          <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
+        <button type="button" class="nav-link" onclick="goToHome()">Home</button>
+        <button type="button" class="nav-link" onclick="goToOrario()">Orario</button>
+        <button type="button" class="nav-link" onclick="goToVoti()">Voti</button>
+        <button type="button" class="nav-link is-current" onclick="goToAssenze()">Assenze</button>
+        <button type="button" class="nav-link btn-easter-egg" hidden data-easter-egg-nav aria-label="Easter egg" onclick="goToEasterEggGame()">Segreto</button>
+        <button type="button" class="nav-link btn-admin" hidden data-admin-nav onclick="goToAdmin()">Admin</button>
+        <button type="button" class="nav-link nav-exit" onclick="logout()">Esci</button>
       </nav>
     </aside>
 
-    <div class="main" data-reveal>
+    <div class="main">
+      <header class="page-header" data-reveal>
+        <div>
+          <h1 class="page-title">Assenze</h1>
+          <p id="schoolYearNote" class="school-year-note" hidden></p>
+        </div>
+        <div id="schoolYearSwitcher" class="school-year-switcher" hidden></div>
+      </header>
 
-      <section class="leaderboard-shell panel" data-reveal>
+      <section class="absence-surface" id="personalAbsences" data-reveal>
+        <header class="module-header">
+          <h2 class="module-title">Le tue assenze</h2>
+          <div id="assenzeExportActions" class="export-actions"></div>
+        </header>
+        <div class="absence-stats" id="absenceStats"></div>
+        <div id="absenceTimeline" class="absence-timeline"></div>
+      </section>
+
+      <section class="leaderboard-shell" data-reveal>
         <div class="leaderboard-header">
           <div>
             <h2 class="leaderboard-title">Classifica ore di assenza</h2>
-            <p class="leaderboard-subtitle">
-              Ordinata dalle ore maggiori alle minori
-            </p>
+            <p class="leaderboard-subtitle">Ordinata dalle ore maggiori alle minori</p>
           </div>
           <div class="leaderboard-badge" id="myHoursBadge">-- ore</div>
         </div>
 
-        <div class="leaderboard-year">
-          <span class="year-label">Anno scolastico</span>
-          <div id="schoolYearSwitcher" class="school-year-switcher" hidden></div>
-        </div>
-        <div id="assenzeExportActions" class="export-actions"></div>
+        <p class="leaderboard-warning">
+          Attenzione: le ore potrebbero non essere precise al 100%, perché alcuni eventi del registro possono essere interpretati in modo diverso o non contenere tutte le informazioni necessarie.
+        </p>
 
-        <div class="leaderboard-warning">
-          Attenzione: le ore potrebbero non essere precise al 100%, perché
-          alcuni eventi del registro possono essere interpretati in modo diverso
-          o non contenere tutte le informazioni necessarie. Di default compari
-          in classifica, ma puoi cambiare questa impostazione in qualsiasi
-          momento dal pulsante qui sotto.
-        </div>
-
-        <div class="leaderboard-preferences panel-subsection">
-          <div>
-            <div class="leaderboard-preferences-title">Visibilità in classifica</div>
-            <div id="leaderboardVisibilityText" class="leaderboard-preferences-text">
-              Caricamento preferenza...
-            </div>
+        <div class="leaderboard-tools">
+          <div class="leaderboard-tabs segmented" aria-label="Tipo classifica">
+            <button id="tabClassBtn" class="leaderboard-tab active" type="button">Classe</button>
+            <button id="tabGlobalBtn" class="leaderboard-tab" type="button">Globale</button>
           </div>
-          <button id="toggleLeaderboardVisibilityBtn" class="btn-secondary" type="button">
-            Cambia impostazione
-          </button>
+          <div class="leaderboard-search">
+            <input id="leaderboardSearchInput" class="leaderboard-search-input" type="search" placeholder="Cerca per nome o classe..." autocomplete="off" aria-label="Cerca nella classifica" />
+          </div>
         </div>
 
-        <div class="leaderboard-tabs" aria-label="Tipo classifica">
-          <button id="tabClassBtn" class="leaderboard-tab active" type="button">
-            La mia classe
-          </button>
-          <button id="tabGlobalBtn" class="leaderboard-tab" type="button">
-            Globale
-          </button>
-        </div>
-
-        <div class="leaderboard-search">
-          <input
-            id="leaderboardSearchInput"
-            class="leaderboard-search-input"
-            type="search"
-            placeholder="Cerca per nome o classe..."
-            autocomplete="off"
-            aria-label="Cerca nella classifica"
-          />
+        <div class="leaderboard-preferences">
+          <div>
+            <div class="leaderboard-preferences-title">Visibilità</div>
+            <div id="leaderboardVisibilityText" class="leaderboard-preferences-text">Caricamento preferenza...</div>
+          </div>
+          <button id="toggleLeaderboardVisibilityBtn" class="btn-secondary" type="button">Cambia impostazione</button>
         </div>
 
         <div id="leaderboardMeta" class="leaderboard-meta"></div>
-
         <div id="leaderboardList" class="leaderboard-list"></div>
-
         <div class="leaderboard-pagination">
-          <button id="prevPageBtn" class="btn-secondary" type="button">
-            ← Precedente
-          </button>
+          <button id="prevPageBtn" class="btn-secondary" type="button">Precedente</button>
           <span id="pageIndicator" class="page-indicator">Pagina 1</span>
-          <button id="nextPageBtn" class="btn-secondary" type="button">
-            Successiva →
-          </button>
+          <button id="nextPageBtn" class="btn-secondary" type="button">Successiva</button>
         </div>
       </section>
     </div>
@@ -152,43 +108,22 @@
       <div class="modal-content">
         <div class="modal-header">
           <h3 id="entryModalTitle" class="modal-subject">Dettagli</h3>
-          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">
-            &times;
-          </button>
+          <button id="entryModalClose" class="modal-close" aria-label="Chiudi">✕</button>
         </div>
-        <div
-          id="entryModalTeacher"
-          class="modal-teacher"
-          aria-hidden="true"
-        ></div>
+        <div id="entryModalTeacher" class="modal-teacher" aria-hidden="true"></div>
         <div class="modal-label">Testo:</div>
         <div id="entryModalText" class="modal-text"></div>
       </div>
     </div>
 
     <div class="footer">
-      <span class="desc"
-        >Aulera non è affiliato a ClasseViva Spaggiari.</span
-      >
-      <span class="copyright"
-        >&#169; Copyright 2026 github.com/scootymadethis</span
-      >
+      <span class="desc">Aulera non è affiliato a ClasseViva Spaggiari.</span>
+      <span class="copyright">&#169; Copyright 2026 github.com/scootymadethis</span>
     </div>
 
-    <div
-      id="loading-overlay"
-      class="loading-overlay hidden"
-      aria-hidden="true"
-      aria-busy="false"
-    >
+    <div id="loading-overlay" class="loading-overlay hidden" aria-hidden="true" aria-busy="false">
       <div class="loading-card" role="status" aria-live="polite">
-        <div
-          class="loading-progress"
-          role="progressbar"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          aria-valuenow="0"
-        >
+        <div class="loading-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <div id="loadingProgressBar" class="loading-progress-bar"></div>
         </div>
         <div class="loading-card-body">
@@ -201,11 +136,12 @@
     <script src="/session-auth.js?v=3"></script>
     <script src="/config.js?v=2"></script>
     <script src="/loading.js?v=1"></script>
-    <script src="/school-year.js?v=1"></script>
-    <script src="/export-data.js?v=1"></script>
-    <script src="/nav.js?v=2"></script>
+    <script src="/school-year.js?v=2"></script>
+    <script src="/export-data.js?v=2"></script>
+    <script src="/nav.js?v=4"></script>
+    <script src="/motion.js?v=1"></script>
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
-    <script src="assenze.js?v=12"></script>
+    <script src="assenze.js?v=13"></script>
   </body>
 </html>
