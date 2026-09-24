@@ -3,15 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="icon" type="image/png" href="/assets/logo-aulera.png" />
     <title>Aulera — Orario</title>
-    <link rel="stylesheet" href="/common.css?v=21" />
+    <link rel="stylesheet" href="/common.css?v=30" />
     <link rel="stylesheet" href="/announcement-modal.css?v=4" />
-    <link rel="stylesheet" href="orario.css?v=4" />
+    <link rel="stylesheet" href="orario.css?v=30" />
   </head>
-  <body>
+  <body class="app-workspace">
     <header class="navbar has-menu">
       <div class="navbar-brand">
-        <div class="navbar-brand-mark" onclick="goToHome()">Au</div>
+        <img class="navbar-brand-mark" src="/assets/logo-aulera.png" alt="" aria-hidden="true" onclick="goToHome()" />
         <div><h1 class="title" onclick="goToHome()">Aulera</h1></div>
       </div>
       <nav class="buttons nav-center" aria-label="Navigazione principale">
@@ -48,11 +49,12 @@
     <div class="main">
       <header class="page-header orario-page-header" data-reveal>
         <div>
-          <p class="page-kicker orario-kicker">Istituto Marconi</p>
-          <h1 class="page-title orario-title">Orario <span id="orarioClassTitle">—</span></h1>
+          <p class="page-kicker orario-kicker">LA TUA SETTIMANA</p>
+          <h1 class="page-title orario-title">Ogni lezione,<br>al suo posto.</h1>
+          <p class="orario-intro">Uno sguardo alla settimana. Più spazio per organizzarti.</p>
         </div>
         <div class="orario-class-picker">
-          <label for="orarioClassInput">Classe</label>
+          <label for="orarioClassInput">Esplora l’orario di una classe</label>
           <div id="orarioClassCombobox" class="orario-combobox">
             <input id="orarioClassInput" class="orario-combobox-input" name="orarioClass" type="search" placeholder="Cerca classe, es. 4EI" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="orarioClassMenu" />
             <button id="orarioClassToggle" class="orario-combobox-toggle" type="button" aria-label="Apri elenco classi" aria-expanded="false">⌄</button>
@@ -69,11 +71,12 @@
 
       <div id="orarioAppContent" class="orario-app-content">
         <p id="orarioStatus" class="orario-status" aria-live="polite"></p>
-        <p class="orario-class-hint">Di default viene usata la tua classe. La scelta resta salvata nel browser.</p>
+        <div class="orario-week-heading"><div><p class="page-kicker">ISTITUTO MARCONI</p><h2>La settimana della <span id="orarioClassTitle">—</span></h2></div><span class="orario-live-key"><i aria-hidden="true"></i> Lezione in corso</span></div>
         <p class="orario-scroll-hint">Scorri in orizzontale per vedere tutta la settimana.</p>
         <div id="orarioGridMount" class="orario-grid-wrap" data-reveal>
           <div class="orario-empty-state">Seleziona una classe per vedere l'orario.</div>
         </div>
+        <div class="orario-bottom-note"><p class="orario-class-hint">La tua classe è selezionata automaticamente. Puoi cambiarla in qualsiasi momento.</p><span>Lunedì — Venerdì</span></div>
       </div>
     </div>
 
@@ -92,8 +95,8 @@
     <script src="/session-auth.js?v=3"></script>
     <script src="/config.js?v=3"></script>
     <script src="/loading.js?v=1"></script>
-    <script src="/nav.js?v=4"></script>
-    <script src="/motion.js?v=1"></script>
+    <script src="/nav.js?v=5"></script>
+    <script src="/motion.js?v=3"></script>
     <script src="/easter-egg.js?v=3"></script>
     <script src="/announcement-modal.js?v=3"></script>
     <script src="orario.js?v=4"></script>

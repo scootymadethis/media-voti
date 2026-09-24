@@ -1,180 +1,11 @@
-.dash-hero {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 6px 0 18px;
-}
-.greeting { font-size: clamp(1.8rem, 3.4vw, 2.6rem); }
-.date { margin-top: 6px; color: var(--text-secondary); text-transform: capitalize; }
-.time {
-  font-size: clamp(1.6rem, 3vw, 2.2rem);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.04em;
-  padding: 10px 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--glass-border);
-}
-
-.bento {
-  display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.95fr);
-  grid-template-areas:
-    "lessons media"
-    "lessons absences"
-    "agenda agenda"
-    "grades grades";
-  gap: 16px;
-}
-.bento-lessons { grid-area: lessons; }
-.bento-media { grid-area: media; }
-.bento-absences { grid-area: absences; }
-.bento-agenda { grid-area: agenda; }
-.bento-grades { grid-area: grades; }
-
-.agenda, .lezioni, .voti, .media-generale, .assenze {
-  padding: 18px 18px 16px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 26%),
-    var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-inset);
-  min-width: 0;
-}
-.media-generale, .assenze { cursor: pointer; }
-.media-generale:hover, .assenze:hover { border-color: rgba(255, 255, 255, 0.18); }
-
-.agenda-header, .lezioni-header, .voti-header, .media-generale-header, .assenze-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-.agenda-title, .lezioni-title, .voti-title, .media-generale-title, .assenze-title {
-  font-size: 1.12rem;
-}
-.agenda-controls { display: flex; gap: 6px; }
-.agenda-arrow, .voti-open, .media-generale-open, .assenze-open {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-primary);
-}
-.agenda-arrow:hover, .voti-open:hover, .media-generale-open:hover, .assenze-open:hover {
-  border-color: rgba(225, 29, 46, 0.45);
-}
-
-.agenda-viewport { overflow: hidden; }
-.agenda-track { display: flex; gap: 12px; align-items: stretch; transition: transform 420ms var(--ease-out); }
-.giorno {
-  min-width: 0;
-  padding: 12px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid transparent;
-}
-.giorno.is-today {
-  border-color: rgba(225, 29, 46, 0.45);
-  background: linear-gradient(180deg, rgba(225, 29, 46, 0.12), rgba(255, 255, 255, 0.03));
-}
-.giorno-name { display: block; margin-bottom: 10px; font-weight: 700; font-size: 0.92rem; }
-.entries-container, .lezioni-track, .voti-track, .assenze-track { display: flex; flex-direction: column; gap: 8px; }
-.lezioni-viewport, .voti-viewport, .assenze-viewport { max-height: 430px; overflow: auto; }
-
-.entry, .lezione-entry, .voti-entry, .assenze-entry {
-  padding: 10px 2px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 0;
-  background: transparent;
-}
-.entry { cursor: pointer; }
-.entry:hover { background: rgba(255, 255, 255, 0.03); }
-.subject, .voti-subject, .assenza-date { font-weight: 700; }
-.teacher, .text, .reason, .empty-note, .label, .date { color: var(--text-secondary); }
-.teacher, .text { display: block; margin-top: 3px; font-size: 0.9rem; }
-.voti-entry, .assenze-entry { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.lezione-entry { position: relative; padding-left: 12px; }
-.lezione-entry::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 12px;
-  bottom: 12px;
-  width: 2px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.12);
-}
-.lezione-entry:first-child::before {
-  background: var(--brand-red);
-  box-shadow: 0 0 10px var(--brand-red-glow);
-}
-
-.grade-circle {
-  width: 46px;
-  min-width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.assenza-warning { color: var(--warning); display: inline-flex; margin-right: 6px; }
-.assenza-badge { display: flex; align-items: center; }
-
-.media-generale-viewport {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  align-items: end;
-}
-.media-generale-value { grid-column: 1 / -1; }
-.media-generale-container {
-  width: 112px;
-  height: 112px;
-  margin-bottom: 6px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: conic-gradient(var(--ring-color) var(--p), rgba(255, 255, 255, 0.08) 0);
-  position: relative;
-}
-.media-generale-value-primo .media-generale-container,
-.media-generale-value-secondo .media-generale-container { width: 72px; height: 72px; }
-.media-generale-container::after {
-  content: "";
-  position: absolute;
-  inset: 9px;
-  border-radius: 50%;
-  background: #121216;
-}
-.media-generale-value-primo .media-generale-container::after,
-.media-generale-value-secondo .media-generale-container::after { inset: 6px; }
-.actual-media-generale-value {
-  position: relative;
-  z-index: 1;
-  font-size: 1.7rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.media-generale-value-primo .actual-media-generale-value,
-.media-generale-value-secondo .actual-media-generale-value { font-size: 1rem; }
-.label { display: block; font-size: 0.78rem; }
-
 .new-grades-banner {
   margin: 0 0 16px;
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(225, 29, 46, 0.35);
-  background: linear-gradient(180deg, rgba(225, 29, 46, 0.16), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(8, 174, 185, 0.35);
+  background: linear-gradient(180deg, rgba(8, 174, 185, 0.16), rgba(255, 255, 255, 0.03));
 }
 .new-grades-banner-inner { padding: 16px 18px; display: grid; gap: 12px; }
-.new-grades-kicker { color: #fecdd3; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.new-grades-kicker { color: #91dce6; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
 .new-grades-title { font-size: 1.25rem; }
 .new-grades-subtitle, .new-grades-more { color: var(--text-secondary); }
 .new-grades-list { list-style: none; display: grid; gap: 8px; }
@@ -200,19 +31,29 @@
   font-weight: 700;
 }
 
-@media (max-width: 1024px) {
-  .bento { grid-template-columns: 1fr 1fr; }
-}
-@media (max-width: 800px) {
-  .dash-hero { align-items: flex-start; flex-direction: column; }
-  .bento {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "lessons"
-      "media"
-      "absences"
-      "agenda"
-      "grades";
-  }
-  .lezioni-viewport, .voti-viewport, .assenze-viewport { max-height: none; }
-}
+.dash { --panel-line: rgba(156,196,219,.12); }
+.dash-hero { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 34px 0 38px; border-bottom: 1px solid var(--panel-line); margin-bottom: 28px; }
+.dash-welcome { min-width: 0; }.dash-eyebrow { display: flex; align-items: center; gap: 8px; color: #79b6c8; font-size: 9px; letter-spacing: .16em; font-weight: 600; margin-bottom: 19px; }.dash-eyebrow span { width: 5px; height: 5px; border-radius: 50%; background: #65d0dc; box-shadow: 0 0 12px #65d0dc44; }
+.greeting { font-size: clamp(30px,3.2vw,48px); line-height: 1.15; letter-spacing: -.045em; font-weight: 500; max-width: 720px; overflow-wrap: anywhere; }
+.dash-intro { color: #8fa5ba; font-size: 13px; margin-top: 13px; line-height: 1.6; }
+.dash-today { flex-shrink: 0; min-width: 182px; text-align: right; padding-left: 28px; border-left: 1px solid var(--panel-line); }.dash-today .date { color: #a3b8c9; font-size: 11px; text-transform: capitalize; }.time { font-size: 44px; font-weight: 400; line-height: 1.2; letter-spacing: -.04em; font-variant-numeric: tabular-nums; margin-top: 7px; }.dash-clock-label { display: block; font-size: 8px; color: #5f7c93; letter-spacing: .13em; margin-top: 5px; }
+.dash-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; }.dash-section-heading h2 { font-size: 18px; font-weight: 500; letter-spacing: -.025em; }.dash-section-heading > span { color: #698299; font-size: 11px; }
+.bento { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); grid-template-areas: 'media absences' 'agenda agenda' 'lessons grades'; gap: 20px; align-items: stretch; }
+.bento-lessons { grid-area: lessons; }.bento-media { grid-area: media; }.bento-absences { grid-area: absences; }.bento-agenda { grid-area: agenda; }.bento-grades { grid-area: grades; }
+.agenda,.lezioni,.voti,.media-generale,.assenze { padding: 24px; border: 1px solid var(--panel-line); border-radius: 22px; background: linear-gradient(145deg,rgba(28,49,68,.42),rgba(13,26,43,.7)); box-shadow: inset 0 1px 0 #c5ecff04,0 8px 24px #00000008; min-width: 0; }
+.media-generale { height: auto !important; background: radial-gradient(ellipse at 0 100%,#179aa317,transparent 70%),linear-gradient(145deg,#18334480,#0e1c2cd9); }
+.agenda-header,.lezioni-header,.voti-header,.media-generale-header,.assenze-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }.panel-eyebrow { color: #638ca0; font-size: 8px; letter-spacing: .14em; font-weight: 600; margin-bottom: 7px; }.agenda-title,.lezioni-title,.voti-title,.media-generale-title,.assenze-title { font-size: 18px; font-weight: 500; letter-spacing: -.025em; }
+.panel-text-link { font-size: 11px; color: #8fc8d3; display: inline-flex; align-items: center; gap: 10px; }.panel-text-link:hover { color: #c4f4f8; }
+.agenda-controls { display: flex; gap: 6px; }.agenda-arrow,.voti-open,.media-generale-open,.assenze-open { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; padding: 0; border-radius: 10px; border: 1px solid #a9d3e81c; background: #b6dff506; color: #9cbace; font-size: 20px; line-height: 1; transition: background 160ms,border-color 160ms; }.agenda-arrow:hover,.voti-open:hover,.media-generale-open:hover,.assenze-open:hover { background: #4accdc12; border-color: #5dcfdb55; color: #c5f4fc; }
+.media-generale-viewport { display: grid; grid-template-columns: 1.2fr 1fr 1fr; align-items: center; min-height: 160px; gap: 12px; }.media-generale-viewport > div { min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 13px; }.media-generale-value { padding-right: 14px; border-right: 1px solid var(--panel-line); }
+.media-generale-container { width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--ring-color) var(--p),rgba(181,217,235,.08) 0); position: relative; transform: rotate(-90deg); }.media-generale-container::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: #102534; }.actual-media-generale-value { position: relative; z-index: 1; font-size: 30px; font-weight: 500; letter-spacing: -.055em; font-variant-numeric: tabular-nums; transform: rotate(90deg); }.media-generale-value-primo .media-generale-container,.media-generale-value-secondo .media-generale-container { width: 76px; height: 76px; }.media-generale-value-primo .media-generale-container::after,.media-generale-value-secondo .media-generale-container::after { inset: 3px; background: #142737; }.media-generale-value-primo .actual-media-generale-value,.media-generale-value-secondo .actual-media-generale-value { font-size: 22px; }.label { display: block; font-size: 10px; color: #8daabe; }.generale-label { color: #c2dce6; }
+.assenze-viewport { max-height: 167px; min-height: 160px; overflow: auto; padding-right: 4px; }.assenze-track,.lezioni-track,.voti-track { display: flex; flex-direction: column; gap: 0; }.assenze-entry { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid #a8cbe510; }.assenze-entry:first-child { padding-top: 0; }.assenze-entry:last-child { border-bottom: 0; }.assenza-date { font-size: 12px; color: #d0e0ed; font-variant-numeric: tabular-nums; }.assenza-reason { font-size: 10px; color: #7897ac; margin-top: 4px; }.assenza-badge { display: flex; align-items: center; gap: 7px; }.assenza-warning { color: var(--warning); display: inline-flex; }.assenze .grade-circle { width: 34px; min-width: 34px; height: 34px; font-size: 12px; border-radius: 10px; }
+.agenda { padding-bottom: 24px; }.agenda-header { margin-bottom: 22px; }.agenda-viewport { overflow: hidden; }.agenda-track { display: flex; gap: 12px; align-items: stretch; transition: transform 380ms var(--ease-out); }.giorno { min-width: 0; flex: 1 0 0; padding: 16px 13px; border-radius: 14px; background: #08182840; border: 1px solid #a0cbe312; min-height: 160px; }.giorno.is-today { border-color: #3eafbf66; background: linear-gradient(180deg,#2ba8b512,#0d22363d); }.giorno-name { display: block; padding-bottom: 13px; border-bottom: 1px solid #a0cbe314; margin-bottom: 10px; font-size: 11px; font-weight: 500; color: #9bb9c9; }.giorno.is-today .giorno-name { color: #8ce1e5; }.entries-container { display: flex; flex-direction: column; gap: 10px; }.entries-container:empty::after { content: 'Nessun impegno'; color: #4e6d83; font-size: 10px; padding-top: 8px; }
+.entry { cursor: pointer; border-radius: 8px; transition: background 160ms; }.entry:hover { background: #afd9ea05; }.agenda .entry { border-left: 2px solid #4c9eb357; padding: 4px 0 4px 9px; border-radius: 0; }.subject,.voti-subject { font-weight: 500; color: #c6dce8; font-size: 12px; overflow-wrap: anywhere; }.teacher { display: block; margin-top: 5px; font-size: 10px; color: #66899e; }.text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; margin-top: 7px; font-size: 11px; line-height: 1.6; color: #8caabd; }
+.lezioni-viewport,.voti-viewport { max-height: 380px; overflow: auto; padding-right: 5px; }.lezioni-track { counter-reset: lesson; }.lezione-entry { position: relative; padding: 18px 10px 18px 43px; border-bottom: 1px solid #a8cbe510; border-radius: 0; }.lezione-entry:first-child { padding-top: 4px; }.lezione-entry:last-child { border-bottom: 0; }.lezione-entry::before { counter-increment: lesson; content: counter(lesson,decimal-leading-zero); position: absolute; left: 0; top: 18px; color: #4d8199; font-size: 11px; font-variant-numeric: tabular-nums; }.lezione-entry:first-child::before { top: 4px; color: #64cbd4; }.lezione-entry .text { max-width: 95%; }.voti-entry { display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid #a8cbe510; border-radius: 0; padding: 15px 0; }.voti-entry:first-child { padding-top: 0; }.voti-entry:last-child { border-bottom: 0; }.grade-circle { width: 44px; min-width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; font-weight: 600; font-size: 16px; font-variant-numeric: tabular-nums; }.empty-note { padding: 24px 0; color: #7998ac; font-size: 12px; }
+@media (max-width: 1200px) and (min-width: 861px) { .bento { grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); gap: 16px; }.agenda,.lezioni,.voti,.media-generale,.assenze { padding: 20px; }.media-generale-container { width: 94px; height: 94px; }.media-generale-value-primo .media-generale-container,.media-generale-value-secondo .media-generale-container { width: 62px; height: 62px; }.media-generale-value { padding-right: 10px; }.media-generale-viewport { gap: 8px; }.dash-today { min-width: 155px; }.greeting { font-size: 35px; }.giorno { padding: 13px 9px; }.giorno-name { font-size: 10px; } }
+@media (max-width: 1000px) and (min-width: 861px) { .bento { grid-template-columns: minmax(0,1fr); grid-template-areas: 'media' 'absences' 'agenda' 'lessons' 'grades'; }.media-generale-viewport { min-height: 140px; }.assenze-viewport { min-height: 100px; }.dash-today { display: none; } }
+@media (max-width: 860px) { .dash-hero { padding: 20px 0 26px; margin-bottom: 23px; }.greeting { font-size: 35px; }.dash-eyebrow { margin-bottom: 15px; }.dash-today { min-width: 155px; }.time { font-size: 36px; }.bento { gap: 16px; }.agenda,.lezioni,.voti,.media-generale,.assenze { padding: 20px; }.media-generale-container { width: 100px; height: 100px; }.media-generale-value-primo .media-generale-container,.media-generale-value-secondo .media-generale-container { width: 65px; height: 65px; }.media-generale-viewport { gap: 8px; }.media-generale-value { padding-right: 8px; } }
+@media (max-width: 680px) { .bento { grid-template-columns: minmax(0,1fr); grid-template-areas: 'media' 'agenda' 'lessons' 'grades' 'absences'; gap: 16px; }.dash-hero { display: block; }.dash-today { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border: 0; padding: 0; margin-top: 20px; min-width: 0; text-align: left; }.dash-today .date { font-size: 10px; }.time { font-size: 11px; letter-spacing: 0; margin: 0; color: #8badc0; padding-left: 10px; border-left: 1px solid var(--panel-line); }.dash-clock-label { display: none; }.greeting { font-size: 32px; }.dash-intro { font-size: 12px; }.dash-section-heading h2 { font-size: 17px; }.dash-section-heading > span { font-size: 10px; }.media-generale-viewport { min-height: 145px; }.media-generale-container { width: 112px; height: 112px; }.media-generale-value-primo .media-generale-container,.media-generale-value-secondo .media-generale-container { width: 74px; height: 74px; }.agenda-title,.lezioni-title,.voti-title,.media-generale-title,.assenze-title { font-size: 17px; }.assenze-viewport { min-height: 100px; max-height: 230px; }.lezioni-viewport,.voti-viewport { max-height: 410px; }.giorno { min-height: 160px; }.agenda-header,.lezioni-header,.voti-header,.media-generale-header,.assenze-header { margin-bottom: 20px; } }
+@media (max-width: 370px) { .agenda,.lezioni,.voti,.media-generale,.assenze { padding: 17px; }.media-generale-container { width: 94px; height: 94px; }.media-generale-value-primo .media-generale-container,.media-generale-value-secondo .media-generale-container { width: 63px; height: 63px; }.label { font-size: 9px; }.dash-section-heading > span { display: none; }.greeting { font-size: 29px; } }
+@media (prefers-reduced-motion: reduce) { .agenda-track { transition: none; } }

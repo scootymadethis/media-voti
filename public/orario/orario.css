@@ -1,6 +1,16 @@
-.orario-page-header { align-items: flex-start; }
-.orario-title span { color: #fecdd3; }
-.orario-class-picker { min-width: min(320px, 100%); }
+.orario-page-header { align-items: flex-end; margin: 0 0 44px; gap: 32px; }
+.orario-title { font-size: clamp(38px,4.5vw,64px); line-height: 1.04; letter-spacing: -.055em; }
+.orario-kicker { color: #60d7dc; letter-spacing: .17em; font-size: 10px; margin-bottom: 18px; }
+.orario-intro { color: var(--text-secondary); margin-top: 20px; max-width: 380px; line-height: 1.65; }
+.orario-class-picker { width: 310px; flex: none; padding: 22px; border-radius: 20px; background: var(--glass-bg); border: 1px solid var(--glass-border); backdrop-filter: blur(20px); }
+.orario-week-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+.orario-week-heading .page-kicker { font-size: 10px; letter-spacing: .14em; margin-bottom: 8px; }
+.orario-week-heading h2 { font-size: 23px; font-weight: 500; }
+#orarioClassTitle { color: #62d9dc; }
+.orario-live-key { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 11px; }
+.orario-live-key i { width: 6px; height: 6px; border-radius: 50%; background: #53d4cb; box-shadow: 0 0 12px rgba(83,212,203,.45); }
+.orario-bottom-note { display: flex; justify-content: space-between; gap: 24px; margin-top: 20px; color: var(--text-muted); font-size: 11px; }
+.orario-status:empty { display: none; }
 .orario-class-picker label {
   display: block;
   margin-bottom: 6px;
@@ -86,14 +96,14 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  padding: 14px 10px;
-  text-align: center;
-  font-weight: 700;
+  padding: 24px 16px;
+  text-align: left;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   font-size: 0.78rem;
   color: var(--text-secondary);
-  background: rgba(16, 16, 20, 0.9);
+  background: rgba(27, 53, 73, 0.65);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .orario-day-col.is-today .orario-day-head {
@@ -101,33 +111,34 @@
   box-shadow: inset 0 -2px 0 var(--brand-red);
 }
 .orario-slot {
-  min-height: 92px;
-  padding: 10px 12px 12px;
+  min-height: 120px;
+  padding: 20px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   transition: background var(--motion-fast) var(--ease-out);
 }
 .orario-slot:hover { background: rgba(255, 255, 255, 0.03); }
-.orario-slot-time { margin-bottom: 4px; color: var(--text-muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; font-weight: 700; }
-.orario-slot-body { font-weight: 700; line-height: 1.35; }
+.orario-slot-time { margin-bottom: 12px; color: var(--text-muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.orario-slot-body { font-weight: 500; line-height: 1.5; font-size: 13px; overflow-wrap: anywhere; }
 .orario-slot-support { margin-top: 4px; color: var(--text-secondary); font-size: 0.78rem; }
 .orario-slot.is-empty .orario-slot-body { color: var(--text-muted); font-weight: 500; }
 .orario-slot.is-now {
-  background: linear-gradient(90deg, rgba(225, 29, 46, 0.16), transparent 80%);
+  background: linear-gradient(90deg, rgba(8, 174, 185, 0.16), transparent 80%);
   box-shadow: inset 2px 0 0 var(--brand-red);
-  animation: lesson-breathe 2.8s ease-in-out infinite;
 }
-.orario-slot.is-now .orario-slot-time { color: #fecdd3; }
+.orario-slot.is-now .orario-slot-time { color: #72e4df; }
 .orario-empty-state { padding: 28px 16px; text-align: center; color: var(--text-secondary); }
 @keyframes lesson-breathe {
   0%, 100% { box-shadow: inset 2px 0 0 var(--brand-red); }
-  50% { box-shadow: inset 2px 0 0 var(--brand-red), inset 0 0 24px rgba(225, 29, 46, 0.08); }
+  50% { box-shadow: inset 2px 0 0 var(--brand-red), inset 0 0 24px rgba(8, 174, 185, 0.08); }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1100px) {
   .orario-page-header { flex-direction: column; align-items: stretch; }
   .orario-class-picker { width: 100%; }
   .orario-scroll-hint { display: block; }
   .orario-grid { min-width: 760px; }
+  .orario-bottom-note { flex-direction: column; gap: 8px; }
+  .orario-live-key { max-width: 95px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .orario-slot.is-now { animation: none; }

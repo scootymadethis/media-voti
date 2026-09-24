@@ -3,15 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Aulera</title>
-    <link rel="stylesheet" href="/common.css?v=21" />
+    <link rel="icon" type="image/png" href="/assets/logo-aulera.png" />
+    <title>Aulera — Home</title>
+    <link rel="stylesheet" href="/common.css?v=30" />
     <link rel="stylesheet" href="/announcement-modal.css?v=4" />
-    <link rel="stylesheet" href="dashboard.css?v=7" />
+    <link rel="stylesheet" href="dashboard.css?v=8" />
   </head>
-  <body>
+  <body class="app-workspace">
     <header class="navbar has-menu">
       <div class="navbar-brand">
-        <div class="navbar-brand-mark" onclick="goToHome()">Au</div>
+        <img class="navbar-brand-mark" src="/assets/logo-aulera.png" alt="" aria-hidden="true" onclick="goToHome()" />
         <div>
           <h1 class="title" onclick="goToHome()">Aulera</h1>
         </div>
@@ -51,24 +52,15 @@
 
     <div class="main dash">
       <header class="dash-hero" data-reveal>
-        <div>
-          <h1 class="greeting" id="greeting"></h1>
-          <p class="date" id="date"></p>
-        </div>
-        <p class="time" id="time"></p>
+        <div class="dash-welcome"><p class="dash-eyebrow"><span></span> IL TUO SPAZIO SCUOLA</p><h1 class="greeting" id="greeting">La tua giornata.</h1><p class="dash-intro">Tutto quello che ti serve, in un colpo d'occhio.</p></div>
+        <div class="dash-today"><p class="date" id="date"></p><p class="time" id="time"></p><span class="dash-clock-label">IL TEMPO DI OGGI</span></div>
       </header>
+      <div class="dash-section-heading" data-reveal><h2>Il tuo percorso</h2><span>Una visione d'insieme</span></div>
 
       <div class="bento">
-        <section class="lezioni bento-lessons" id="lezioni" data-reveal>
-          <div class="lezioni-header">
-            <h2 class="lezioni-title">Lezioni di oggi</h2>
-          </div>
-          <div class="lezioni-viewport"><div class="lezioni-track"></div></div>
-        </section>
-
         <section class="media-generale bento-media" id="media-generale" data-reveal>
           <div class="media-generale-header">
-            <h2 class="media-generale-title">Media</h2>
+            <div><p class="panel-eyebrow">IL RENDIMENTO</p><h2 class="media-generale-title">Le tue medie</h2></div>
             <button type="button" class="media-generale-open" data-open-voti aria-label="Apri voti">›</button>
           </div>
           <div class="media-generale-viewport">
@@ -80,7 +72,7 @@
 
         <section class="assenze bento-absences" id="assenze" data-reveal>
           <div class="assenze-header">
-            <h2 class="assenze-title">Assenze</h2>
+            <div><p class="panel-eyebrow">LA FREQUENZA</p><h2 class="assenze-title">Assenze e ritardi</h2></div>
             <button type="button" class="assenze-open" id="openAssenzePage" aria-label="Apri assenze" onclick="goToAssenze()">›</button>
           </div>
           <div class="assenze-viewport"><div class="assenze-track"></div></div>
@@ -88,7 +80,7 @@
 
         <section class="agenda bento-agenda" id="agenda" data-reveal>
           <div class="agenda-header">
-            <h2 class="agenda-title">Prossimi eventi</h2>
+            <div><p class="panel-eyebrow">ORGANIZZA LA SETTIMANA</p><h2 class="agenda-title">La tua agenda</h2></div>
             <div class="agenda-controls">
               <button id="prevWeek" class="agenda-arrow" aria-label="Indietro">‹</button>
               <button id="nextWeek" class="agenda-arrow" aria-label="Avanti">›</button>
@@ -105,9 +97,16 @@
           </div>
         </section>
 
+        <section class="lezioni bento-lessons" id="lezioni" data-reveal>
+          <div class="lezioni-header">
+            <div><p class="panel-eyebrow">IN CLASSE</p><h2 class="lezioni-title">Lezioni di oggi</h2></div><a class="panel-text-link" href="/orario/">Orario <span aria-hidden="true">↗</span></a>
+          </div>
+          <div class="lezioni-viewport"><div class="lezioni-track"></div></div>
+        </section>
+
         <section class="voti bento-grades" id="voti" data-reveal>
           <div class="voti-header">
-            <h2 class="voti-title">Voti recenti</h2>
+            <div><p class="panel-eyebrow">GLI ULTIMI RISULTATI</p><h2 class="voti-title">Voti recenti</h2></div>
             <button type="button" class="voti-open" data-open-voti aria-label="Apri voti">›</button>
           </div>
           <div class="voti-viewport"><div class="voti-track"></div></div>
@@ -149,11 +148,11 @@
     <script src="/session-auth.js?v=3"></script>
     <script src="/config.js?v=2"></script>
     <script src="/loading.js?v=2"></script>
-    <script src="/nav.js?v=4"></script>
-    <script src="/motion.js?v=1"></script>
+    <script src="/nav.js?v=5"></script>
+    <script src="/motion.js?v=3"></script>
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
     <script src="/nuovo-voto.js?v=1"></script>
-    <script src="dashboard.js?v=14"></script>
+    <script src="dashboard.js?v=30"></script>
   </body>
 </html>

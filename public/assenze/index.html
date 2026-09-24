@@ -3,15 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="icon" type="image/png" href="/assets/logo-aulera.png" />
     <title>Aulera — Assenze</title>
-    <link rel="stylesheet" href="/common.css?v=21" />
+    <link rel="stylesheet" href="/common.css?v=30" />
     <link rel="stylesheet" href="/announcement-modal.css?v=4" />
-    <link rel="stylesheet" href="assenze.css?v=7" />
+    <link rel="stylesheet" href="assenze.css?v=8" />
   </head>
-  <body>
+  <body class="app-workspace">
     <header class="navbar has-menu">
       <div class="navbar-brand">
-        <div class="navbar-brand-mark" onclick="goToHome()">Au</div>
+        <img class="navbar-brand-mark" src="/assets/logo-aulera.png" alt="" aria-hidden="true" onclick="goToHome()" />
         <div><h1 class="title" onclick="goToHome()">Aulera</h1></div>
       </div>
       <nav class="buttons nav-center" aria-label="Navigazione principale">
@@ -45,36 +46,36 @@
       </nav>
     </aside>
 
-    <div class="main">
+    <main class="main attendance-page">
       <header class="page-header" data-reveal>
         <div>
-          <h1 class="page-title">Assenze</h1>
+          <p class="page-eyebrow">Presenze &amp; assenze</p><h1 class="page-title">Il tempo a scuola,<br>tutto in ordine.</h1><p class="page-intro">Il riepilogo delle ore e la cronologia del tuo anno scolastico.</p>
           <p id="schoolYearNote" class="school-year-note" hidden></p>
         </div>
         <div id="schoolYearSwitcher" class="school-year-switcher" hidden></div>
       </header>
 
+      <section class="attendance-summary" aria-label="Riepilogo delle assenze" data-reveal><div class="summary-intro"><span class="section-kicker">Il tuo anno</span><h2>Il riepilogo</h2><p>Ore, eventi e giustificazioni<br>in un unico posto.</p></div><div class="absence-stats" id="absenceStats"></div></section>
+      <div class="attendance-workspace">
       <section class="absence-surface" id="personalAbsences" data-reveal>
         <header class="module-header">
-          <h2 class="module-title">Le tue assenze</h2>
+          <div><span class="section-kicker">Il registro personale</span><h2 class="module-title">La tua cronologia</h2></div>
           <div id="assenzeExportActions" class="export-actions"></div>
         </header>
-        <div class="absence-stats" id="absenceStats"></div>
+
         <div id="absenceTimeline" class="absence-timeline"></div>
       </section>
 
       <section class="leaderboard-shell" data-reveal>
         <div class="leaderboard-header">
           <div>
-            <h2 class="leaderboard-title">Classifica ore di assenza</h2>
-            <p class="leaderboard-subtitle">Ordinata dalle ore maggiori alle minori</p>
+            <span class="section-kicker">La community</span><h2 class="leaderboard-title">Ore a confronto</h2>
+            <p class="leaderboard-subtitle">Classifica delle assenze, dalle ore maggiori alle minori</p>
           </div>
           <div class="leaderboard-badge" id="myHoursBadge">-- ore</div>
         </div>
 
-        <p class="leaderboard-warning">
-          Attenzione: le ore potrebbero non essere precise al 100%, perché alcuni eventi del registro possono essere interpretati in modo diverso o non contenere tutte le informazioni necessarie.
-        </p>
+        <details class="attendance-data-note"><summary>Come vengono calcolate le ore?</summary><p class="leaderboard-warning">Le ore potrebbero non essere precise al 100%: alcuni eventi del registro possono essere interpretati in modo diverso o non contenere tutte le informazioni necessarie.</p></details>
 
         <div class="leaderboard-tools">
           <div class="leaderboard-tabs segmented" aria-label="Tipo classifica">
@@ -102,10 +103,11 @@
           <button id="nextPageBtn" class="btn-secondary" type="button">Successiva</button>
         </div>
       </section>
-    </div>
+      </div>
+    </main>
 
     <div id="entryModal" class="modal" aria-hidden="true">
-      <div class="modal-content">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="entryModalTitle">
         <div class="modal-header">
           <h3 id="entryModalTitle" class="modal-subject">Dettagli</h3>
           <button id="entryModalClose" class="modal-close" aria-label="Chiudi">✕</button>
@@ -138,10 +140,10 @@
     <script src="/loading.js?v=1"></script>
     <script src="/school-year.js?v=2"></script>
     <script src="/export-data.js?v=2"></script>
-    <script src="/nav.js?v=4"></script>
-    <script src="/motion.js?v=1"></script>
+    <script src="/nav.js?v=5"></script>
+    <script src="/motion.js?v=3"></script>
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
-    <script src="assenze.js?v=13"></script>
+    <script src="assenze.js?v=30"></script>
   </body>
 </html>

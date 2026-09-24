@@ -2,16 +2,17 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="icon" type="image/png" href="/assets/logo-aulera.png" />
     <title>Aulera — Admin</title>
-    <link rel="stylesheet" href="/common.css?v=21" />
+    <link rel="stylesheet" href="/common.css?v=30" />
     <link rel="stylesheet" href="/announcement-modal.css?v=4" />
-    <link rel="stylesheet" href="admin.css?v=5" />
+    <link rel="stylesheet" href="admin.css?v=30" />
   </head>
-  <body>
+  <body class="app-workspace">
     <header class="navbar has-menu">
       <div class="navbar-brand">
-        <div class="navbar-brand-mark" onclick="goToHome()">Au</div>
+        <img class="navbar-brand-mark" src="/assets/logo-aulera.png" alt="" aria-hidden="true" onclick="goToHome()" />
         <div><h1 class="title" onclick="goToHome()">Aulera</h1></div>
       </div>
       <nav class="buttons nav-center" aria-label="Navigazione principale">
@@ -61,6 +62,7 @@
 
     <section id="adminGate" class="admin-gate page-shell">
       <div class="admin-gate-card">
+        <p class="page-kicker">AREA RISERVATA</p>
         <h2>Accesso admin</h2>
         <p id="adminGateSubtitle">
           Conferma la password ClasseViva per aprire il pannello.
@@ -87,7 +89,8 @@
     <main id="adminDashboard" class="admin-dashboard hidden page-shell">
       <header class="admin-header">
         <div>
-          <h1>Pannello amministratore</h1>
+          <p class="page-kicker">IL CENTRO DI CONTROLLO</p>
+          <h1>Dietro le quinte.</h1>
           <p id="adminWelcome">Gestione classifiche e monitoraggio sistema.</p>
         </div>
         <button
@@ -295,8 +298,8 @@
     <script src="/session-auth.js?v=3"></script>
     <script src="/config.js?v=2"></script>
     <script src="/loading.js?v=1"></script>
-    <script src="/nav.js?v=4"></script>
-    <script src="/motion.js?v=1"></script>
+    <script src="/nav.js?v=5"></script>
+    <script src="/motion.js?v=3"></script>
     <script src="/easter-egg.js?v=2"></script>
     <script src="/announcement-modal.js?v=2"></script>
     <script src="admin.js?v=7"></script>

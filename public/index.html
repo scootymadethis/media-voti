@@ -2,89 +2,60 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="icon" type="image/png" href="/assets/logo-aulera.png" />
     <title>Aulera</title>
-    <link rel="stylesheet" href="/common.css?v=21" />
-    <link rel="stylesheet" href="style.css?v=6" />
+    <link rel="stylesheet" href="/common.css?v=30" />
+    <link rel="stylesheet" href="style.css?v=8" />
   </head>
   <body class="auth-page">
-    <header class="auth-brand" data-reveal>
-      <div class="auth-mark">Au</div>
-      <h1 class="title">Aulera</h1>
-      <p class="auth-kicker">Il registro, con un'altra luce.</p>
-    </header>
-
-    <form id="loginForm" class="login" data-reveal>
-      <h2 class="login-text">Entra nel registro</h2>
-      <div class="fields">
-        <input
-          type="text"
-          id="username"
-          name="username"
-          class="username"
-          placeholder="Inserisci il tuo username..."
-          autocomplete="username"
-          required
-        />
-        <div class="password-field">
-          <input
-            type="password"
-            id="password"
-            name="password"
-            class="password"
-            placeholder="Inserisci la tua password..."
-            autocomplete="current-password"
-            required
-          />
-          <button
-            type="button"
-            id="togglePassword"
-            class="toggle-password"
-            aria-label="Mostra password"
-            aria-pressed="false"
-          >
-            Mostra
-          </button>
+    <main class="auth-layout">
+      <section class="auth-story" aria-labelledby="auth-story-title" data-reveal>
+        <header class="auth-brand">
+          <div class="auth-logo-crop"><img class="auth-logo" src="/assets/logo-aulera-esteso.png" alt="Aulera" /></div>
+          <span class="auth-brand-caption">IL TUO SPAZIO SCUOLA</span>
+        </header>
+        <div class="auth-story-copy">
+          <p class="auth-kicker">Un nuovo punto di vista.</p>
+          <h1 id="auth-story-title">La scuola,<br />con una visione<br /><span>d'insieme.</span></h1>
+          <p class="auth-description">Lezioni, voti e impegni. Ritrova il filo della tua giornata in uno spazio pensato per te.</p>
         </div>
-      </div>
-      <p class="gestione-credenziali-text"></p>
-
-      <span class="login-consent">
-        <div class="checkbox-container">
-          <label class="ios-checkbox red">
-            <input type="checkbox" required />
-            <div class="checkbox-wrapper">
-              <div class="checkbox-bg"></div>
-              <svg class="checkbox-icon" viewBox="0 0 24 24" fill="none">
-                <path
-                  class="check-path"
-                  d="M4 12L10 18L20 6"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ></path>
-              </svg>
-            </div>
-          </label>
+        <div class="auth-illustration" aria-hidden="true">
+          <div class="auth-orbit auth-orbit-one"></div><div class="auth-orbit auth-orbit-two"></div>
+          <div class="auth-emblem"><div class="auth-mark-crop"><img src="/assets/logo-aulera.png" alt="" /></div></div>
+          <div class="story-tile story-tile-agenda"><span class="story-tile-icon">↗</span><div><strong>La tua agenda</strong><span>Spazio a ogni impegno</span></div></div>
+          <div class="story-tile story-tile-voti"><span class="story-tile-icon">▥</span><div><strong>Il tuo percorso</strong><span>Ogni progresso conta</span></div></div>
+          <span class="orbit-point orbit-point-one"></span><span class="orbit-point orbit-point-two"></span>
         </div>
-        <p>
-          Ho letto e accetto
-          <button type="button" class="text-link credenziali-model-open">
-            l'informativa sul trattamento dei dati
-          </button>
-        </p>
-      </span>
-      <input type="submit" class="login-btn" value="Accedi" />
-      <p id="loginMsg"></p>
-    </form>
+        <div class="auth-story-footer"><span class="story-status-dot"></span> Più chiarezza. Ogni giorno.</div>
+      </section>
+      <section class="auth-access" aria-labelledby="login-title">
+        <div class="auth-access-top"><span>AULERA / ACCESSO</span><span class="access-dot" aria-hidden="true"></span></div>
+        <form id="loginForm" class="login" data-reveal>
+          <div class="login-heading"><span class="login-eyebrow">IL TUO REGISTRO, A PORTATA DI MANO</span><h2 id="login-title" class="login-text">Bentornato.</h2><p>Accedi con le credenziali del tuo registro elettronico.</p></div>
+          <div class="fields">
+            <div class="field-group"><label for="username">Username</label><input type="text" id="username" name="username" class="username" placeholder="Il tuo username" autocomplete="username" required /></div>
+            <div class="field-group"><label for="password">Password</label><div class="password-field"><input type="password" id="password" name="password" class="password" placeholder="La tua password" autocomplete="current-password" required /><button type="button" id="togglePassword" class="toggle-password" aria-label="Mostra password" aria-pressed="false">Mostra</button></div></div>
+          </div>
+          <p class="gestione-credenziali-text"></p>
+          <div class="login-consent">
+            <div class="checkbox-container"><label class="ios-checkbox red"><input type="checkbox" required aria-label="Accetto l'informativa sul trattamento dei dati" /><div class="checkbox-wrapper"><div class="checkbox-bg"></div><svg class="checkbox-icon" viewBox="0 0 24 24" fill="none"><path class="check-path" d="M4 12L10 18L20 6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></label></div>
+            <p>Ho letto e accetto <button type="button" class="text-link credenziali-model-open">l'informativa sul trattamento dei dati</button></p>
+          </div>
+          <input type="submit" class="login-btn" value="Accedi al tuo spazio" />
+          <p id="loginMsg" role="status" aria-live="polite"></p>
+          <div class="login-footnote"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Le credenziali vengono utilizzate solo per accedere al registro.</span></div>
+        </form>
+        <p class="auth-access-bottom">Uno spazio semplice, per una giornata più chiara.</p>
+      </section>
+    </main>
 
     <div id="credenzialiModal" class="modal" aria-hidden="true">
       <div
         class="modal-content"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="entryModalTitle"
+        aria-labelledby="credenzialiModalTitle"
       >
         <div class="modal-header">
           <h2 id="credenzialiModalTitle">
@@ -204,7 +175,7 @@
     </div>
     <script src="/session-auth.js?v=3"></script>
     <script src="/config.js?v=2"></script>
-    <script src="/motion.js?v=1"></script>
+    <script src="/motion.js?v=3"></script>
     <script src="app.js?v=5"></script>
   </body>
 </html>

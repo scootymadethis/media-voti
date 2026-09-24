@@ -1,6 +1,8 @@
-.admin-gate { min-height: 60vh; display: grid; place-items: center; }
+.admin-gate { min-height: 76vh; display: grid; place-items: center; }
+.admin-gate > .workspace-topline { align-self: start; width: 100%; }
+.admin-header .page-kicker, .admin-gate .page-kicker { color: #70d9de; font-size: 10px; letter-spacing: .16em; margin-bottom: 16px; }
 .admin-gate-card, .admin-panel.active, .admin-badge-card, .admin-announcement-form {
-  padding: 18px;
+  padding: 28px;
   border-radius: var(--radius-lg);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 20%),
@@ -30,17 +32,20 @@
   gap: 12px;
   margin-bottom: 14px;
 }
-.admin-header h1 { font-size: clamp(1.6rem, 3vw, 2.2rem); }
-.admin-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.admin-header h1 { font-size: clamp(38px, 4vw, 56px); font-weight: 500; margin-bottom: 16px; }
+.admin-header { margin-bottom: 38px; }
+.admin-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 28px; }
 .admin-stat {
-  padding: 12px 14px;
+  padding: 24px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--glass-border);
 }
 .admin-stat .label { color: var(--text-secondary); font-size: 0.78rem; }
-.admin-stat .value { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.admin-tabs { margin-bottom: 14px; flex-wrap: wrap; }
+.admin-stat .value { font-size: 2.4rem; font-weight: 500; font-variant-numeric: tabular-nums; margin-top: 12px; }
+.admin-tabs { margin-bottom: 24px; flex-wrap: wrap; border-radius: 16px; gap: 6px; }
+.admin-tabs .segmented-indicator { display: none; }
+.admin-tabs > .active { background: var(--brand-subtle); color: #76e4e0; }
 .admin-tab { border: 0; background: transparent; }
 .admin-panel.active { display: block; }
 .admin-ws-status { color: var(--text-secondary); font-size: 0.85rem; }
@@ -93,7 +98,7 @@
 .admin-user-badges { display: flex; flex-wrap: wrap; gap: 4px; }
 .admin-announcement-form { display: flex; flex-direction: column; gap: 12px; }
 .admin-announcement-preview { margin-top: 8px; }
-.announcement-body a { color: #fecdd3; }
+.announcement-body a { color: #76e4e0; }
 
 @media (max-width: 900px) {
   .admin-stats, .admin-badge-layout { grid-template-columns: 1fr 1fr; }

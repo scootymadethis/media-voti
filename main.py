@@ -25,6 +25,7 @@ import json
 import hashlib
 import copy
 import requests
+import unicodedata
 from math import ceil
 from datetime import date, datetime, timedelta
 from threading import Lock
@@ -3237,6 +3238,116 @@ def filter_entries_by_search_query(entries: list[dict], query: Optional[str]) ->
     return filtered
 
 
+def normalize_student_name(value: Any) -> str:
+    """Normalizza nome e cognome per confrontare profili storici senza distinzione di accenti."""
+    decomposed = unicodedata.normalize("NFKD", str(value or "").casefold())
+    plain = "".join(char for char in decomposed if not unicodedata.combining(char))
+    return " ".join(re.findall(r"[a-z0-9]+", plain))
+
+
+def current_student_full_name(u: Utente) -> Optional[str]:
+    """Nome della sessione corrente, senza usare nomi modificabili delle classifiche."""
+    with sessions_lock:
+        for sess in sessions.values():
+            if sess.get("user") is u:
+                card_cache = sess.get("card_cache")
+                if card_cache:
+                    fields = extract_student_card_fields(card_cache[1])
+                    name = f"{(fields.get('firstName') or '').strip()} {(fields.get('lastName') or '').strip()}".strip()
+                    if name:
+                        return name
+                me_cache = sess.get("me_cache")
+                if me_cache and isinstance(me_cache[1], dict) and me_cache[1].get("full_name"):
+                    return str(me_cache[1]["full_name"]).strip() or None
+                profile = sess.get("profile")
+                if isinstance(profile, dict) and profile.get("full_name"):
+                    return str(profile["full_name"]).strip() or None
+                break
+    return None
+
+
+def find_historical_class_profile(
+    *, year: str, username: str, ident: Optional[Any], full_name: Optional[str]
+) -> Optional[dict]:
+    """Trova solo l'ambito della classifica pubblica, mai l'accesso a dati personali."""
+    aliases = username_aliases(username, ident)
+    with get_db_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT username, full_name, class_code, school_code, updated_at FROM leaderboard_entries
+            WHERE school_year = ?
+            UNION ALL
+            SELECT username, full_name, class_code, school_code, updated_at FROM average_leaderboard_entries_scoped
+            WHERE school_year = ?
+            ORDER BY updated_at DESC
+            """,
+            (year, year),
+        ).fetchall()
+
+    if not rows:
+        return None
+
+    direct_username = normalize_username(username)
+    direct_matches = [
+        row for row in rows
+        if direct_username and normalize_username(row["username"]) == direct_username
+    ]
+    alias_matches = [
+        row for row in rows
+        if normalize_username(row["username"]) in aliases
+    ]
+    alias_usernames = {normalize_username(row["username"]) for row in alias_matches}
+    expected_name = normalize_student_name(full_name)
+    if direct_matches:
+        matches = direct_matches
+    elif alias_matches:
+        # Gli alias numerici possono collidere: non aggirare l'ambiguità con il nome.
+        if len(alias_usernames) != 1:
+            return None
+        if expected_name and any(
+            normalize_student_name(row["full_name"]) not in {"", expected_name}
+            for row in alias_matches
+        ):
+            return None
+        matches = alias_matches
+    else:
+        matches = []
+        if expected_name:
+            matches = [
+                row for row in rows
+                if normalize_student_name(row["full_name"]) == expected_name
+            ]
+            # Anche due omonimi nella stessa classe restano due identità diverse.
+            if len({normalize_username(row["username"]) for row in matches}) != 1:
+                return None
+            scopes = {
+                (
+                    normalize_class_code(row["class_code"]),
+                    str(row["school_code"] or "").strip().upper() or None,
+                )
+                for row in matches
+            }
+            if len(scopes) != 1:
+                return None
+
+    if not matches:
+        return None
+
+    match = matches[0]
+    class_code = normalize_class_code(match["class_code"])
+    school_code = str(match["school_code"] or "").strip().upper() or None
+    if not class_code or not school_code:
+        # Senza il codice scuola non si può distinguere in modo affidabile
+        # una classe omonima in un altro istituto.
+        return None
+    return {
+        "username": str(match["username"] or "").strip(),
+        "full_name": match["full_name"],
+        "class_code": class_code,
+        "school_code": school_code,
+    }
+
+
 @app.get("/leaderboard")
 def get_leaderboard(
     type: str = Query(default="global"),
@@ -3257,20 +3368,41 @@ def get_leaderboard(
 
         normalized_class = class_code.strip().upper() if class_code else None
         normalized_school = school_code.strip().upper() if school_code else None
+        historical_profile = None
+        class_scope_available = True
+
+        if type == "class" and year != current_school_year():
+            historical_profile = find_historical_class_profile(
+                year=year,
+                username=get_session_username(u),
+                ident=getattr(u, "ident", None),
+                full_name=current_student_full_name(u),
+            )
+            if historical_profile:
+                normalized_class = historical_profile["class_code"]
+                normalized_school = historical_profile["school_code"]
+            else:
+                # Non mostrare la classe attuale con dati di un altro anno.
+                normalized_class = None
+                normalized_school = None
+                class_scope_available = False
 
         entries = [entry for entry in entries if entry.get("visible_in_leaderboard", True)]
 
         if type == "class":
-            if not normalized_class:
+            if not normalized_class and class_scope_available:
                 raise HTTPException(status_code=400, detail="class_code richiesto per la classifica di classe")
-            entries = [
-                entry for entry in entries
-                if (entry.get("class_code") or "").upper() == normalized_class
-                and (
-                    normalized_school is None
-                    or (entry.get("school_code") or "").upper() == normalized_school
-                )
-            ]
+            if class_scope_available:
+                entries = [
+                    entry for entry in entries
+                    if normalize_class_code(entry.get("class_code")) == normalized_class
+                    and (
+                        normalized_school is None
+                        or (entry.get("school_code") or "").upper() == normalized_school
+                    )
+                ]
+            else:
+                entries = []
 
         entries.sort(key=lambda x: (-float(x.get("hours", 0)), x.get("username", "").lower()))
         entries = filter_entries_by_search_query(entries, q)
@@ -3286,9 +3418,15 @@ def get_leaderboard(
         page_items = entries[start_idx:end_idx]
 
         current_aliases = username_aliases(get_session_username(u), getattr(u, "ident", None))
+        historical_username = normalize_username((historical_profile or {}).get("username"))
         enriched_items = []
         for idx, item in enumerate(page_items, start=start_idx + 1):
-            item_is_me = normalize_username(item.get("username")) in current_aliases
+            item_username = normalize_username(item.get("username"))
+            item_is_me = (
+                bool(historical_username and item_username == historical_username)
+                if type == "class" and year != current_school_year()
+                else item_username in current_aliases
+            )
             enriched_items.append(
                 {
                     "rank": idx,
@@ -3311,6 +3449,7 @@ def get_leaderboard(
             "school_year": year,
             "class_code": normalized_class if type == "class" else None,
             "school_code": normalized_school if type == "class" else None,
+            "class_scope_available": class_scope_available if type == "class" else None,
             "page": page,
             "page_size": page_size,
             "total_items": total_items,
@@ -3599,20 +3738,41 @@ def get_average_leaderboard(
         normalized_school = school_code.strip().upper() if school_code else None
         normalized_subject = subject_name.strip()
         normalized_period_key = period_key.strip().lower()
+        historical_profile = None
+        class_scope_available = True
+
+        if type == "class" and year != current_school_year():
+            historical_profile = find_historical_class_profile(
+                year=year,
+                username=get_session_username(u),
+                ident=getattr(u, "ident", None),
+                full_name=current_student_full_name(u),
+            )
+            if historical_profile:
+                normalized_class = historical_profile["class_code"]
+                normalized_school = historical_profile["school_code"]
+            else:
+                # Non mostrare la classe attuale con dati di un altro anno.
+                normalized_class = None
+                normalized_school = None
+                class_scope_available = False
 
         entries = [entry for entry in entries if entry.get("visible_in_leaderboard", True)]
 
         if type == "class":
-            if not normalized_class:
+            if not normalized_class and class_scope_available:
                 raise HTTPException(status_code=400, detail="class_code richiesto per la classifica di classe")
-            entries = [
-                entry for entry in entries
-                if (entry.get("class_code") or "").upper() == normalized_class
-                and (
-                    normalized_school is None
-                    or (entry.get("school_code") or "").upper() == normalized_school
-                )
-            ]
+            if class_scope_available:
+                entries = [
+                    entry for entry in entries
+                    if normalize_class_code(entry.get("class_code")) == normalized_class
+                    and (
+                        normalized_school is None
+                        or (entry.get("school_code") or "").upper() == normalized_school
+                    )
+                ]
+            else:
+                entries = []
 
         entries.sort(key=lambda x: (-float(x.get("average", 0)), x.get("username", "").lower()))
         entries = filter_entries_by_search_query(entries, q)
@@ -3628,9 +3788,15 @@ def get_average_leaderboard(
         page_items = entries[start_idx:end_idx]
 
         current_aliases = username_aliases(get_session_username(u), getattr(u, "ident", None))
+        historical_username = normalize_username((historical_profile or {}).get("username"))
         enriched_items = []
         for idx, item in enumerate(page_items, start=start_idx + 1):
-            item_is_me = normalize_username(item.get("username")) in current_aliases
+            item_username = normalize_username(item.get("username"))
+            item_is_me = (
+                bool(historical_username and item_username == historical_username)
+                if type == "class" and year != current_school_year()
+                else item_username in current_aliases
+            )
             enriched_items.append(
                 {
                     "rank": idx,
@@ -3656,6 +3822,7 @@ def get_average_leaderboard(
             "school_year": year,
             "class_code": normalized_class if type == "class" else None,
             "school_code": normalized_school if type == "class" else None,
+            "class_scope_available": class_scope_available if type == "class" else None,
             "subject_name": normalized_subject,
             "period_key": normalized_period_key,
             "period_label": page_items[0].get("period_label") if page_items else normalized_period_key,

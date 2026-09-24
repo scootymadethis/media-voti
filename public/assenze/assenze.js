@@ -676,13 +676,13 @@ function renderLeaderboard(data) {
   const totalPages = data?.total_pages ?? 1;
   const totalItems = data?.total_items ?? 0;
   const scope = data?.scope ?? currentLeaderboardType;
-  const classCode = data?.class_code ?? myClassCode ?? null;
+  const classCode = data?.class_scope_available === false ? null : (data?.class_code ?? myClassCode ?? null);
 
   if (meta) {
     const searchSuffix = data?.search_query ? ` · Ricerca: "${data.search_query}"` : "";
     meta.textContent =
       scope === "class"
-        ? `Classifica della tua classe${classCode ? ` (${classCode})` : ""} · ${totalItems} studenti${searchSuffix}`
+        ? (data?.class_scope_available === false ? "Classe storica non disponibile" : `Classifica della tua classe${classCode ? ` (${classCode})` : ""} · ${totalItems} studenti${searchSuffix}`)
         : `Classifica globale · ${totalItems} studenti${searchSuffix}`;
   }
 
@@ -691,7 +691,11 @@ function renderLeaderboard(data) {
   if (nextPageBtn) nextPageBtn.disabled = page >= totalPages;
 
   if (!items.length) {
-    renderLeaderboardEmpty("Nessun dato disponibile per questa classifica.");
+    renderLeaderboardEmpty(
+      data?.class_scope_available === false
+        ? "Non troviamo una classe associata al tuo profilo per questo anno scolastico."
+        : "Nessun dato disponibile per questa classifica.",
+    );
     return;
   }
 

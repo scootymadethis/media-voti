@@ -81,6 +81,59 @@
 
   function decorateNavigation() {
     document.querySelectorAll(".navbar .nav-link, .nav-drawer .nav-link").forEach(decorateNavButton);
+    document.querySelectorAll(".nav-link.is-current").forEach((button) => button.setAttribute("aria-current", "page"));
+  }
+
+  function buildWorkspace() {
+    const nav = document.querySelector(".navbar");
+    if (!nav) return;
+    document.body.classList.add("app-workspace");
+    const mark = '<span class="brand-symbol"><img src="/assets/logo-aulera.png" alt="" /></span>';
+    nav.querySelector(".navbar-brand").innerHTML = `<a class="brand-home" href="/dashboard/" aria-label="Aulera, home">${mark}<span><span class="brand-word">Aulera</span><span class="brand-caption">Il tuo spazio scuola</span></span></a>`;
+    const label = document.createElement("p");
+    label.className = "nav-section-label";
+    label.textContent = "Il tuo registro";
+    nav.querySelector(".nav-center").before(label);
+    const note = document.createElement("div");
+    note.className = "sidebar-note";
+    note.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="m12 3 2.3 6.7L21 12l-6.7 2.3L12 21l-2.3-6.7L3 12l6.7-2.3Z"/></svg><strong>Un po’ più di chiarezza.</strong>La tua giornata scolastica,<br>vista da un’altra prospettiva.';
+    nav.querySelector(".navbar-actions").before(note);
+    const pageName = document.title.split("—").pop().trim();
+    document.querySelectorAll(".main, .page-shell, .game-shell").forEach((main) => {
+      if (main.parentElement !== document.body) return;
+      const line = document.createElement("div");
+      line.className = "workspace-topline";
+      const crumbs = document.createElement("div");
+      crumbs.className = "workspace-breadcrumb";
+      crumbs.innerHTML = '<a href="/dashboard/">Il tuo spazio</a><span aria-hidden="true">/</span>';
+      const name = document.createElement("span");
+      name.textContent = pageName;
+      crumbs.append(name);
+      const mobile = document.createElement("a");
+      mobile.href = "/dashboard/";
+      mobile.className = "mobile-brand";
+      mobile.innerHTML = `${mark}<span>Aulera</span>`;
+      const date = document.createElement("time");
+      date.className = "workspace-date";
+      const now = new Date();
+      date.dateTime = now.toISOString();
+      date.textContent = now.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
+      line.append(crumbs, mobile, date);
+      main.prepend(line);
+    });
+    const drawer = document.getElementById("mobileNavDrawer");
+    const toggle = document.getElementById("navToggle");
+    if (drawer && toggle) {
+      const syncDrawer = () => { drawer.inert = !drawer.classList.contains("open"); };
+      syncDrawer();
+      new MutationObserver(syncDrawer).observe(drawer, { attributes: true, attributeFilter: ["class"] });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && drawer.classList.contains("open")) {
+          document.getElementById("navDrawerClose")?.click();
+          toggle.focus();
+        }
+      });
+    }
   }
 
   window.goToAdmin = function goToAdmin() {
@@ -93,6 +146,7 @@
   };
 
   document.addEventListener("DOMContentLoaded", () => {
+    buildWorkspace();
     decorateNavigation();
     if (typeof window.initAdminNav === "function") {
       window.initAdminNav();

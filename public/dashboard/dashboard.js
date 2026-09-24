@@ -508,7 +508,7 @@ function renderLezioni(data) {
     const teacherEl = document.createElement("span");
     teacherEl.className = "teacher";
     teacherEl.textContent =
-      teacher && String(teacher).trim() ? teacher : "Malacchini Daniela";
+      teacher && String(teacher).trim() ? teacher : "Docente non disponibile";
 
     const textEl = document.createElement("span");
     textEl.className = "text";
@@ -848,7 +848,7 @@ function openEntryModal(subject, text, teacher) {
   const teacherToShow =
     teacher && String(teacher).trim()
       ? String(teacher).trim()
-      : "Malacchini Daniela";
+      : "Docente non disponibile";
   modalTeacher.textContent = teacherToShow;
   modalTeacher.style.display = "block";
 
@@ -891,7 +891,7 @@ document.addEventListener("click", (ev) => {
   if (!entry || entry.closest(".modal")) return;
 
   const subject = entry.querySelector(".subject")?.textContent.trim() || "";
-  const text = entry.querySelector(".text").innerHTML || "";
+  const text = entry.querySelector(".text")?.innerHTML || "";
   const teacher =
     entry.querySelector(".teacher")?.textContent.trim() ||
     entry.dataset.teacher ||

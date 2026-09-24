@@ -12,6 +12,7 @@
         <span class="ambient-glow ambient-glow-a"></span>
         <span class="ambient-glow ambient-glow-b"></span>
       </div>
+      <span class="ambient-cursor-glow"></span>
       <span class="ambient-grain"></span>
     `;
     document.body.prepend(layer);
@@ -41,7 +42,7 @@
           observer.unobserve(el);
         });
       },
-      { threshold: 0.14, rootMargin: "0px 0px -6% 0px" },
+      { threshold: 0, rootMargin: "0px 0px -24px 0px" },
     );
     nodes.forEach((node) => {
       node.dataset.revealBound = "1";
@@ -64,7 +65,7 @@
     let frame = 0;
     const update = () => {
       frame = 0;
-      const y = Math.round(window.scrollY * 0.06);
+      const y = Math.min(120, Math.round(window.scrollY * 0.035));
       shift.style.transform = `translate3d(0, ${y}px, 0)`;
     };
     window.addEventListener(
@@ -77,6 +78,30 @@
     );
   }
 
+  function initCursorGlow() {
+    if (prefersReduced() || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    const glow = document.querySelector(".ambient-cursor-glow");
+    if (!glow) return;
+
+    let frame = 0;
+    let x = 0;
+    let y = 0;
+    window.addEventListener("pointermove", (event) => {
+      x = event.clientX;
+      y = event.clientY;
+      glow.classList.add("is-active");
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        glow.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+      });
+    }, { passive: true });
+    window.addEventListener("pointerleave", () => glow.classList.remove("is-active"));
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) glow.classList.remove("is-active");
+    });
+  }
+
   function syncSegmented(container) {
     const indicator = container.querySelector(":scope > .segmented-indicator");
     if (!indicator) return;
@@ -86,10 +111,10 @@
       (window.matchMedia("(max-width: 759px)").matches ||
         container.closest(".school-year-switcher")?.classList.contains("is-many"));
     if (compactYear) {
-      indicator.hidden = true;
+      if (!indicator.hidden) indicator.hidden = true;
       return;
     }
-    indicator.hidden = false;
+    if (indicator.hidden) indicator.hidden = false;
     const active = container.querySelector(
       ":scope > .active, :scope > .selected, :scope > [aria-selected='true']",
     );
@@ -143,51 +168,6 @@
     refresh();
   }
 
-  function watchNumbers() {
-    if (prefersReduced()) return;
-    const selector = ".average-score:not(.average-score--mini), .actual-media-generale-value";
-    const seen = new WeakSet();
-
-    const animate = (el) => {
-      const raw = el.textContent.trim();
-      const target = Number.parseFloat(raw.replace(",", "."));
-      if (!Number.isFinite(target)) return;
-      if (el.dataset.countTarget === raw) return;
-      el.dataset.countTarget = raw;
-      const started = performance.now();
-      const tick = (now) => {
-        const progress = Math.min(1, (now - started) / 680);
-        const eased = 1 - (1 - progress) ** 3;
-        const next = target * eased;
-        const decimals = raw.includes(".") ? raw.split(".")[1].length : 0;
-        el.textContent = decimals ? next.toFixed(decimals) : String(Math.round(next));
-        if (progress < 1) requestAnimationFrame(tick);
-        else el.textContent = raw;
-      };
-      requestAnimationFrame(tick);
-    };
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting || seen.has(entry.target)) return;
-          seen.add(entry.target);
-          animate(entry.target);
-          observer.unobserve(entry.target);
-        });
-      },
-      { threshold: 0.5 },
-    );
-
-    const scan = () => {
-      document.querySelectorAll(selector).forEach((el) => {
-        if (!seen.has(el)) observer.observe(el);
-      });
-    };
-    scan();
-    new MutationObserver(scan).observe(document.body, { subtree: true, childList: true });
-  }
-
   function armChart(chart) {
     if (!chart || chart.dataset.drawArmed === "1") return;
     chart.dataset.drawArmed = "1";
@@ -221,8 +201,9 @@
     initReveal();
     initNavScroll();
     initParallax();
+    initCursorGlow();
     watchSegmented();
-    watchNumbers();
+    // Values are live school data: keep their text under the data renderer's control.
     watchCharts();
   });
 
