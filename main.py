@@ -2417,7 +2417,7 @@ def agenda(u: Utente = Depends(current_user), body: AgendaBody = Body(default=Ag
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
 
-MARCONI_ORARIO_API = "https://apps.marconivr.it/orario/api.php"
+MARCONI_ORARIO_API = "https://api.marconivr.it/orario"
 MARCONI_ORARIO_CVERS = "-1"
 MARCONI_MIUR_SCHOOL_CODE = "VRTF03000V"
 MARCONI_SCHOOL_CODES = {"VRIT0007", "VRTF03000V", MARCONI_MIUR_SCHOOL_CODE}
