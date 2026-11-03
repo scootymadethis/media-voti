@@ -20,6 +20,9 @@ Puoi copiare `.env.example` oppure esportarle direttamente:
 - `DATABASE_PATH` → file SQLite persistente, es. `/opt/spaggiari2/data/spaggiari2.db`
 - `COOKIE_SECURE` → `true` in produzione HTTPS, `false` solo in sviluppo locale
 
+Accesso con SPID/CIE (app Android + collegamento del PC con QR/codice): vedi
+[`docs/spid-cie.md`](docs/spid-cie.md) per funzionamento, variabili e setup dell'app.
+
 ## Run (development)
 
 1. Crea virtualenv e installa dipendenze:

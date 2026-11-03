@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel, Field
-from classeviva_client import Utente, RequestURLs, ClasseVivaLoginError
+from classeviva_client import Utente, RequestURLs, ClasseVivaLoginError, WebSessionUtente
 import os
 import re
 import sqlite3
@@ -1630,18 +1630,20 @@ def get_client_ip(request: Request) -> str:
     return "unknown"
 
 
-def check_login_rate_limit(client_ip: str):
+def check_login_rate_limit(client_ip: str, *, bucket: str = "login", max_attempts: Optional[int] = None):
     now = time.time()
+    limit = LOGIN_RATE_LIMIT_MAX if max_attempts is None else max_attempts
+    key = client_ip if bucket == "login" else f"{bucket}:{client_ip}"
     with login_attempts_lock:
-        attempts = login_attempts.get(client_ip, [])
+        attempts = login_attempts.get(key, [])
         attempts = [ts for ts in attempts if now - ts < LOGIN_RATE_LIMIT_WINDOW]
-        if len(attempts) >= LOGIN_RATE_LIMIT_MAX:
+        if len(attempts) >= limit:
             raise HTTPException(
                 status_code=429,
                 detail="Troppi tentativi di login. Riprova tra qualche minuto.",
             )
         attempts.append(now)
-        login_attempts[client_ip] = attempts
+        login_attempts[key] = attempts
 
 
 def purge_expired_sessions():
@@ -1793,6 +1795,7 @@ def get_session_record(session_id: Optional[str]) -> dict:
 
         # rinnova TTL a ogni richiesta
         sess["expires"] = time.time() + SESSION_TTL
+        sess["last_seen"] = time.time()
         return sess
 
 
@@ -1936,13 +1939,23 @@ def _format_request_url(request_url: Any, *args: Any) -> str:
     return template.format(*args)
 
 
+def _user_http_get(u: Any, url: str, timeout: float = 20) -> Any:
+    """GET verso Spaggiari con l'autenticazione dell'utente.
+
+    Gli utenti da sessione web (SPID/CIE) usano /rest/w1 e il cookie; gli altri il token.
+    """
+    if isinstance(u, WebSessionUtente):
+        return u.http_get(url, timeout=timeout)
+    return requests.get(url, headers=u.get_headers(), timeout=timeout)
+
+
 def cached_cvv_direct_json(u: Utente, endpoint_name: str, request_url: Any, *args: Any, timeout: int = 20) -> Any:
     url = _format_request_url(request_url, *args)
     key = _cache_key(["cvv-direct", _cache_user_key(u), endpoint_name, url])
 
     def fetch() -> Any:
         try:
-            resp = requests.get(url, headers=u.get_headers(), timeout=timeout)
+            resp = _user_http_get(u, url, timeout=timeout)
         except requests.RequestException as e:
             raise UpstreamUnavailable(f"Spaggiari irraggiungibile: {e}")
         raise_for_upstream_http_status(resp.status_code, context=f"{endpoint_name} upstream")
@@ -2003,7 +2016,7 @@ def cached_agenda_json(u: Utente, start: str, end: str) -> Any:
 
     def fetch() -> Any:
         try:
-            resp = requests.get(url, headers=u.get_headers(), timeout=20)
+            resp = _user_http_get(u, url, timeout=20)
         except requests.RequestException as e:
             raise UpstreamUnavailable(f"Spaggiari irraggiungibile: {e}")
         # Fuori anno scolastico o parametri non accettati: non è un fault del backend.
@@ -2184,7 +2197,13 @@ async def broadcast_admin_login(username: str):
 
 
 # ---- LOGIN UNA VOLTA ----
-def create_session(u: Utente, username: Optional[str] = None) -> str:
+def create_session(
+    u: Utente,
+    username: Optional[str] = None,
+    *,
+    device_label: Optional[str] = None,
+    linked_via: Optional[str] = None,
+) -> str:
     if username:
         u._app_username = username.strip()
         u.uid = username.strip()
@@ -2196,6 +2215,11 @@ def create_session(u: Utente, username: Optional[str] = None) -> str:
             "username": get_session_username(u),
             "created_at": now,
             "expires": now + SESSION_TTL,
+            # Identificativo pubblico del dispositivo (mai il session id) per elenco/revoca.
+            "device_id": secrets.token_urlsafe(9),
+            "device_label": device_label or "Dispositivo sconosciuto",
+            "linked_via": linked_via,  # None = login diretto, "pairing" = collegato dal telefono
+            "last_seen": now,
             "me_lock": Lock(),  # anti-burst: serializza /session/me della stessa sessione
             "me_cache": None,   # (scadenza_epoch, risposta)
             "card_lock": Lock(),
@@ -2216,19 +2240,11 @@ def login(
     try:
         u = cached_login_user(body.username, body.password)
 
-        sid = create_session(u, body.username.strip())
+        sid = create_session(u, body.username.strip(), device_label=describe_device(request))
         username = body.username.strip()
         background_tasks.add_task(broadcast_admin_login, username)
 
-        response.set_cookie(
-            key="session_id",
-            value=sid,
-            httponly=True,
-            samesite="lax",
-            secure=COOKIE_SECURE,
-            max_age=SESSION_TTL,
-            path="/",
-        )
+        set_session_cookie(response, sid)
         return {"ok": True, "user": username}
     except ClasseVivaLoginError as e:
         raise HTTPException(status_code=e.status_code, detail=e.user_message)
@@ -2285,6 +2301,7 @@ def session_me(
         profile = build_session_profile(u, card_res=card_res)
         _store_session_profile(sess, profile)
         result = {"ok": True, "authenticated": True, **profile}
+        result["auth_mode"] = getattr(u, "auth_mode", "password")
         result["badges"] = list_user_badges(profile.get("username"), getattr(u, "ident", None))
         sess["me_cache"] = (time.time() + SESSION_ME_CACHE_TTL, result)
         return result
@@ -2299,6 +2316,323 @@ def logout(
     destroy_session(session_id, admin_session_id)
     response.delete_cookie(key="session_id", httponly=True, samesite="lax", secure=COOKIE_SECURE, path="/")
     clear_admin_cookie(response)
+    return {"ok": True}
+
+
+
+# ---- LOGIN DA SESSIONE WEB (SPID/CIE) ----
+# L'utente accede sul sito ufficiale ClasseViva (anche con SPID o CIE) dentro l'app Aulera;
+# l'app legge il cookie PHPSESSID e lo passa qui. Aulera non vede mai le credenziali SPID/CIE.
+# Le API web /rest/w1 hanno gli stessi formati di /rest/v1, quindi il resto del backend non cambia.
+
+# Mostra nella pagina di login il campo "incolla PHPSESSID": SOLO per test/sviluppo.
+ALLOW_MANUAL_WEB_SESSION_LOGIN = os.getenv("ALLOW_MANUAL_WEB_SESSION_LOGIN", "").strip().lower() in {"1", "true", "yes"}
+WEB_SESSION_LOGIN_RATE_MAX = int(os.getenv("WEB_SESSION_LOGIN_RATE_MAX", "60"))
+_PHPSESSID_RE = re.compile(r"^[A-Za-z0-9,\-]{16,256}$")
+
+
+def set_session_cookie(response: Response, sid: str) -> None:
+    response.set_cookie(
+        key="session_id",
+        value=sid,
+        httponly=True,
+        samesite="lax",
+        secure=COOKIE_SECURE,
+        max_age=SESSION_TTL,
+        path="/",
+    )
+
+
+def describe_device(request: Request) -> str:
+    """Etichetta leggibile del dispositivo dallo User-Agent (es. "Chrome su Windows")."""
+    ua = request.headers.get("user-agent") or ""
+    if "Edg/" in ua:
+        browser = "Edge"
+    elif "SamsungBrowser" in ua:
+        browser = "Samsung Internet"
+    elif "OPR/" in ua or "Opera" in ua:
+        browser = "Opera"
+    elif "Firefox/" in ua or "FxiOS" in ua:
+        browser = "Firefox"
+    elif "Chrome/" in ua or "CriOS" in ua:
+        browser = "Chrome"
+    elif "Safari/" in ua:
+        browser = "Safari"
+    else:
+        browser = "Browser"
+    if "; wv)" in ua:
+        browser = "App Aulera"
+    if "Android" in ua:
+        system = "Android"
+    elif "iPhone" in ua or "iPad" in ua:
+        system = "iPhone" if "iPhone" in ua else "iPad"
+    elif "Windows" in ua:
+        system = "Windows"
+    elif "Mac OS X" in ua or "Macintosh" in ua:
+        system = "Mac"
+    elif "CrOS" in ua:
+        system = "ChromeOS"
+    elif "Linux" in ua:
+        system = "Linux"
+    else:
+        system = "sistema sconosciuto"
+    return f"{browser} su {system}"
+
+
+def _find_shared_web_user(username: str) -> Optional[WebSessionUtente]:
+    """Utente web già attivo per lo stesso studente (telefono + PC collegati lo condividono)."""
+    aliases = username_aliases(username)
+    now = time.time()
+    with sessions_lock:
+        for sess in sessions.values():
+            u = sess.get("user")
+            if sess.get("expires", 0) < now or not isinstance(u, WebSessionUtente):
+                continue
+            if username_aliases(getattr(u, "uid", None), getattr(u, "ident", None)) & aliases:
+                return u
+    return None
+
+
+class WebSessionLoginBody(BaseModel):
+    phpsessid: str = Field(..., min_length=16, max_length=256)
+
+
+@app.get("/auth/options")
+def auth_options():
+    return {"ok": True, "pairing": True, "manual_web_session": ALLOW_MANUAL_WEB_SESSION_LOGIN}
+
+
+@app.post("/login/web-session")
+def login_web_session(
+    body: WebSessionLoginBody,
+    response: Response,
+    request: Request,
+    background_tasks: BackgroundTasks,
+):
+    client_ip = get_client_ip(request)
+    check_login_rate_limit(client_ip, bucket="web-session", max_attempts=WEB_SESSION_LOGIN_RATE_MAX)
+    phpsessid = body.phpsessid.strip()
+    if not _PHPSESSID_RE.match(phpsessid):
+        raise HTTPException(status_code=400, detail="Cookie di sessione non valido")
+
+    candidate = WebSessionUtente(phpsessid)
+    try:
+        candidate.login_from_session()
+    except ClasseVivaLoginError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.user_message)
+
+    username = str(candidate.uid).strip()
+    # Se lo stesso studente ha già dispositivi collegati, aggiorna la loro sessione Spaggiari:
+    # rifacendo SPID sul telefono, anche il PC collegato torna a funzionare.
+    shared = _find_shared_web_user(username)
+    if shared is not None:
+        shared.update_session(phpsessid)
+        shared.is_logged_in = True
+        user = shared
+    else:
+        user = candidate
+
+    sid = create_session(user, username, device_label=describe_device(request))
+    background_tasks.add_task(broadcast_admin_login, username)
+    set_session_cookie(response, sid)
+    return {"ok": True, "user": username}
+
+
+# ---- ABBINAMENTO PC <-> TELEFONO (QR o codice) ----
+# Il PC chiede un codice e lo mostra (anche come QR); il telefono, già autenticato,
+# lo inserisce/inquadra e conferma. Il PC riceve una sessione propria che usa la stessa
+# sessione Spaggiari del telefono. Codice monouso, valido pochi minuti.
+PAIRING_TTL = int(os.getenv("PAIRING_TTL", "300"))
+PAIRING_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # niente 0/O/1/I
+PAIRING_LOOKUP_MAX = int(os.getenv("PAIRING_LOOKUP_MAX", "20"))
+pairings: dict[str, dict] = {}       # pair_id (segreto del PC) -> stato
+pairing_codes: dict[str, str] = {}   # codice normalizzato -> pair_id
+pairings_lock = Lock()
+
+
+def _new_pairing_code() -> str:
+    return "".join(secrets.choice(PAIRING_CODE_ALPHABET) for _ in range(8))
+
+
+def normalize_pairing_code(value: str) -> str:
+    return "".join(ch for ch in str(value or "").upper() if ch.isalnum())
+
+
+def format_pairing_code(code: str) -> str:
+    return f"{code[:4]}-{code[4:]}"
+
+
+def _purge_pairings_locked(now: float) -> None:
+    for pid in [pid for pid, p in pairings.items() if p["expires"] < now]:
+        pairing_codes.pop(pairings[pid]["code"], None)
+        pairings.pop(pid, None)
+
+
+class PairStatusBody(BaseModel):
+    pair_id: str = Field(..., min_length=16, max_length=128)
+
+
+class PairCodeBody(BaseModel):
+    code: str = Field(..., min_length=4, max_length=32)
+
+
+class DeviceRevokeBody(BaseModel):
+    device_id: str = Field(..., min_length=4, max_length=64)
+
+
+@app.post("/pair/start")
+def pair_start(request: Request):
+    check_login_rate_limit(get_client_ip(request), bucket="pair-start", max_attempts=30)
+    now = time.time()
+    with pairings_lock:
+        _purge_pairings_locked(now)
+        code = _new_pairing_code()
+        while code in pairing_codes:
+            code = _new_pairing_code()
+        pair_id = secrets.token_urlsafe(32)
+        pairings[pair_id] = {
+            "code": code,
+            "created_at": now,
+            "expires": now + PAIRING_TTL,
+            "status": "pending",
+            "device_label": describe_device(request),
+            "approved_session": None,
+        }
+        pairing_codes[code] = pair_id
+    return {
+        "ok": True,
+        "pair_id": pair_id,
+        "code": format_pairing_code(code),
+        "expires_in": PAIRING_TTL,
+    }
+
+
+@app.post("/pair/status")
+def pair_status(body: PairStatusBody, response: Response, background_tasks: BackgroundTasks):
+    now = time.time()
+    with pairings_lock:
+        _purge_pairings_locked(now)
+        pairing = pairings.get(body.pair_id)
+        if pairing is None:
+            return {"ok": True, "status": "expired"}
+        if pairing["status"] != "approved":
+            return {
+                "ok": True,
+                "status": pairing["status"],
+                "expires_in": max(0, int(pairing["expires"] - now)),
+            }
+        # Approvato: consuma l'abbinamento (monouso) e crea la sessione del PC.
+        approver_sid = pairing["approved_session"]
+        pairing_codes.pop(pairing["code"], None)
+        pairings.pop(body.pair_id, None)
+
+    try:
+        approver = get_session_record(approver_sid)
+    except HTTPException:
+        return {"ok": True, "status": "expired"}
+    user = approver["user"]
+    username = approver["username"]
+    sid = create_session(user, username, device_label=pairing["device_label"], linked_via="pairing")
+    background_tasks.add_task(broadcast_admin_login, username)
+    set_session_cookie(response, sid)
+    return {"ok": True, "status": "approved", "user": username}
+
+
+def _pairing_for_code(code: str, request: Request, session_id: Optional[str]) -> tuple[str, dict]:
+    check_login_rate_limit(
+        f"{get_client_ip(request)}:{(session_id or '')[:12]}",
+        bucket="pair-lookup",
+        max_attempts=PAIRING_LOOKUP_MAX,
+    )
+    normalized = normalize_pairing_code(code)
+    now = time.time()
+    with pairings_lock:
+        _purge_pairings_locked(now)
+        pair_id = pairing_codes.get(normalized)
+        pairing = pairings.get(pair_id) if pair_id else None
+        if not pairing or pairing["status"] != "pending":
+            raise HTTPException(status_code=404, detail="Codice non valido o scaduto. Genera un nuovo codice sul PC.")
+        return pair_id, pairing
+
+
+@app.post("/pair/lookup")
+def pair_lookup(
+    body: PairCodeBody,
+    request: Request,
+    session_id: Optional[str] = Cookie(default=None),
+):
+    get_session_record(session_id)  # solo un dispositivo già autenticato può collegarne altri
+    _, pairing = _pairing_for_code(body.code, request, session_id)
+    return {
+        "ok": True,
+        "device_label": pairing["device_label"],
+        "requested_at": pairing["created_at"],
+        "expires_in": max(0, int(pairing["expires"] - time.time())),
+    }
+
+
+@app.post("/pair/confirm")
+def pair_confirm(
+    body: PairCodeBody,
+    request: Request,
+    session_id: Optional[str] = Cookie(default=None),
+):
+    get_session_record(session_id)
+    pair_id, _ = _pairing_for_code(body.code, request, session_id)
+    with pairings_lock:
+        pairing = pairings.get(pair_id)
+        if not pairing or pairing["status"] != "pending":
+            raise HTTPException(status_code=404, detail="Codice non valido o scaduto. Genera un nuovo codice sul PC.")
+        pairing["status"] = "approved"
+        pairing["approved_session"] = session_id
+    return {"ok": True, "device_label": pairing["device_label"]}
+
+
+@app.get("/devices")
+def list_devices(session_id: Optional[str] = Cookie(default=None)):
+    current = get_session_record(session_id)
+    aliases = username_aliases(current["username"])
+    now = time.time()
+    items = []
+    with sessions_lock:
+        for sid, sess in sessions.items():
+            if sess.get("expires", 0) < now:
+                continue
+            if not (username_aliases(sess.get("username")) & aliases):
+                continue
+            items.append(
+                {
+                    "device_id": sess.get("device_id"),
+                    "label": sess.get("device_label") or "Dispositivo sconosciuto",
+                    "linked_via": sess.get("linked_via"),
+                    "created_at": sess.get("created_at"),
+                    "last_seen": sess.get("last_seen"),
+                    "current": sid == session_id,
+                }
+            )
+    items.sort(key=lambda item: (not item["current"], -(item.get("last_seen") or 0)))
+    return {"ok": True, "devices": items}
+
+
+@app.post("/devices/revoke")
+def revoke_device(body: DeviceRevokeBody, session_id: Optional[str] = Cookie(default=None)):
+    current = get_session_record(session_id)
+    aliases = username_aliases(current["username"])
+    with sessions_lock:
+        target = next(
+            (
+                sid
+                for sid, sess in sessions.items()
+                if sess.get("device_id") == body.device_id
+                and username_aliases(sess.get("username")) & aliases
+            ),
+            None,
+        )
+        if target is None:
+            raise HTTPException(status_code=404, detail="Dispositivo non trovato")
+        if target == session_id:
+            raise HTTPException(status_code=400, detail="Per uscire da questo dispositivo usa Esci")
+        sessions.pop(target, None)
     return {"ok": True}
 
 

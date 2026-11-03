@@ -28,6 +28,13 @@ import requests
 log = logging.getLogger("classeviva")
 
 BASE_URL = os.getenv("CLASSEVIVA_BASE_URL", "https://web.spaggiari.eu/rest/v1").rstrip("/")
+# API del sito web (stessi percorsi e formati di /rest/v1, autenticate dal cookie PHPSESSID).
+# Sono le uniche raggiungibili con una sessione ottenuta tramite SPID/CIE.
+WEB_BASE_URL = os.getenv("CLASSEVIVA_WEB_BASE_URL", "https://web.spaggiari.eu/rest/w1").rstrip("/")
+WEB_USER_AGENT = os.getenv(
+    "CLASSEVIVA_WEB_USER_AGENT",
+    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36",
+)
 USER_AGENT = os.getenv("CLASSEVIVA_USER_AGENT", "CVVS/std/4.1.7 Android/10")
 API_KEY = os.getenv("CLASSEVIVA_API_KEY", "Tg1NWEwNGIgIC0K")
 LOGIN_TIMEOUT = float(os.getenv("CLASSEVIVA_LOGIN_TIMEOUT", "20"))
@@ -81,6 +88,7 @@ MSG_SPID_REQUIRED = (
 MSG_RATE_LIMITED = "Troppi tentativi: Spaggiari ha bloccato temporaneamente l'accesso. Riprova più tardi."
 MSG_API_KEY = "Spaggiari ha rifiutato la chiave dell'app: Aulera va aggiornata. Riprova più tardi."
 MSG_UNAVAILABLE = "Spaggiari non è raggiungibile in questo momento. Riprova tra qualche minuto."
+MSG_WEB_SESSION_INVALID = "Accesso a ClasseViva non completato o scaduto. Rifai l'accesso con SPID o CIE."
 
 # Parole che, nel messaggio di errore di Spaggiari, indicano l'obbligo di identità digitale.
 _SPID_HINTS = re.compile(r"\bspid\b|\bcie\b|identit[aà]\s+digitale|carta\s+d.identit", re.IGNORECASE)
@@ -201,6 +209,137 @@ class Utente:
         headers = default_headers()
         headers["Z-Auth-Token"] = self.token
         return headers
+
+    # --- punti di estensione usati da main.py per le chiamate dirette ---
+    auth_mode = "password"
+
+    def resolve(self, request_url: tuple) -> tuple:
+        """URL/metodo effettivi per questo tipo di utente (identità per il login classico)."""
+        return request_url
+
+    def http_get(self, url: str, timeout: float = 20) -> requests.Response:
+        return requests.get(url, headers=self.get_headers(), timeout=timeout)
+
+
+class _SyntheticResponse:
+    """Risposta finta per segnalare a main.py una sessione web scaduta come HTTP 401."""
+
+    def __init__(self, status_code: int):
+        self.status_code = status_code
+        self.text = ""
+        self.headers: dict[str, str] = {}
+
+    def json(self):
+        raise ValueError("nessun JSON")
+
+
+class WebSessionUtente(Utente):
+    """Utente autenticato con il cookie di sessione del sito ClasseViva.
+
+    È il risultato di un login fatto sul sito ufficiale (anche con SPID o CIE): Aulera non
+    vede mai le credenziali, riceve solo il cookie PHPSESSID. Le API /rest/w1 hanno gli
+    stessi percorsi e formati di /rest/v1, quindi main.py non cambia: cambiano solo URL
+    base e autenticazione. Unica differenza nota: la bacheca si legge in GET.
+    """
+
+    auth_mode = "web"
+    _METHOD_OVERRIDES = {"/noticeboard": "get"}
+
+    def __init__(self, phpsessid: str):
+        super().__init__(uid="")
+        self.phpsessid = phpsessid.strip()
+        self.account_type = ""
+
+    def update_session(self, phpsessid: str) -> None:
+        self.phpsessid = phpsessid.strip()
+
+    def get_headers(self) -> dict[str, str]:
+        return {
+            "User-Agent": WEB_USER_AGENT,
+            "Accept": "application/json",
+            "Cookie": f"PHPSESSID={self.phpsessid}",
+        }
+
+    def resolve(self, request_url: tuple) -> tuple:
+        url = request_url[0]
+        if url.startswith(BASE_URL):
+            url = WEB_BASE_URL + url[len(BASE_URL):]
+        method = request_url[1] if len(request_url) > 1 else "get"
+        for suffix, override in self._METHOD_OVERRIDES.items():
+            if url.endswith(suffix):
+                method = override
+        return (url, method)
+
+    @staticmethod
+    def _is_session_response(resp: requests.Response) -> bool:
+        """Una sessione scaduta può tornare come redirect o pagina HTML di login."""
+        if 300 <= resp.status_code < 400:
+            return False
+        if resp.status_code == 200:
+            return "json" in (resp.headers.get("Content-Type") or "")
+        return True
+
+    def http_get(self, url: str, timeout: float = 20):
+        if url.startswith(BASE_URL):
+            url = WEB_BASE_URL + url[len(BASE_URL):]
+        resp = requests.get(url, headers=self.get_headers(), timeout=timeout, allow_redirects=False)
+        if not self._is_session_response(resp):
+            return _SyntheticResponse(401)
+        return resp
+
+    def request(self, request_url: tuple, params: Any = None) -> Optional[requests.Response]:
+        if not self.is_logged_in:
+            return None
+        url, method = self.resolve(request_url)
+        url = url.format(self.ident, params)
+        response = requests.request(
+            method.upper(), url, headers=self.get_headers(), timeout=20, allow_redirects=False
+        )
+        if response.status_code == 200 and self._is_session_response(response):
+            return response
+        log.info("Richiesta ClasseViva web %s fallita: HTTP %s", request_url[0], response.status_code)
+        return None
+
+    def login_from_session(self) -> dict:
+        """Verifica il cookie con /misc/whoami e /card. Solleva ClasseVivaLoginError se non valido."""
+        try:
+            who = requests.get(
+                f"{WEB_BASE_URL}/misc/whoami",
+                headers=self.get_headers(),
+                timeout=LOGIN_TIMEOUT,
+                allow_redirects=False,
+            )
+        except requests.RequestException as exc:
+            raise ClasseVivaUnavailable(MSG_UNAVAILABLE, upstream_detail=str(exc)) from exc
+        if who.status_code >= 500 or who.status_code == 429:
+            raise classify_login_failure(who.status_code, _upstream_detail(who))
+        if not self._is_session_response(who) or who.status_code != 200:
+            raise InvalidCredentials(MSG_WEB_SESSION_INVALID, upstream_status=who.status_code)
+        try:
+            data = who.json()
+        except ValueError as exc:
+            raise InvalidCredentials(MSG_WEB_SESSION_INVALID, upstream_status=200) from exc
+        digits = re.search(r"\d+", str((data or {}).get("id") or ""))
+        if not digits:
+            raise InvalidCredentials(MSG_WEB_SESSION_INVALID, upstream_status=200, upstream_detail="whoami senza id")
+        self.ident = digits.group()
+        self.account_type = str(data.get("account_type") or "")
+        self.first_name = str(data.get("nome") or "")
+        self.last_name = str(data.get("cognome") or "")
+        self.is_logged_in = True
+
+        # Username = ident della card (es. S1234567X), lo stesso del login con password,
+        # così classifiche e badge restano collegati allo stesso studente.
+        username = ""
+        try:
+            card_resp = self.http_get(f"{WEB_BASE_URL}/students/{self.ident}/card", timeout=LOGIN_TIMEOUT)
+            if card_resp.status_code == 200:
+                card = (card_resp.json() or {}).get("card") or {}
+                username = str(card.get("ident") or "").strip()
+        except (requests.RequestException, ValueError):
+            username = ""
+        self.uid = username or f"S{self.ident}"
+        return data
 
 
 # ===== Request URLs =====

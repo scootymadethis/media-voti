@@ -6,7 +6,7 @@
     <link rel="icon" type="image/png" href="/assets/logo-aulera.png" />
     <title>Aulera</title>
     <link rel="stylesheet" href="/common.css?v=30" />
-    <link rel="stylesheet" href="style.css?v=8" />
+    <link rel="stylesheet" href="style.css?v=9" />
   </head>
   <body class="auth-page">
     <main class="auth-layout">
@@ -44,8 +44,40 @@
           </div>
           <input type="submit" class="login-btn" value="Accedi al tuo spazio" />
           <p id="loginMsg" role="status" aria-live="polite"></p>
+          <div class="login-divider" aria-hidden="true"><span>oppure</span></div>
+          <button type="button" id="spidLoginBtn" class="spid-btn">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="11" r="2.2" stroke="currentColor" stroke-width="1.5"/><path d="M5.8 16.2c.6-1.5 1.8-2.3 3.2-2.3s2.6.8 3.2 2.3M14.5 10h3M14.5 13h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span><span class="spid-btn-title">Entra con SPID o CIE</span><span class="spid-btn-sub">Se la tua scuola non accetta più username e password</span></span>
+          </button>
           <div class="login-footnote"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Le credenziali vengono utilizzate solo per accedere al registro.</span></div>
         </form>
+        <section id="pairPanel" class="pair-panel" hidden aria-labelledby="pairTitle">
+          <div class="login-heading"><span class="login-eyebrow">ACCESSO CON SPID O CIE</span><h2 id="pairTitle" class="login-text" tabindex="-1">Collega il telefono.</h2><p>Su computer l'accesso con SPID o CIE passa dall'app Aulera sul telefono.</p></div>
+          <ol class="pair-steps">
+            <li>Apri l'app Aulera sul telefono ed entra con SPID o CIE.</li>
+            <li>Tocca <strong>Dispositivi</strong>, poi <strong>Collega un PC</strong>.</li>
+            <li>Inquadra il QR oppure scrivi il codice.</li>
+          </ol>
+          <div class="pair-card">
+            <div id="pairQr" class="pair-qr" role="img" aria-label="Codice QR per collegare questo computer"></div>
+            <div class="pair-code-box">
+              <span class="pair-code-label">Codice</span>
+              <output id="pairCode" class="pair-code">····-····</output>
+              <span id="pairExpiry" class="pair-expiry"></span>
+            </div>
+          </div>
+          <p id="pairStatus" class="pair-status" role="status" aria-live="polite"></p>
+          <button type="button" id="pairRenew" class="login-btn" hidden>Genera un nuovo codice</button>
+          <details id="manualSession" class="manual-session" hidden>
+            <summary>Sviluppo: accedi con un cookie PHPSESSID</summary>
+            <form id="manualSessionForm">
+              <input id="manualSessionInput" class="username" type="password" autocomplete="off" placeholder="Valore di PHPSESSID" required />
+              <button type="submit" class="login-btn">Accedi con la sessione</button>
+              <p id="manualSessionMsg" role="status" aria-live="polite"></p>
+            </form>
+          </details>
+          <button type="button" id="pairBack" class="text-link pair-back">← Torna all'accesso con username e password</button>
+        </section>
         <p class="auth-access-bottom">Uno spazio semplice, per una giornata più chiara.</p>
       </section>
     </main>
@@ -176,6 +208,9 @@
     <script src="/session-auth.js?v=3"></script>
     <script src="/config.js?v=2"></script>
     <script src="/motion.js?v=3"></script>
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=6"></script>
+    <script src="/vendor/qrcode-generator-1.4.4.js"></script>
+    <script src="/spid-app.js?v=1"></script>
+    <script src="/pairing.js?v=1"></script>
   </body>
 </html>
