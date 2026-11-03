@@ -1,0 +1,541 @@
+/* ==========================================================================
+   Viste del gruppo "Registro": agenda, orario, assenze, lezioni.
+   ========================================================================== */
+
+/* Colori per materia (orario, lezioni): scelti per stare bene su entrambi i temi. */
+:root {
+  --reg-c0: #3fd6c6; --reg-c1: #6b9cff; --reg-c2: #a78bfa; --reg-c3: #f472b6;
+  --reg-c4: #fb923c; --reg-c5: #fbbf24; --reg-c6: #a3e635; --reg-c7: #34d399;
+  --reg-c8: #38bdf8; --reg-c9: #fb7185; --reg-c10: #818cf8; --reg-c11: #d2a679;
+}
+:root[data-theme="light"] {
+  --reg-c0: #0a9e90; --reg-c1: #2f6bff; --reg-c2: #7c5cf0; --reg-c3: #d42a7f;
+  --reg-c4: #e0590c; --reg-c5: #b77400; --reg-c6: #5c9a0b; --reg-c7: #0f9d68;
+  --reg-c8: #0284c7; --reg-c9: #e0344f; --reg-c10: #4f46e5; --reg-c11: #8a5a35;
+}
+
+/* ---------- striscia settimana (agenda + lezioni) ---------- */
+.agenda-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.agenda-toolbar-note { white-space: nowrap; }
+
+.agenda-weekcard, .lezioni-weekcard { padding: 14px 12px 10px; }
+.agenda-weekhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px 10px; }
+.agenda-weektitle { min-width: 0; }
+.agenda-weektitle .title-3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agenda-weeknav { display: flex; align-items: center; gap: 4px; flex: none; }
+.agenda-weeknav .btn-icon { width: 40px; min-height: 40px; background: transparent; color: var(--accent); }
+.agenda-weeknav .btn-icon svg { width: 20px; height: 20px; }
+.agenda-todaybtn { min-height: 34px; padding: 0 14px; font-size: 0.875rem; color: var(--accent); --btn-bg: var(--accent-soft); }
+.agenda-todaybtn:disabled { opacity: 0.4; }
+
+.agenda-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; touch-action: pan-y; user-select: none; }
+.agenda-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 68px;
+  padding: 6px 0 4px;
+  border-radius: var(--r-md);
+  transition: background-color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out);
+  touch-action: manipulation;
+}
+.agenda-day:active { transform: scale(0.95); }
+.agenda-day-name { font-size: 0.7rem; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+.agenda-day-num {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 1.05rem;
+  font-weight: 620;
+  letter-spacing: -0.02em;
+  transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+.agenda-day.is-sunday .agenda-day-num { color: var(--text-3); }
+.agenda-day.is-today .agenda-day-num { color: var(--accent); font-weight: 700; }
+.agenda-day[aria-selected="true"] .agenda-day-num { background: var(--text); color: var(--bg); }
+.agenda-day.is-today[aria-selected="true"] .agenda-day-num { background: var(--accent); color: var(--accent-ink); }
+.agenda-day[aria-selected="true"] .agenda-day-name { color: var(--text); }
+.agenda-day-dots { display: flex; gap: 3px; height: 6px; }
+.agenda-day-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--k); }
+@media (hover: hover) and (pointer: fine) {
+  .agenda-day:hover { background: var(--fill); }
+  .agenda-weeknav .btn-icon:hover { --btn-bg: var(--accent-soft); background: var(--accent-soft); }
+}
+/* Direzione del cambio settimana: breve scivolamento, solo transform/opacity. */
+.agenda-strip.is-from-right .agenda-day { animation: agenda-from-right 240ms var(--ease-out) both; }
+.agenda-strip.is-from-left .agenda-day { animation: agenda-from-left 240ms var(--ease-out) both; }
+@keyframes agenda-from-right { from { opacity: 0.2; transform: translateX(18px); } }
+@keyframes agenda-from-left { from { opacity: 0.2; transform: translateX(-18px); } }
+
+/* Colori dei tipi di evento */
+:is(.agenda-ev-icon, .agenda-ev-kind, .agenda-chip, .agenda-dot, .agenda-day-dots i).k-hw { --k: var(--accent); }
+:is(.agenda-ev-icon, .agenda-ev-kind, .agenda-chip, .agenda-dot, .agenda-day-dots i).k-test { --k: var(--bad); }
+:is(.agenda-ev-icon, .agenda-ev-kind, .agenda-chip, .agenda-dot, .agenda-day-dots i).k-note { --k: var(--blue); }
+:is(.agenda-ev-icon, .agenda-ev-kind, .agenda-chip, .agenda-dot, .agenda-day-dots i).k-room { --k: var(--violet); }
+
+/* ---------- agenda: giorno + settimana ---------- */
+.agenda-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 24px; }
+@media (min-width: 1024px) { .agenda-cols { grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr); align-items: start; } }
+.agenda-dayhead { align-items: center; justify-content: flex-start; }
+.agenda-events .agenda-ev { align-items: flex-start; padding-top: 14px; padding-bottom: 14px; }
+.agenda-ev-icon {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--k) 15%, transparent);
+  color: var(--k);
+}
+.agenda-ev-icon svg { width: 20px; height: 20px; }
+.agenda-ev-kind { font-size: 0.75rem; font-weight: 650; color: var(--k); margin-bottom: 1px; }
+.agenda-ev-notes { margin-top: 3px; font-size: 0.9rem; color: var(--text-2); line-height: 1.45; overflow-wrap: anywhere; }
+.agenda-ev-notes.is-clamp3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.agenda-ev .chev { margin-top: 12px; }
+.agenda-empty { padding-bottom: 20px; display: flex; flex-direction: column; align-items: center; }
+.agenda-empty .empty { padding-bottom: 12px; }
+.agenda-jump { min-height: 40px; max-width: calc(100% - 32px); font-size: 0.875rem; color: var(--accent); --btn-bg: var(--accent-soft); }
+.agenda-jump svg { width: 14px; height: 14px; }
+.agenda-jump { overflow: hidden; text-overflow: ellipsis; }
+
+.agenda-week { padding: 6px; }
+.agenda-week-day {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 10px;
+  border-radius: var(--r-md);
+  text-align: left;
+  transition: background-color var(--dur-fast) ease;
+}
+.agenda-week-day.is-selected { background: var(--fill); }
+.agenda-week-day:active { background: var(--fill-2); }
+@media (hover: hover) and (pointer: fine) { .agenda-week-day:hover { background: var(--fill); } }
+.agenda-week-date { flex: none; width: 34px; display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.agenda-week-date .caption { font-size: 0.68rem; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; }
+.agenda-week-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-top: 2px; }
+.agenda-week-item { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 0.875rem; }
+.agenda-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--k); }
+.agenda-week-subj { font-weight: 600; white-space: nowrap; flex: none; max-width: 60%; overflow: hidden; text-overflow: ellipsis; }
+.agenda-week-note { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- sheet evento / compito ---------- */
+.agenda-sheet { display: flex; flex-direction: column; gap: 14px; }
+.agenda-sheet-chips { gap: 8px; flex-wrap: wrap; }
+.agenda-chip { background: color-mix(in srgb, var(--k) 15%, transparent); color: var(--k); }
+.agenda-chip svg, .agenda-sheet .chip svg { width: 14px; height: 14px; }
+.agenda-notes { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; font-size: 1rem; }
+.agenda-sheet-label { margin: 6px 4px -6px; }
+.agenda-sheet-info .row-icon { background: var(--fill); color: var(--text-2); }
+.agenda-sheet-done { margin-top: 6px; }
+
+/* ---------- compiti ---------- */
+.agenda-hwgroup { margin-top: 24px; }
+.agenda-hwgroup:first-child { margin-top: 0; }
+.agenda-hwgroup.is-late .overline { color: var(--bad); }
+.agenda-hwgroup.is-today .overline { color: var(--accent); }
+.agenda-hw { align-items: flex-start; padding: 0; gap: 0; }
+.agenda-hw + .agenda-hw::before { left: 58px; }
+.agenda-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  align-self: stretch;
+  min-height: 56px;
+  padding-top: 14px;
+  place-content: start center;
+  touch-action: manipulation;
+}
+.agenda-check span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--text-3);
+  color: transparent;
+  transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out);
+}
+.agenda-check span svg { width: 15px; height: 15px; stroke-width: 2.6; transform: scale(0.6); opacity: 0; transition: transform var(--dur-base) var(--ease-out), opacity var(--dur-fast) ease; }
+.agenda-check:active span { transform: scale(0.88); }
+.agenda-check[aria-checked="true"] span { background: var(--good); border-color: var(--good); color: var(--accent-ink); }
+:root:not([data-theme="light"]) .agenda-check[aria-checked="true"] span { color: #04221a; }
+.agenda-check[aria-checked="true"] span svg { transform: none; opacity: 1; }
+.agenda-hw-main { padding: 13px 18px 13px 0; text-align: left; transition: opacity var(--dur-base) ease; }
+.agenda-hw.is-done .agenda-hw-main { opacity: 0.55; }
+.agenda-hw.is-done .row-title { text-decoration: line-through; text-decoration-color: var(--text-3); }
+.agenda-hw-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 7px; font-size: 0.8rem; color: var(--text-2); }
+.agenda-hw-meta > span { display: inline-flex; align-items: center; gap: 4px; }
+.agenda-hw-meta svg { width: 13px; height: 13px; }
+.agenda-due.is-late { color: var(--bad); font-weight: 600; }
+.agenda-due.is-soon { color: var(--ok); font-weight: 600; }
+.agenda-msg { color: var(--accent); font-weight: 600; }
+.agenda-hw-teacher { color: var(--text-3); }
+@media (hover: hover) and (pointer: fine) { .agenda-hw-main:hover .row-title { color: var(--accent); } .agenda-check:hover span { border-color: var(--good); } }
+.agenda-alldone { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+.agenda-alldone .row-icon { width: 44px; height: 44px; border-radius: 14px; background: var(--good-soft); color: var(--good); }
+.agenda-alldone .row-icon svg { width: 22px; height: 22px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .agenda-day:active, .agenda-check:active span { transform: none; }
+}
+
+/* ==========================================================================
+   Orario
+   ========================================================================== */
+.orario-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.orario-source { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.orario-source:empty { display: none; }
+.orario-source svg { width: 14px; height: 14px; flex: none; color: var(--text-3); }
+.orario-classbtn { min-height: 38px; padding: 0 12px 0 16px; gap: 6px; font-size: 0.9rem; }
+.orario-classbtn strong { font-weight: 700; letter-spacing: 0.01em; }
+.orario-classlabel { color: var(--text-2); font-weight: 560; }
+.orario-classbtn svg { width: 14px; height: 14px; opacity: 0.6; }
+
+.orario-now { display: flex; align-items: center; gap: 8px; margin: 0 4px 10px; font-size: 0.86rem; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.orario-now-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.orario-now strong { color: var(--text); font-weight: 620; }
+.orario-live { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.orario-live.is-idle { background: var(--text-3); box-shadow: 0 0 0 4px var(--fill); }
+
+.orario-gridcard { padding: 8px; }
+.orario-grid {
+  --row: clamp(40px, calc((100dvh - 340px) / var(--rows)), 58px);
+  display: grid;
+  grid-template-columns: 28px repeat(var(--cols), minmax(0, 1fr));
+  grid-template-rows: 28px repeat(var(--rows), var(--row));
+  gap: 3px;
+}
+.orario-corner { grid-row: 1; grid-column: 1; }
+.orario-dayhead {
+  grid-row: 1;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  font-size: 0.74rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.orario-dayhead.is-today { background: var(--accent-soft); color: var(--accent); }
+.orario-dayname { display: none; }
+.orario-hour { grid-column: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; color: var(--text-2); }
+.orario-hour > span { font-size: 0.8rem; font-weight: 650; }
+.orario-hour small { font-size: 0.58rem; color: var(--text-3); letter-spacing: -0.01em; }
+.orario-hour.is-now > span { color: var(--accent); }
+.orario-empty { border-radius: 10px; background: var(--fill); opacity: 0.55; }
+.orario-empty.is-today { opacity: 1; }
+
+.orario-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  padding: 4px 4px 4px 8px;
+  border-radius: 10px;
+  text-align: left;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+  box-shadow: inset 3px 0 0 var(--c);
+  transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-fast) ease;
+  touch-action: manipulation;
+}
+.orario-cell:active { transform: scale(0.96); }
+@media (hover: hover) and (pointer: fine) { .orario-cell:hover { background: color-mix(in srgb, var(--c) 24%, transparent); } }
+.orario-cell-short, .orario-cell-full {
+  max-width: 100%;
+  font-size: 0.8rem;
+  font-weight: 680;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: color-mix(in srgb, var(--c) 45%, var(--text));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.orario-cell small { font-size: 0.66rem; font-weight: 650; opacity: 0.7; margin-left: 2px; }
+.orario-cell-full { display: none; }
+.orario-cell-room { max-width: 100%; font-size: 0.64rem; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.orario-cell.is-today { background: color-mix(in srgb, var(--c) 22%, transparent); }
+.orario-cell.is-now { outline: 2px solid var(--accent); outline-offset: 1px; }
+.orario-cell.is-unsure { background: color-mix(in srgb, var(--c) 9%, transparent); box-shadow: inset 3px 0 0 color-mix(in srgb, var(--c) 55%, transparent); }
+.orario-cell.is-sos { box-shadow: inset 3px 0 0 var(--text-3); }
+.orario-sos { position: absolute; top: 3px; right: 3px; width: 13px; height: 13px; border-radius: 50%; display: grid; place-items: center; font-size: 0.5rem; font-weight: 800; background: var(--fill-3); color: var(--text-2); }
+.orario-nowdot { position: absolute; bottom: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+@media (min-width: 720px) {
+  .orario-gridcard { padding: 12px; }
+  .orario-grid { --row: 60px; grid-template-columns: 52px repeat(var(--cols), minmax(0, 1fr)); grid-template-rows: 34px repeat(var(--rows), var(--row)); gap: 5px; }
+  .orario-hour > span { font-size: 0.9rem; }
+  .orario-hour small { font-size: 0.7rem; }
+  .orario-cell { padding: 6px 10px 6px 13px; border-radius: 12px; gap: 3px; }
+  .orario-cell-short { display: none; }
+  .orario-cell-full { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; font-size: 0.86rem; text-overflow: ellipsis; }
+  .orario-cell-room { font-size: 0.74rem; }
+  .orario-empty { border-radius: 12px; }
+  .orario-dayabbr { display: none; }
+  .orario-dayname { display: inline; }
+  .orario-dayhead { font-size: 0.78rem; }
+}
+@media (min-width: 1280px) { .orario-grid { --row: 66px; } }
+
+.orario-weekly { margin-top: 24px; }
+.orario-legend { display: flex; flex-wrap: wrap; gap: 8px; }
+.orario-legend li { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 12px; border-radius: var(--r-pill); background: var(--fill); font-size: 0.84rem; font-weight: 560; max-width: 100%; }
+.orario-legend i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.orario-legend-name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Giorno */
+.orario-daypick { margin-bottom: 18px; }
+.orario-daypick .segmented { width: 100%; }
+@media (min-width: 720px) { .orario-daypick .segmented { width: auto; min-width: 420px; } }
+.orario-dayhead2 { align-items: center; }
+.orario-dayhead2 .chip { vertical-align: middle; margin-left: 6px; }
+.orario-daylist .row { gap: 12px; }
+.orario-dayrow { min-height: 64px; }
+.orario-dayrow.is-now { background: var(--accent-soft); }
+.orario-daytime { width: 44px; flex: none; display: flex; flex-direction: column; font-size: 0.9rem; font-weight: 620; line-height: 1.2; }
+.orario-daytime small { font-size: 0.75rem; font-weight: 500; color: var(--text-3); }
+.orario-daybar { width: 4px; align-self: stretch; min-height: 36px; border-radius: 2px; background: var(--c); flex: none; }
+.orario-dayrow .row-main { display: flex; flex-direction: column; }
+.orario-break { display: flex; align-items: center; gap: 12px; padding: 6px 18px; font-size: 0.78rem; color: var(--text-3); background: var(--fill); }
+.orario-break span:first-child { width: 44px; flex: none; }
+.orario-break + li .row::before, li + .orario-break::before { display: none; }
+
+/* Sheet */
+.orario-sheet { display: flex; flex-direction: column; gap: 14px; }
+.orario-sheet-hero { display: flex; align-items: center; gap: 14px; }
+.orario-sheet-badge { display: grid; place-items: center; min-width: 56px; height: 56px; padding: 0 10px; border-radius: 18px; font-weight: 750; font-size: 1rem; letter-spacing: -0.01em;
+  background: color-mix(in srgb, var(--c) 18%, transparent); color: color-mix(in srgb, var(--c) 55%, var(--text)); }
+.orario-sheet .row-icon { background: color-mix(in srgb, var(--c, var(--accent)) 15%, transparent); color: var(--c, var(--accent)); }
+.orario-sheet-note .body-2 { margin-top: 6px; }
+
+/* Selettore classe */
+.orario-classsearch { margin-bottom: 10px; }
+.orario-classmine { margin: 0 4px 6px; }
+.orario-classgroup { margin: 16px 4px 8px; }
+.orario-classgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+.orario-classchip { min-height: 44px; border-radius: var(--r-sm); background: var(--fill); font-weight: 650; letter-spacing: 0.01em; transition: background-color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
+.orario-classchip:active { transform: scale(0.96); }
+.orario-classchip.is-active { background: var(--accent); color: var(--accent-ink); }
+@media (hover: hover) and (pointer: fine) { .orario-classchip:not(.is-active):hover { background: var(--fill-2); } }
+.orario-classnone { padding: 24px 4px; text-align: center; }
+
+@media (prefers-reduced-motion: reduce) { .orario-cell:active, .orario-classchip:active { transform: none; } }
+
+/* ==========================================================================
+   Assenze
+   ========================================================================== */
+:is(.assenze-stat, .assenze-d, .assenze-date, .assenze-chip, .assenze-month-dots span).k-abs { --k: var(--bad); }
+:is(.assenze-stat, .assenze-d, .assenze-date, .assenze-chip, .assenze-month-dots span).k-late { --k: var(--ok); }
+:is(.assenze-stat, .assenze-d, .assenze-date, .assenze-chip, .assenze-month-dots span).k-exit { --k: var(--violet); }
+:is(.assenze-stat, .assenze-d, .assenze-date, .assenze-chip, .assenze-month-dots span).k-other { --k: var(--blue); }
+
+.assenze-snap { margin-bottom: 14px; }
+.assenze-snap svg { width: 14px; height: 14px; }
+.assenze-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 720px) { .assenze-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; } }
+.assenze-stat { padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.assenze-stat .stat-num { font-size: clamp(2.2rem, 1.6rem + 2vw, 2.9rem); color: var(--k, var(--text)); }
+.assenze-stat-label { display: flex; align-items: center; gap: 7px; font-size: 0.84rem; font-weight: 600; color: var(--text-2); }
+.assenze-stat-label i { width: 8px; height: 8px; border-radius: 50%; background: var(--k, var(--ok)); flex: none; }
+.assenze-stat-label svg { width: 15px; height: 15px; color: var(--good); }
+.assenze-stat.is-todo { --k: var(--ok); background: color-mix(in srgb, var(--ok) 9%, var(--card)); border-color: color-mix(in srgb, var(--ok) 26%, transparent); }
+.assenze-stat.is-clear .stat-num { color: var(--good); }
+
+/* Heatmap: mesi dell'anno scolastico */
+.assenze-months {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 172px;
+  gap: 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--gutter);
+  margin-inline: calc(-1 * var(--gutter));
+  padding: 2px var(--gutter) 6px;
+  scrollbar-width: none;
+}
+.assenze-months::-webkit-scrollbar { display: none; }
+@media (min-width: 900px) {
+  .assenze-months { grid-auto-flow: row; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-columns: auto; overflow: visible; margin-inline: 0; padding: 0; gap: 14px; }
+}
+.assenze-month { display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 12px; scroll-snap-align: start; text-align: left; min-width: 0; }
+.assenze-month.is-future { opacity: 0.55; }
+.assenze-month.is-current { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+@media (hover: hover) and (pointer: fine) { button.assenze-month:hover { background: var(--card-hover); } }
+.assenze-month-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 22px; }
+.assenze-month-head .title-3 { font-size: 0.95rem; }
+.assenze-month-dots { display: flex; gap: 8px; font-size: 0.75rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.assenze-month-dots span { display: inline-flex; align-items: center; gap: 3px; color: var(--k); }
+.assenze-month-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--k); }
+
+.assenze-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.assenze-d {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+  background: var(--fill);
+}
+.assenze-d.is-blank { background: transparent; }
+.assenze-d.is-sunday { background: transparent; opacity: 0.6; }
+.assenze-d.is-future { opacity: 0.45; }
+.assenze-d.is-today { box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--accent); }
+.assenze-d.has-ev { background: var(--k); color: var(--bg); font-weight: 750; opacity: 1; }
+.assenze-d.has-ev.is-pending { box-shadow: 0 0 0 1.5px var(--card), 0 0 0 3px var(--k); }
+
+.assenze-cal.is-big { gap: 6px; }
+.assenze-cal.is-big .assenze-d { font-size: 0.9rem; border-radius: 12px; min-height: 40px; }
+.assenze-cal.is-big button.assenze-d { transition: transform var(--dur-press) var(--ease-out); touch-action: manipulation; }
+.assenze-cal.is-big button.assenze-d:active { transform: scale(0.92); }
+.assenze-cal.is-big .assenze-d.is-picked { outline: 2px solid var(--text); outline-offset: 2px; }
+.assenze-dow { text-align: center; font-size: 0.7rem; font-weight: 650; color: var(--text-3); padding-bottom: 2px; }
+
+.assenze-legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; font-size: 0.75rem; color: var(--text-2); }
+.assenze-legend li { display: inline-flex; align-items: center; gap: 5px; }
+.assenze-legend .assenze-d { width: 10px; height: 10px; border-radius: 3px; aspect-ratio: auto; }
+.assenze-legend .is-pending-sample { background: transparent; box-shadow: inset 0 0 0 1.5px var(--text-2); }
+.assenze-sheet .assenze-legend { justify-content: flex-start; margin-top: 16px; }
+
+/* Cronologia */
+.assenze-histhead { flex-wrap: wrap; align-items: center; }
+.assenze-histhead .segmented button { padding: 0 12px; }
+@media (max-width: 420px) { .assenze-histhead .segmented { width: 100%; } }
+.assenze-monthlabel { margin: 20px 4px 8px; }
+.assenze-monthlabel:first-child { margin-top: 4px; }
+.assenze-row { align-items: flex-start; padding-top: 14px; padding-bottom: 14px; }
+.assenze-row .chev { margin-top: 14px; }
+.assenze-date {
+  flex: none;
+  width: 48px;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--k) 14%, transparent);
+  color: var(--k);
+  line-height: 1.05;
+}
+.assenze-date .tnum { font-size: 1.1rem; font-weight: 720; letter-spacing: -0.03em; }
+.assenze-date.is-range .tnum { font-size: 0.8rem; letter-spacing: -0.04em; }
+.assenze-date small { font-size: 0.66rem; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.85; }
+.assenze-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
+.assenze-meta .chip svg { width: 13px; height: 13px; }
+
+/* Sheet */
+.assenze-sheet { display: flex; flex-direction: column; gap: 12px; }
+.assenze-evcard { display: flex; flex-direction: column; gap: 10px; }
+.assenze-chip { background: color-mix(in srgb, var(--k) 15%, transparent); color: var(--k); }
+.assenze-evcard .chip svg { width: 14px; height: 14px; }
+.assenze-evdetail { margin-top: 4px; }
+.assenze-hours { display: flex; flex-direction: column; gap: 4px; }
+.assenze-hours li { display: flex; gap: 10px; font-size: 0.9rem; }
+.assenze-hours li span:first-child { width: 26px; color: var(--text-3); font-weight: 650; }
+.assenze-clear { min-height: 32px; padding: 0 10px; font-size: 0.84rem; }
+
+@media (prefers-reduced-motion: reduce) { .assenze-cal.is-big button.assenze-d:active { transform: none; } }
+
+/* ==========================================================================
+   Lezioni (la striscia della settimana usa le classi .agenda-*)
+   ========================================================================== */
+.lezioni-chipwrap { margin-top: 14px; }
+.lezioni-chipwrap:empty { display: none; }
+.lezioni-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  margin-inline: calc(-1 * var(--gutter));
+  padding: 2px var(--gutter);
+  scroll-padding-inline: var(--gutter);
+  scrollbar-width: none;
+}
+.lezioni-chips::-webkit-scrollbar { display: none; }
+@media (min-width: 1024px) { .lezioni-chips { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding: 0; } }
+.lezioni-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: var(--r-pill);
+  background: var(--fill);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+  scroll-snap-align: start;
+  transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out);
+  touch-action: manipulation;
+}
+.lezioni-chip:active { transform: scale(0.96); }
+.lezioni-chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.lezioni-chip.is-active { background: var(--text); color: var(--bg); }
+.lezioni-chip.is-active[style] { background: color-mix(in srgb, var(--c) 20%, transparent); color: var(--text); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 60%, transparent); }
+@media (hover: hover) and (pointer: fine) { .lezioni-chip:not(.is-active):hover { background: var(--fill-2); color: var(--text); } }
+
+.lezioni-cols { margin-top: 20px; }
+.lezioni-item { align-items: flex-start; gap: 14px; padding-top: 14px; padding-bottom: 14px; }
+.lezioni-item .chev { margin-top: 4px; }
+.lezioni-hour {
+  flex: none;
+  width: 38px;
+  min-height: 38px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--c) 15%, transparent);
+  color: color-mix(in srgb, var(--c) 55%, var(--text));
+  font-weight: 720;
+  font-size: 0.95rem;
+  line-height: 1.05;
+}
+.lezioni-hour small { font-size: 0.68rem; font-weight: 650; opacity: 0.75; }
+.lezioni-main { display: flex; flex-direction: column; gap: 3px; }
+.lezioni-subj { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 0.8rem; font-weight: 650; color: var(--text-2); }
+.lezioni-subj i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); flex: none; }
+.lezioni-type { min-height: 20px; padding: 0 8px; font-size: 0.7rem; }
+.lezioni-arg { display: block; font-size: 1rem; font-weight: 560; line-height: 1.4; letter-spacing: -0.005em; color: var(--text); overflow-wrap: anywhere; }
+.lezioni-arg.is-empty { font-weight: 450; color: var(--text-3); font-style: italic; }
+.lezioni-list .row + li .row::before { display: none; }
+.lezioni-weeksum .row { min-height: 50px; }
+.lezioni-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; }
+
+/* Per materia */
+.lezioni-subjcard { margin-top: 16px; display: flex; flex-direction: column; gap: 18px; }
+.lezioni-subjhead { display: flex; align-items: center; gap: 14px; }
+.lezioni-subjbadge { width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); }
+.lezioni-subjbadge svg { width: 24px; height: 24px; }
+.lezioni-stats .stat-num { font-size: clamp(1.4rem, 1.2rem + 1vw, 2rem); }
+.lezioni-stats .lezioni-last { font-size: clamp(1.05rem, 0.95rem + 0.8vw, 1.5rem); line-height: 1.2; }
+.lezioni-weeklabel { margin: 24px 4px 8px; }
+.lezioni-weeklabel .faint { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.lezioni-histrow { align-items: flex-start; padding-top: 14px; padding-bottom: 14px; }
+.lezioni-date { flex: none; width: 42px; display: flex; flex-direction: column; align-items: center; padding-top: 1px; line-height: 1.1; }
+.lezioni-date small { font-size: 0.68rem; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--c); }
+.lezioni-date .tnum { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.03em; }
+
+@media (prefers-reduced-motion: reduce) { .lezioni-chip:active { transform: none; } }
+@media (max-width: 379px) { .orario-cell-short { font-size: 0.74rem; } .orario-cell { padding-left: 7px; } }

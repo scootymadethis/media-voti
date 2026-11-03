@@ -17,6 +17,7 @@ import classeviva_client as cv
 
 VALID_COOKIES = {"spidcookie1234567890", "spidcookieNEW1234567"}
 calls = []
+read_calls = []
 
 
 class FakeResponse:
@@ -25,11 +26,18 @@ class FakeResponse:
         self._payload = payload
         self.headers = {"Content-Type": content_type}
         self.text = json.dumps(payload) if payload is not None else ""
+        self.body = b""
 
     def json(self):
         if self._payload is None:
             raise ValueError("no json")
         return self._payload
+
+    def iter_content(self, chunk_size=1):
+        yield self.body
+
+    def close(self):
+        pass
 
 
 def fake_upstream(method, url, headers=None, **kwargs):
@@ -46,6 +54,21 @@ def fake_upstream(method, url, headers=None, **kwargs):
         return FakeResponse(200, {"card": {"ident": "S7654321X", "firstName": "Mario", "lastName": "Rossi", "schCode": "VRIT0007"}})
     if url.endswith("/students/7654321/grades"):
         return FakeResponse(200, {"grades": [{"subjectDesc": "MATEMATICA", "decimalValue": 8.0, "displayValue": "8", "evtDate": "2026-10-10", "periodPos": 1, "noAverage": False, "canceled": False}]})
+    if url.startswith("https://cdndoc.spaggiari.eu/"):
+        assert "Cookie" not in (headers or {}) or headers["Cookie"].startswith("PHPSESSID"), headers
+        r = FakeResponse(200, None, content_type="application/pdf")
+        r.headers["Content-Disposition"] = 'attachment; filename="circolare 12.pdf"'
+        r.body = b"%PDF-1.4 test"
+        return r
+    if "/noticeboard/read/CF/555/101" in url:
+        read_calls.append(url)
+        return FakeResponse(200, {"item": {"title": "Circolare", "text": "vedi allegato"}})
+    if "/noticeboard/attach/CF/555/1" in url:
+        if not read_calls:
+            return FakeResponse(404, {"error": "item must first be read"})
+        r = FakeResponse(302, None, content_type="text/html")
+        r.headers["Location"] = "https://cdndoc.spaggiari.eu/x/circ.pdf?AUTH=abc"
+        return r
     if url.endswith("/students/7654321/noticeboard"):
         if method.upper() != "GET":
             return FakeResponse(405, {"error": "method"})
@@ -165,6 +188,25 @@ def test_spaggiari_session_expired_logs_out():
         r = phone.get("/session/me")
         assert r.status_code == 401, r.text
         assert sid not in main.sessions
+
+
+def test_bacheca_and_file_link():
+    with TestClient(main.app) as phone:
+        web_login(phone)
+        assert phone.get("/bacheca").status_code == 200
+        link = phone.post("/file-link", json={"kind": "bacheca", "evt_code": "CF", "pub_id": "555", "attach_num": "1"})
+        assert link.status_code == 200, link.text
+        url = link.json()["url"].replace("/api", "", 1)
+        anon = TestClient(main.app)  # il link funziona senza cookie (browser esterno)
+        r = anon.get(url)
+        assert r.status_code == 200, r.text
+        assert r.content == b"%PDF-1.4 test"
+        assert r.headers["content-type"] == "application/pdf"
+        assert "inline" in r.headers["content-disposition"] and "circolare%2012.pdf" in r.headers["content-disposition"]
+        assert read_calls, "la comunicazione va letta prima dell'allegato"
+        assert anon.get("/file/tokenfinto123").status_code == 404
+        bad = phone.post("/file-link", json={"kind": "bacheca", "evt_code": "CF;rm", "pub_id": "1"})
+        assert bad.status_code == 400
 
 
 def test_expired_code():

@@ -24,6 +24,7 @@ import re
 from typing import Any, Optional
 
 import requests
+from urllib.parse import urljoin, urlparse
 
 log = logging.getLogger("classeviva")
 
@@ -138,58 +139,6 @@ class Utente:
         self.token_expire: Optional[str] = None
         self.is_logged_in = False
 
-    def login(self, password: str) -> dict:
-        """Esegue il login con username/password. Solleva ClasseVivaLoginError se fallisce."""
-        body = {"ident": None, "pass": password, "uid": self.uid}
-        try:
-            resp = requests.post(
-                RequestURLs.login[0],
-                headers=default_headers(),
-                data=json.dumps(body),
-                timeout=LOGIN_TIMEOUT,
-            )
-        except requests.RequestException as exc:
-            raise ClasseVivaUnavailable(MSG_UNAVAILABLE, upstream_detail=str(exc)) from exc
-
-        if resp.status_code != 200:
-            detail = _upstream_detail(resp)
-            err = classify_login_failure(resp.status_code, detail)
-            log.warning(
-                "Login ClasseViva fallito: HTTP %s (%s) -> %s",
-                resp.status_code,
-                detail,
-                type(err).__name__,
-            )
-            raise err
-
-        try:
-            data = resp.json()
-        except ValueError as exc:
-            raise ClasseVivaUnavailable(MSG_UNAVAILABLE, upstream_status=200, upstream_detail="risposta non JSON") from exc
-
-        token = data.get("token") if isinstance(data, dict) else None
-        raw_ident = str(data.get("ident") or "") if isinstance(data, dict) else ""
-        digits = re.search(r"\d+", raw_ident)
-        if not token or not digits:
-            # 200 senza token: Spaggiari chiede un'azione (es. scelta profilo o cambio password).
-            detail = _upstream_detail(resp)
-            log.warning("Login ClasseViva: risposta 200 senza token/ident (%s)", detail)
-            if _SPID_HINTS.search(detail):
-                raise DigitalIdentityRequired(MSG_SPID_REQUIRED, upstream_status=200, upstream_detail=detail)
-            raise ClasseVivaUnavailable(
-                "Spaggiari ha risposto in modo inatteso al login. Prova ad accedere dal sito ufficiale.",
-                upstream_status=200,
-                upstream_detail=detail,
-            )
-
-        self.ident = digits.group()
-        self.token = token
-        self.first_name = str(data.get("firstName") or "")
-        self.last_name = str(data.get("lastName") or "")
-        self.token_expire = data.get("expire")
-        self.is_logged_in = True
-        return data
-
     def request(self, request_url: tuple, params: Any = None) -> Optional[requests.Response]:
         """Compatibile con cvv-api: restituisce la Response se 200, altrimenti None."""
         if not self.is_logged_in:
@@ -231,6 +180,12 @@ class _SyntheticResponse:
 
     def json(self):
         raise ValueError("nessun JSON")
+
+    def close(self):
+        pass
+
+    def iter_content(self, chunk_size=1):
+        return iter(())
 
 
 class WebSessionUtente(Utente):
@@ -287,18 +242,69 @@ class WebSessionUtente(Utente):
             return _SyntheticResponse(401)
         return resp
 
-    def request(self, request_url: tuple, params: Any = None) -> Optional[requests.Response]:
+    def request(self, request_url: tuple, params: Any = None):
+        """Esegue la richiesta e restituisce SEMPRE la risposta (anche di errore).
+
+        Così main.py vede i 401 (sessione scaduta → logout) invece di un payload vuoto.
+        Una risposta non JSON o un redirect al login diventano un 401 sintetico.
+        """
         if not self.is_logged_in:
-            return None
+            return _SyntheticResponse(401)
         url, method = self.resolve(request_url)
         url = url.format(self.ident, params)
         response = requests.request(
             method.upper(), url, headers=self.get_headers(), timeout=20, allow_redirects=False
         )
-        if response.status_code == 200 and self._is_session_response(response):
-            return response
-        log.info("Richiesta ClasseViva web %s fallita: HTTP %s", request_url[0], response.status_code)
-        return None
+        if not self._is_session_response(response):
+            return _SyntheticResponse(401)
+        if response.status_code != 200:
+            log.info("Richiesta ClasseViva web %s: HTTP %s", request_url[0], response.status_code)
+        return response
+
+    def call(self, method: str, path: str, timeout: float = 20):
+        """Chiamata JSON su un percorso relativo a /students/{ident} (es. "/notes/all")."""
+        url = f"{WEB_BASE_URL}/students/{self.ident}{path}"
+        headers = self.get_headers()
+        data = None
+        if method.upper() == "POST":
+            # Come il sito ufficiale: POST con corpo vuoto form-urlencoded.
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
+            data = b""
+        response = requests.request(
+            method.upper(), url, headers=headers, data=data, timeout=timeout, allow_redirects=False
+        )
+        if not self._is_session_response(response):
+            return _SyntheticResponse(401)
+        return response
+
+    def download(self, method: str, path: str, timeout: float = 60):
+        """Scarica un file (allegato, materiale didattico, documento) in streaming.
+
+        Segue al massimo 3 redirect; il cookie di sessione viene inviato solo ai server
+        *.spaggiari.eu, mai a domini esterni. Restituisce la Response aperta (stream=True).
+        """
+        url = path if path.startswith("https://") else f"{WEB_BASE_URL}/students/{self.ident}{path}"
+        for _ in range(4):
+            host = (urlparse(url).hostname or "").lower()
+            trusted = host == "spaggiari.eu" or host.endswith(".spaggiari.eu")
+            headers = self.get_headers() if trusted else {"User-Agent": WEB_USER_AGENT}
+            headers["Accept"] = "*/*"
+            data = None
+            if method.upper() == "POST":
+                headers["Content-Type"] = "application/x-www-form-urlencoded"
+                data = b""
+            resp = requests.request(
+                method.upper(), url, headers=headers, data=data, timeout=timeout, allow_redirects=False, stream=True
+            )
+            if 300 <= resp.status_code < 400 and resp.headers.get("Location"):
+                url = urljoin(url, resp.headers["Location"])
+                resp.close()
+                if "login" in url.lower() and trusted:
+                    return _SyntheticResponse(401)
+                method = "GET"
+                continue
+            return resp
+        return _SyntheticResponse(502)
 
     def login_from_session(self) -> dict:
         """Verifica il cookie con /misc/whoami e /card. Solleva ClasseVivaLoginError se non valido."""

@@ -11,7 +11,7 @@
 (function () {
   const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
   const LOGIN_URL = "https://web.spaggiari.eu/home/app/default/login.php";
-  const CHECK_MIN_INTERVAL_MS = 1500;
+  const CHECK_MIN_INTERVAL_MS = 400;
 
   function plugin() {
     return window.Capacitor?.Plugins?.SpaggiariLogin || null;
@@ -40,7 +40,7 @@
     return { res, data };
   }
 
-  async function start({ onStatus = () => {} } = {}) {
+  async function start({ onStatus = () => {}, onSuccess = null } = {}) {
     const SpaggiariLogin = plugin();
     if (!isAvailable()) {
       onStatus("Aggiorna l'app Aulera per accedere con SPID o CIE.");
@@ -75,12 +75,16 @@
           await SpaggiariLogin.close();
           if (data?.user) localStorage.setItem("username", data.user);
           onStatus("Accesso effettuato!");
-          window.location.href = "/dashboard/";
-        } else if (res.status !== 401) {
-          onStatus(data?.detail || "Accesso non riuscito. Riprova.");
+          if (typeof onSuccess === "function") onSuccess(data);
+          else window.location.href = "/oggi";
+        } else {
+          // Sessione non ancora valida (pagina intermedia): torna a mostrare ClasseViva.
+          await SpaggiariLogin.resume?.();
+          if (res.status !== 401) onStatus(data?.detail || "Accesso non riuscito. Riprova.");
         }
       } catch (err) {
         console.warn("[spid] verifica sessione fallita:", err);
+        await SpaggiariLogin.resume?.();
         onStatus("Errore di rete / backend non raggiungibile");
       } finally {
         checking = false;

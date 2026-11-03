@@ -40,29 +40,32 @@ Variabili d'ambiente (tutte opzionali):
 | `WEB_SESSION_LOGIN_RATE_MAX` | `60` | verifiche di sessione per IP ogni 5 minuti |
 | `ALLOW_MANUAL_WEB_SESSION_LOGIN` | `false` | **solo sviluppo**: mostra nel pannello SPID un campo per incollare `PHPSESSID` |
 
-## App Android
+## App Android e iPhone
 
-L'app (Capacitor 7, cartella `android/`) apre direttamente il sito
-`https://spaggiari2.federicoscutariu.it` (`server.url` in `capacitor.config.json`): l'interfaccia
-è sempre quella pubblicata e i cookie di Aulera sono di prima parte. `app-shell/` contiene solo
-la pagina mostrata se il sito non è raggiungibile.
+Le app (Capacitor 7, cartelle `android/` e `ios/`) aprono direttamente il sito
+`https://spaggiari2.federicoscutariu.it` (`server.url` in `capacitor.config.json`): l'interfaccia è
+sempre quella pubblicata e i cookie di Aulera sono di prima parte. `app-shell/` contiene solo la
+pagina mostrata se il sito non è raggiungibile.
 
-Il login SPID/CIE usa un plugin nativo dell'app, `SpaggiariLogin`
-(`android/app/src/main/java/it/federicoscutariu/spaggiari2/`):
+Il login SPID/CIE usa il plugin nativo `SpaggiariLogin` (stessa API JavaScript sulle due piattaforme,
+usata da `public/spid-app.js`):
 
-- `SpaggiariLoginActivity` apre `https://web.spaggiari.eu/home/app/default/login.php` in una
-  WebView dedicata. I link `intent://` e gli schemi delle app dei gestori SPID aprono l'app
-  esterna. Per la CIE, gli indirizzi con `/OpenApp` vengono passati all'app CieID
-  (`it.ipzs.cieid`) e l'URL che CieID restituisce (extra `URL`) viene ricaricato, come da
-  documentazione IPZS.
-- Dopo ogni pagina di ClasseViva successiva al login, il plugin legge `PHPSESSID` dal
-  `CookieManager` di Android (è HttpOnly: JavaScript non lo vede, e `CapacitorCookies` su
-  Android legge solo `document.cookie`) e lo manda alla pagina con l'evento `sessionCandidate`.
-  `public/spid-app.js` lo fa verificare al backend e chiude la WebView.
-- Pagina Dispositivi: *Inquadra il QR* usa `@capacitor-mlkit/barcode-scanning` (scanner Google,
-  nessun permesso fotocamera).
+| | Android (`android/app/src/main/java/.../SpaggiariLogin*.java`) | iPhone (`ios/App/App/SpaggiariLoginPlugin.swift`) |
+|---|---|---|
+| WebView | `SpaggiariLoginActivity` | `SpaggiariLoginViewController` (WKWebView) |
+| Cookie HttpOnly | `CookieManager` di Android | `WKHTTPCookieStore` |
+| CIE con app CieID | indirizzi con `/OpenApp` → `it.ipzs.cieid` (`startActivityForResult`, extra `URL` al ritorno) | `CIEID://<url>&sourceApp=aulera`, ritorno con lo schema `aulera://` |
+| App dei gestori SPID | `intent://` e altri schemi aperti con l'app esterna | schemi non http aperti con `UIApplication.open` |
 
-Build (serve JDK 21 e l'Android SDK con platform 35):
+Appena ClasseViva mostra una pagina successiva al login, il plugin copre la WebView con
+"Accesso ad Aulera in corso…" e passa `PHPSESSID` alla pagina (evento `sessionCandidate`); se il
+backend la accetta la WebView si chiude (`close()`), altrimenti riappare (`resume()`, o dopo 9 s).
+`openExternal({url})` apre i file (allegati, materiali) nel browser di sistema tramite i link
+temporanei `/api/file/{token}`. *Inquadra il QR* usa `@capacitor-mlkit/barcode-scanning`.
+
+### Build Android
+
+Serve JDK 21 e l'Android SDK con platform 35:
 
 ```bash
 npm install
@@ -71,8 +74,20 @@ cd android && ./gradlew assembleDebug
 # APK: android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-L'APK di debug è firmato con la chiave di debug: va bene per installarlo a mano, non per il
-Play Store.
+L'APK è firmato con `android/app/aulera-debug.keystore` (chiave di debug, password `android`): ogni
+build si installa come aggiornamento della precedente. Per il Play Store serve una chiave release.
+
+### Build iPhone (serve un Mac con Xcode 16 e CocoaPods)
+
+```bash
+npm install
+npx cap sync ios        # esegue anche pod install
+npx cap open ios        # apre Xcode
+```
+
+In Xcode: *Signing & Capabilities* → scegli il tuo team (basta un Apple ID gratuito per installarla sul
+tuo iPhone per 7 giorni; per distribuirla serve l'Apple Developer Program), collega l'iPhone e premi Run.
+Il progetto iOS è stato generato e scritto senza un Mac: va compilato e provato su Xcode.
 
 ## Come provarlo senza l'app
 
@@ -92,7 +107,8 @@ cookie di sessione è pericoloso.
   la parte nativa (WebView, CieID, lettura del cookie) compila ma va verificata su un dispositivo.
 - **CIE**: il passaggio all'app CieID segue la documentazione IPZS ma non è stato provato.
   SPID con gestori che usano notifiche push (es. PosteID) dovrebbe funzionare.
-- **iOS**: non gestito (non c'è un progetto iOS).
+- **iPhone**: il progetto non è mai stato compilato (scritto su Linux, senza Xcode). Il flusso CIE su
+  iOS (schema `CIEID://`) segue la documentazione IPZS ma non è verificato.
 - **L'app usa il sito pubblicato**: funziona solo dopo il deploy di queste modifiche.
 - **Durata**: quanto resta valida una sessione ClasseViva non è ancora misurato
   (`scripts/check_spid_session.py --watch 240`). Quando scade, si rifà SPID dall'app.

@@ -41,16 +41,20 @@ needed. See `README.md` / `scripts/dev-windows.ps1` for the split-server alterna
   first boot.
 - Core functionality (login, grades, absences, leaderboards) requires REAL ClasseViva
   student credentials — an external dependency reached at `https://web.spaggiari.eu`.
-  The ClasseViva client lives in `classeviva_client.py` (replaces the old `cvv-api`
-  package, same `Utente`/`RequestURLs` interface). `POST /api/login` now fails when
-  Spaggiari rejects the login: 401 for wrong credentials, 403 when the school only allows
-  SPID/CIE, 503 for rate limit / outage / rejected API key; the `detail` is shown in the UI.
-  `CLASSEVIVA_USER_AGENT`, `CLASSEVIVA_API_KEY`, `CLASSEVIVA_BASE_URL` override the app
-  identity sent to Spaggiari (the key is rotated periodically upstream).
+  The ClasseViva client lives in `classeviva_client.py` (`WebSessionUtente`: PHPSESSID cookie
+  against `/rest/w1`; `RequestURLs` keeps the `/rest/v1` paths, rewritten to w1).
 - Since Sept 2026 (Legge 182/2025) many schools allow ClasseViva access ONLY via SPID/CIE,
   so username/password login no longer works for those users.
   `scripts/check_spid_session.py` checks whether a SPID-obtained web session (`PHPSESSID`)
   is usable from the server; run it manually with your own session, it is not automated.
+- Frontend: single-page app, no build step. `public/index.html` has an import map with versioned
+  URLs (`aulera/ui`, `aulera/api`, `aulera/state`, `aulera/grades`, `aulera/main`); views live in
+  `public/app/views/*.js` and are loaded with the same `?v=` as `main.js`. BUMP the version in the
+  import map / CSS links when changing frontend files. Never import shared modules by relative path
+  from views (it would create a second module instance). `scripts/dev_fake_server.py` runs the app with
+  a fake ClasseViva (login via the dev cookie field with any 16+ char value).
+- Username/password login was removed (ClasseViva is SPID/CIE-only); the admin panel relies on the
+  SPID session plus optional `ADMIN_PANEL_PASSWORD`.
 - SPID/CIE support (see `docs/spid-cie.md`): `WebSessionUtente` authenticates with the
   ClasseViva web cookie against `/rest/w1` (same paths/payloads as `/rest/v1`). The Android
   app (`android/`, Capacitor 7, loads the live site via `server.url`) captures the cookie
@@ -66,7 +70,5 @@ needed. See `README.md` / `scripts/dev-windows.ps1` for the split-server alterna
   against, otherwise it fails with `no such table: user_badges`.
 - `scripts/test_web_session_pairing.py` tests web-session login, PC pairing and device
   revoke with a mocked Spaggiari (no network).
-- `scripts/test_classeviva_client.py` tests the ClasseViva client and `POST /login` with
-  mocked upstream responses (no network); same `DATABASE_PATH` caveat as above.
 - There is no lint config (no ruff/flake8/eslint) and no build step for the web app; the
   frontend is served as static files.

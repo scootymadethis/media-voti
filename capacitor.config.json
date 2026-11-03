@@ -9,6 +9,20 @@
     "errorPath": "index.html"
   },
   "android": {
-    "allowMixedContent": false
+    "allowMixedContent": false,
+    "adjustMarginsForEdgeToEdge": "auto"
+  },
+  "backgroundColor": "#05070b",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#05070b",
+    "scrollEnabled": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 600,
+      "backgroundColor": "#05070b",
+      "showSpinner": false
+    }
   }
 }

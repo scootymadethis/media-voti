@@ -13,6 +13,10 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <item name="android:windowBackground">@color/aulera_bg</item>
+        <item name="android:statusBarColor">@color/aulera_bg</item>
+        <item name="android:navigationBarColor">@color/aulera_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
 

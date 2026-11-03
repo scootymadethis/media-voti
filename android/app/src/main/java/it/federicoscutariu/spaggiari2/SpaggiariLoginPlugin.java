@@ -65,11 +65,20 @@ public class SpaggiariLoginPlugin extends Plugin {
     }
 
     static String readPhpSessId() {
-        String raw = CookieManager.getInstance().getCookie(SPAGGIARI_URL);
-        if (raw == null) return null;
-        for (String part : raw.split(";")) {
-            String[] kv = part.trim().split("=", 2);
-            if (kv.length == 2 && kv[0].equals("PHPSESSID") && !kv[1].isEmpty()) return kv[1];
+        return readPhpSessId(SPAGGIARI_URL);
+    }
+
+    /** PHPSESSID valido per l'URL indicato (o, in mancanza, per web.spaggiari.eu). */
+    static String readPhpSessId(String url) {
+        String[] sources = {url, SPAGGIARI_URL};
+        for (String source : sources) {
+            if (source == null) continue;
+            String raw = CookieManager.getInstance().getCookie(source);
+            if (raw == null) continue;
+            for (String part : raw.split(";")) {
+                String[] kv = part.trim().split("=", 2);
+                if (kv.length == 2 && kv[0].equals("PHPSESSID") && !kv[1].isEmpty()) return kv[1];
+            }
         }
         return null;
     }
@@ -92,6 +101,30 @@ public class SpaggiariLoginPlugin extends Plugin {
     public void close(PluginCall call) {
         SpaggiariLoginActivity.finishCurrent();
         call.resolve();
+    }
+
+    @PluginMethod
+    public void resume(PluginCall call) {
+        SpaggiariLoginActivity.resumeCurrent();
+        call.resolve();
+    }
+
+    /** Apre un URL https nel browser di sistema (download di allegati e materiali). */
+    @PluginMethod
+    public void openExternal(PluginCall call) {
+        String url = call.getString("url");
+        if (url == null || !url.startsWith("https://")) {
+            call.reject("URL non valido");
+            return;
+        }
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getActivity().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Nessuna app per aprire il file");
+        }
     }
 
     @PluginMethod

@@ -1,216 +1,59 @@
 <!doctype html>
-<html lang="it">
+<html lang="it" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="theme-color" content="#05070b" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="Aulera: voti, agenda, bacheca e orario del registro ClasseViva in un'unica app, chiara e veloce. Accesso con SPID o CIE." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="icon" type="image/png" href="/assets/logo-aulera.png" />
+    <link rel="apple-touch-icon" href="/assets/logo-aulera.png" />
     <title>Aulera</title>
-    <link rel="stylesheet" href="/common.css?v=30" />
-    <link rel="stylesheet" href="style.css?v=9" />
+    <script>
+      // Tema prima del primo paint (niente lampo chiaro/scuro).
+      (function () {
+        try {
+          var p = JSON.parse(localStorage.getItem("aulera:theme") || '"auto"');
+          var light = p === "light" || (p === "auto" && matchMedia("(prefers-color-scheme: light)").matches);
+          document.documentElement.dataset.theme = light ? "light" : "dark";
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/styles/app.css?v=1" />
+    <link rel="stylesheet" href="/styles/views.css?v=1" />
+    <link rel="stylesheet" href="/styles/views-registro.css?v=1" />
+    <link rel="stylesheet" href="/styles/views-comunicazioni.css?v=1" />
+    <link rel="stylesheet" href="/styles/views-account.css?v=1" />
   </head>
-  <body class="auth-page">
-    <main class="auth-layout">
-      <section class="auth-story" aria-labelledby="auth-story-title" data-reveal>
-        <header class="auth-brand">
-          <div class="auth-logo-crop"><img class="auth-logo" src="/assets/logo-aulera-esteso.png" alt="Aulera" /></div>
-          <span class="auth-brand-caption">IL TUO SPAZIO SCUOLA</span>
-        </header>
-        <div class="auth-story-copy">
-          <p class="auth-kicker">Un nuovo punto di vista.</p>
-          <h1 id="auth-story-title">La scuola,<br />con una visione<br /><span>d'insieme.</span></h1>
-          <p class="auth-description">Lezioni, voti e impegni. Ritrova il filo della tua giornata in uno spazio pensato per te.</p>
-        </div>
-        <div class="auth-illustration" aria-hidden="true">
-          <div class="auth-orbit auth-orbit-one"></div><div class="auth-orbit auth-orbit-two"></div>
-          <div class="auth-emblem"><div class="auth-mark-crop"><img src="/assets/logo-aulera.png" alt="" /></div></div>
-          <div class="story-tile story-tile-agenda"><span class="story-tile-icon">↗</span><div><strong>La tua agenda</strong><span>Spazio a ogni impegno</span></div></div>
-          <div class="story-tile story-tile-voti"><span class="story-tile-icon">▥</span><div><strong>Il tuo percorso</strong><span>Ogni progresso conta</span></div></div>
-          <span class="orbit-point orbit-point-one"></span><span class="orbit-point orbit-point-two"></span>
-        </div>
-        <div class="auth-story-footer"><span class="story-status-dot"></span> Più chiarezza. Ogni giorno.</div>
-      </section>
-      <section class="auth-access" aria-labelledby="login-title">
-        <div class="auth-access-top"><span>AULERA / ACCESSO</span><span class="access-dot" aria-hidden="true"></span></div>
-        <form id="loginForm" class="login" data-reveal>
-          <div class="login-heading"><span class="login-eyebrow">IL TUO REGISTRO, A PORTATA DI MANO</span><h2 id="login-title" class="login-text">Bentornato.</h2><p>Accedi con le credenziali del tuo registro elettronico.</p></div>
-          <div class="fields">
-            <div class="field-group"><label for="username">Username</label><input type="text" id="username" name="username" class="username" placeholder="Il tuo username" autocomplete="username" required /></div>
-            <div class="field-group"><label for="password">Password</label><div class="password-field"><input type="password" id="password" name="password" class="password" placeholder="La tua password" autocomplete="current-password" required /><button type="button" id="togglePassword" class="toggle-password" aria-label="Mostra password" aria-pressed="false">Mostra</button></div></div>
-          </div>
-          <p class="gestione-credenziali-text"></p>
-          <div class="login-consent">
-            <div class="checkbox-container"><label class="ios-checkbox red"><input type="checkbox" required aria-label="Accetto l'informativa sul trattamento dei dati" /><div class="checkbox-wrapper"><div class="checkbox-bg"></div><svg class="checkbox-icon" viewBox="0 0 24 24" fill="none"><path class="check-path" d="M4 12L10 18L20 6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></label></div>
-            <p>Ho letto e accetto <button type="button" class="text-link credenziali-model-open">l'informativa sul trattamento dei dati</button></p>
-          </div>
-          <input type="submit" class="login-btn" value="Accedi al tuo spazio" />
-          <p id="loginMsg" role="status" aria-live="polite"></p>
-          <div class="login-divider" aria-hidden="true"><span>oppure</span></div>
-          <button type="button" id="spidLoginBtn" class="spid-btn">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="11" r="2.2" stroke="currentColor" stroke-width="1.5"/><path d="M5.8 16.2c.6-1.5 1.8-2.3 3.2-2.3s2.6.8 3.2 2.3M14.5 10h3M14.5 13h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-            <span><span class="spid-btn-title">Entra con SPID o CIE</span><span class="spid-btn-sub">Se la tua scuola non accetta più username e password</span></span>
-          </button>
-          <div class="login-footnote"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Le credenziali vengono utilizzate solo per accedere al registro.</span></div>
-        </form>
-        <section id="pairPanel" class="pair-panel" hidden aria-labelledby="pairTitle">
-          <div class="login-heading"><span class="login-eyebrow">ACCESSO CON SPID O CIE</span><h2 id="pairTitle" class="login-text" tabindex="-1">Collega il telefono.</h2><p>Su computer l'accesso con SPID o CIE passa dall'app Aulera sul telefono.</p></div>
-          <ol class="pair-steps">
-            <li>Apri l'app Aulera sul telefono ed entra con SPID o CIE.</li>
-            <li>Tocca <strong>Dispositivi</strong>, poi <strong>Collega un PC</strong>.</li>
-            <li>Inquadra il QR oppure scrivi il codice.</li>
-          </ol>
-          <div class="pair-card">
-            <div id="pairQr" class="pair-qr" role="img" aria-label="Codice QR per collegare questo computer"></div>
-            <div class="pair-code-box">
-              <span class="pair-code-label">Codice</span>
-              <output id="pairCode" class="pair-code">····-····</output>
-              <span id="pairExpiry" class="pair-expiry"></span>
-            </div>
-          </div>
-          <p id="pairStatus" class="pair-status" role="status" aria-live="polite"></p>
-          <button type="button" id="pairRenew" class="login-btn" hidden>Genera un nuovo codice</button>
-          <details id="manualSession" class="manual-session" hidden>
-            <summary>Sviluppo: accedi con un cookie PHPSESSID</summary>
-            <form id="manualSessionForm">
-              <input id="manualSessionInput" class="username" type="password" autocomplete="off" placeholder="Valore di PHPSESSID" required />
-              <button type="submit" class="login-btn">Accedi con la sessione</button>
-              <p id="manualSessionMsg" role="status" aria-live="polite"></p>
-            </form>
-          </details>
-          <button type="button" id="pairBack" class="text-link pair-back">← Torna all'accesso con username e password</button>
-        </section>
-        <p class="auth-access-bottom">Uno spazio semplice, per una giornata più chiara.</p>
-      </section>
-    </main>
-
-    <div id="credenzialiModal" class="modal" aria-hidden="true">
-      <div
-        class="modal-content"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="credenzialiModalTitle"
-      >
-        <div class="modal-header">
-          <h2 id="credenzialiModalTitle">
-            Informativa sull’utilizzo delle credenziali e accesso ai servizi
-            esterni
-          </h2>
-          <button
-            id="credenzialiModalClose"
-            class="modal-close"
-            aria-label="Chiudi"
-          >
-            ✕
-          </button>
-        </div>
-        <div class="modal-body">
-          <div id="credenzialiModalText" class="modal-text">
-            <h4>Gestione delle credenziali e accesso ai servizi esterni</h4>
-
-            <p>
-              Per il funzionamento del servizio, l’utente può essere invitato a
-              inserire le proprie credenziali di accesso relative a servizi di
-              terze parti (ad esempio piattaforme di registro elettronico).
-            </p>
-
-            <p>
-              Le credenziali inserite dall’utente vengono trasmesse
-              temporaneamente al backend dell’applicazione esclusivamente allo
-              scopo di effettuare l’autenticazione verso il servizio esterno
-              richiesto. Il backend dell’applicazione opera unicamente come
-              intermediario tecnico tra il dispositivo dell’utente e il servizio
-              esterno.
-            </p>
-
-            <p>
-              Le credenziali
-              <strong
-                >non vengono memorizzate, archiviate, registrate o
-                conservate</strong
-              >
-              in alcuna forma sui server dell’applicazione. Esse vengono
-              utilizzate esclusivamente per generare una sessione temporanea con
-              il servizio esterno e vengono immediatamente scartate dopo il
-              completamento del processo di autenticazione.
-            </p>
-
-            <p>
-              L’applicazione può mantenere temporaneamente una
-              <strong>sessione tecnica o cookie di sessione</strong>
-              esclusivamente per consentire la consultazione dei dati durante
-              l’utilizzo del servizio. Tali sessioni non contengono le
-              credenziali dell’utente.
-            </p>
-            <br />
-            <h4>Utilizzo dei dati</h4>
-
-            <p>
-              I dati recuperati dal servizio esterno vengono utilizzati
-              esclusivamente per fornire le funzionalità dell’applicazione
-              richieste dall’utente e non vengono venduti, ceduti o condivisi
-              con terze parti.
-            </p>
-            <br />
-            <h4>Servizi di terze parti</h4>
-
-            <p>
-              Il servizio si limita a interagire con piattaforme di terze parti
-              su richiesta dell’utente. L’accesso ai dati avviene utilizzando le
-              credenziali fornite direttamente dall’utente.
-            </p>
-
-            <p>
-              Gli sviluppatori dell’applicazione non hanno alcun controllo sulle
-              politiche di sicurezza, privacy o funzionamento dei servizi
-              esterni utilizzati dall’utente.
-            </p>
-            <br />
-            <h4>Assenza di affiliazione</h4>
-
-            <p>
-              Questo progetto è un software indipendente e
-              <strong
-                >non è affiliato, associato, autorizzato, approvato o
-                ufficialmente collegato</strong
-              >
-              con i servizi di registro elettronico o con i rispettivi
-              fornitori.
-            </p>
-
-            <p>
-              Tutti i marchi, nomi commerciali e riferimenti a servizi di terze
-              parti appartengono ai rispettivi proprietari.
-            </p>
-            <br />
-            <h4>Limitazione di responsabilità</h4>
-
-            <p>
-              L’utilizzo dell’applicazione avviene sotto la piena responsabilità
-              dell’utente. Gli sviluppatori non sono responsabili per eventuali
-              problemi derivanti dall’utilizzo delle credenziali dell’utente,
-              dall’accesso ai servizi di terze parti o da eventuali modifiche al
-              funzionamento di tali servizi.
-            </p>
-
-            <p>
-              Utilizzando il servizio, l’utente dichiara di comprendere che le
-              proprie credenziali vengono utilizzate esclusivamente per
-              effettuare richieste verso il servizio esterno da lui indicato e
-              accetta le modalità di funzionamento sopra descritte.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="footer">
-      <span class="desc">Aulera non è affiliato a ClasseViva Spaggiari.</span>
-    </div>
-    <script src="/session-auth.js?v=3"></script>
-    <script src="/config.js?v=2"></script>
-    <script src="/motion.js?v=3"></script>
-    <script src="app.js?v=6"></script>
-    <script src="/vendor/qrcode-generator-1.4.4.js"></script>
-    <script src="/spid-app.js?v=2"></script>
-    <script src="/pairing.js?v=2"></script>
+  <body>
+    <div class="aurora" aria-hidden="true"></div>
+    <!-- Rifrazione del "liquid glass" (usata solo su Chromium, su elementi piccoli). -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+      <filter id="liquid-glass" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="2" result="noise" />
+        <feGaussianBlur in="noise" stdDeviation="2" result="soft" />
+        <feDisplacementMap in="SourceGraphic" in2="soft" scale="18" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
+    <div id="app" class="app"></div>
+    <noscript><p style="padding:24px">Aulera richiede JavaScript.</p></noscript>
+    <script src="/config.js?v=3"></script>
+    <script src="/vendor/qrcode-generator-1.4.4.js" defer></script>
+    <script src="/spid-app.js?v=3" defer></script>
+    <!-- Versione degli asset: cambiala qui (anche in "v" sotto) a ogni rilascio del frontend. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "aulera/main": "/app/main.js?v=1",
+          "aulera/ui": "/app/ui.js?v=1",
+          "aulera/api": "/app/api.js?v=1",
+          "aulera/state": "/app/state.js?v=1",
+          "aulera/grades": "/app/grades.js?v=1"
+        }
+      }
+    </script>
+    <script type="module">import "aulera/main";</script>
   </body>
 </html>
