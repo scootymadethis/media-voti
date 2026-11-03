@@ -12,6 +12,8 @@ Come ottenere il cookie:
      (il valore viene chiesto senza mostrarlo; in alternativa variabile CVV_PHPSESSID).
 
 Opzioni:
+  --schema         stampa la struttura (solo chiavi e tipi) delle risposte che Aulera usa,
+                   per confrontare le API web con quelle dell'app. Nessun dato personale.
   --watch MINUTI   ripete il controllo ogni 5 minuti per misurare quanto dura la sessione
                    (si ferma alla prima risposta non valida o dopo MINUTI minuti).
 
@@ -101,9 +103,81 @@ def check_once(session: requests.Session) -> tuple[bool, str | None]:
     return ok, student_id
 
 
+def shape(value, depth: int = 0, max_depth: int = 4):
+    """Struttura di un valore JSON SENZA i dati: chiavi, tipi e lunghezza delle liste."""
+    if isinstance(value, dict):
+        if depth >= max_depth:
+            return f"dict({len(value)})"
+        return {k: shape(v, depth + 1, max_depth) for k, v in sorted(value.items())}
+    if isinstance(value, list):
+        if not value:
+            return "list(0)"
+        return {f"list({len(value)}) di": shape(value[0], depth + 1, max_depth)}
+    if value is None:
+        return "null"
+    return type(value).__name__
+
+
+def schema_dump(session: requests.Session, student_id: str) -> None:
+    """Confronta i percorsi stile app (v1) con quelli del sito (w1) sulle API web.
+
+    Solo letture: nessuna richiesta modifica dati (niente 'segna come letto' ecc.).
+    """
+    import json
+    from datetime import date, timedelta
+
+    today = date.today()
+    d_from = today.strftime("%Y%m%d")
+    d_to = (today + timedelta(days=7)).strftime("%Y%m%d")
+    s = f"{WEB}/rest/w1/students/{student_id}"
+    # (nome Aulera, metodo, percorso stile v1, percorso alternativo w1 se diverso)
+    checks = [
+        ("card", "GET", f"{s}/card", None),
+        ("voti", "GET", f"{s}/grades", f"{s}/grades26"),
+        ("assenze", "GET", f"{s}/absences/details", f"{s}/absences/details/"),
+        ("agenda", "GET", f"{s}/agenda/all/{d_from}/{d_to}", f"{s}/agendav2/all/{d_from}/{d_to}"),
+        ("didattica", "GET", f"{s}/didactics", None),
+        ("libri", "GET", f"{s}/schoolbooks", f"{s}/schoolbooks/index"),
+        ("calendario", "GET", f"{s}/calendar/all", None),
+        ("lezioni_oggi", "GET", f"{s}/lessons/today", None),
+        ("lezioni_giorno", "GET", f"{s}/lessons/{d_from}", None),
+        ("note", "GET", f"{s}/notes/all", f"{s}/notes/all/"),
+        ("periods", "GET", f"{s}/periods", None),
+        ("materie", "GET", f"{s}/subjects", None),
+        ("noticeboard", "POST", f"{s}/noticeboard", None),
+        ("noticeboard_get", "GET", f"{s}/noticeboard", None),
+        ("documenti", "POST", f"{s}/documents", None),
+    ]
+    print("\n=== STRUTTURA DELLE RISPOSTE (nessun dato personale) ===")
+    print("Copia tutto il blocco qui sotto e mandalo.\n----- INIZIO -----")
+    for name, method, url, alt in checks:
+        for label, target in (("stile-app", url), ("alternativo", alt)):
+            if not target:
+                continue
+            try:
+                r = session.request(method, target, timeout=20)
+            except requests.RequestException as exc:
+                print(f"[{name} {label}] errore di rete: {type(exc).__name__}")
+                continue
+            path = target.split(student_id, 1)[-1]
+            line = f"[{name} {label}] {method} ...{path} -> HTTP {r.status_code}"
+            if r.status_code == 200 and "json" in r.headers.get("Content-Type", ""):
+                try:
+                    line += "\n" + json.dumps(shape(r.json()), indent=1, ensure_ascii=False)
+                except ValueError:
+                    line += " (JSON non valido)"
+            print(line)
+    print("----- FINE -----")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--watch", type=int, default=0, metavar="MINUTI")
+    parser.add_argument(
+        "--schema",
+        action="store_true",
+        help="stampa la struttura (solo chiavi e tipi, nessun valore) delle risposte usate da Aulera",
+    )
     args = parser.parse_args()
 
     phpsessid = os.getenv("CVV_PHPSESSID") or getpass.getpass("Valore del cookie PHPSESSID: ").strip()
@@ -116,11 +190,13 @@ def main() -> int:
     session.cookies.set("PHPSESSID", phpsessid, domain=".spaggiari.eu", path="/")
 
     started = time.time()
-    ok, _ = check_once(session)
+    ok, student_id = check_once(session)
     print("\nRISULTATO:", "la sessione FUNZIONA dal server" if ok else "la sessione NON funziona dal server")
     if not ok:
         print("Possibili cause: cookie copiato male, sessione già scaduta, oppure sessione legata a IP/browser.")
         return 1
+    if args.schema and student_id:
+        schema_dump(session, student_id)
 
     if args.watch > 0:
         deadline = started + args.watch * 60
