@@ -452,3 +452,90 @@
 .assenze-clear { min-height: 32px; padding: 0 10px; font-size: 0.84rem; }
 
 @media (prefers-reduced-motion: reduce) { .assenze-cal.is-big button.assenze-d:active { transform: none; } }
+
+/* ==========================================================================
+   Lezioni (la striscia della settimana usa le classi .agenda-*)
+   ========================================================================== */
+.lezioni-chipwrap { margin-top: 14px; }
+.lezioni-chipwrap:empty { display: none; }
+.lezioni-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  margin-inline: calc(-1 * var(--gutter));
+  padding: 2px var(--gutter);
+  scroll-padding-inline: var(--gutter);
+  scrollbar-width: none;
+}
+.lezioni-chips::-webkit-scrollbar { display: none; }
+@media (min-width: 1024px) { .lezioni-chips { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding: 0; } }
+.lezioni-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: var(--r-pill);
+  background: var(--fill);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+  scroll-snap-align: start;
+  transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out);
+  touch-action: manipulation;
+}
+.lezioni-chip:active { transform: scale(0.96); }
+.lezioni-chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.lezioni-chip.is-active { background: var(--text); color: var(--bg); }
+.lezioni-chip.is-active[style] { background: color-mix(in srgb, var(--c) 20%, transparent); color: var(--text); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 60%, transparent); }
+@media (hover: hover) and (pointer: fine) { .lezioni-chip:not(.is-active):hover { background: var(--fill-2); color: var(--text); } }
+
+.lezioni-cols { margin-top: 20px; }
+.lezioni-item { align-items: flex-start; gap: 14px; padding-top: 14px; padding-bottom: 14px; }
+.lezioni-item .chev { margin-top: 4px; }
+.lezioni-hour {
+  flex: none;
+  width: 38px;
+  min-height: 38px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--c) 15%, transparent);
+  color: color-mix(in srgb, var(--c) 55%, var(--text));
+  font-weight: 720;
+  font-size: 0.95rem;
+  line-height: 1.05;
+}
+.lezioni-hour small { font-size: 0.68rem; font-weight: 650; opacity: 0.75; }
+.lezioni-main { display: flex; flex-direction: column; gap: 3px; }
+.lezioni-subj { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 0.8rem; font-weight: 650; color: var(--text-2); }
+.lezioni-subj i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); flex: none; }
+.lezioni-type { min-height: 20px; padding: 0 8px; font-size: 0.7rem; }
+.lezioni-arg { display: block; font-size: 1rem; font-weight: 560; line-height: 1.4; letter-spacing: -0.005em; color: var(--text); overflow-wrap: anywhere; }
+.lezioni-arg.is-empty { font-weight: 450; color: var(--text-3); font-style: italic; }
+.lezioni-list .row + li .row::before { display: none; }
+.lezioni-weeksum .row { min-height: 50px; }
+.lezioni-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; }
+
+/* Per materia */
+.lezioni-subjcard { margin-top: 16px; display: flex; flex-direction: column; gap: 18px; }
+.lezioni-subjhead { display: flex; align-items: center; gap: 14px; }
+.lezioni-subjbadge { width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); }
+.lezioni-subjbadge svg { width: 24px; height: 24px; }
+.lezioni-stats .stat-num { font-size: clamp(1.4rem, 1.2rem + 1vw, 2rem); }
+.lezioni-stats .lezioni-last { font-size: clamp(1.05rem, 0.95rem + 0.8vw, 1.5rem); line-height: 1.2; }
+.lezioni-weeklabel { margin: 24px 4px 8px; }
+.lezioni-weeklabel .faint { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.lezioni-histrow { align-items: flex-start; padding-top: 14px; padding-bottom: 14px; }
+.lezioni-date { flex: none; width: 42px; display: flex; flex-direction: column; align-items: center; padding-top: 1px; line-height: 1.1; }
+.lezioni-date small { font-size: 0.68rem; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--c); }
+.lezioni-date .tnum { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.03em; }
+
+@media (prefers-reduced-motion: reduce) { .lezioni-chip:active { transform: none; } }
+@media (max-width: 379px) { .orario-cell-short { font-size: 0.74rem; } .orario-cell { padding-left: 7px; } }

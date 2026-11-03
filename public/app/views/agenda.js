@@ -262,7 +262,7 @@ export default {
       const days = [];
       evs.forEach((e) => { const k = evDay(e); let g = days.find((x) => x.k === k); if (!g) days.push((g = { k, items: [] })); g.items.push(e); });
       setHTML(el, html`<div class="section-head"><p class="overline">In settimana</p>
-          <p class="caption">${evs.length ? [hw ? `${hw} ${hw === 1 ? "compito" : "compiti"}` : "", tests ? `${tests} ${tests === 1 ? "verifica" : "verifiche"}` : "", evs.length - hw - tests ? `${evs.length - hw - tests} altro` : ""].filter(Boolean).join(" · ") : "Niente in programma"}</p></div>
+          <p class="caption">${evs.length ? [hw ? `${hw} ${hw === 1 ? "compito" : "compiti"}` : "", tests ? `${tests} ${tests === 1 ? "verifica" : "verifiche"}` : "", evs.length - hw - tests ? `${evs.length - hw - tests} ${evs.length - hw - tests === 1 ? "altro evento" : "altri eventi"}` : ""].filter(Boolean).join(" · ") : "Niente in programma"}</p></div>
         ${days.length ? html`<div class="card agenda-week">${days.map((g) => {
           const d = parseDate(g.k);
           return html`<button type="button" class="agenda-week-day${sameDay(d, selected) ? " is-selected" : ""}" data-jump="${g.k}">

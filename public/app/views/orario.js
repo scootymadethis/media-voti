@@ -78,7 +78,7 @@ function subjectInfo(rawName) {
     let short;
     if (!words.length) short = name.slice(0, 5);
     else if (words.length >= 3) short = words.slice(0, 4).map((w) => w[0]).join("");
-    else if (words[0].length <= 6) short = words[0].length <= 4 && /^[A-Z]+$/.test(name) && words.length === 1 ? words[0] : titleCase(words[0]);
+    else if (words[0].length <= 5) short = words[0].length <= 4 && /^[A-Z]+$/.test(name) && words.length === 1 ? words[0] : titleCase(words[0]);
     else short = `${titleCase(words[0]).slice(0, 4)}.`;
     out = { key: up.toLowerCase(), short, full: subjectName(name) };
   }

@@ -217,13 +217,13 @@ export default {
       const users = new Set(sessions.map((s) => String(s.username).toUpperCase())).size;
       setHTML(sec(), html`
         <div class="stats-row cols-3 admin-stats">
-          <div class="stat"><span class="stat-num">${sessions.length}</span><span class="stat-label">sessioni attive · ${users} ${users === 1 ? "utente" : "utenti"}</span></div>
+          <div class="stat"><span class="stat-num">${sessions.length}</span><span class="stat-label">sessioni attive</span></div>
           <div class="stat"><span class="stat-num">${o.average_leaderboard_entries ?? 0}</span><span class="stat-label">in classifica media</span></div>
           <div class="stat"><span class="stat-num">${o.leaderboard_entries ?? 0}</span><span class="stat-label">voci classifica assenze</span></div>
         </div>
         <div class="admin-grid">
           <section>
-            <div class="section-head"><p class="overline">Sessioni attive</p><span class="caption tnum">${sessions.length}</span></div>
+            <div class="section-head"><p class="overline">Sessioni attive</p><span class="caption tnum">${users} ${users === 1 ? "utente" : "utenti"}</span></div>
             ${sessions.length ? html`<ul class="card list admin-scroll">${sessions.map((s) => html`<li class="row">
                 <span class="account-avatar sm" aria-hidden="true">${initials(nameOf(s))}</span>
                 <div class="row-main"><p class="row-title">${nameOf(s)} ${badgeChips(s.badges)}</p><p class="row-sub tnum">${s.username} · da ${ago(s.logged_at).replace(" fa", "")}</p></div>
@@ -527,7 +527,7 @@ export default {
             <button type="button" class="switch" role="switch" aria-label="Mostra l'annuncio" aria-checked="${String(draft.enabled)}" data-enabled></button></div>
           <label class="stack-sm"><span class="caption">Titolo</span><input class="field" data-nf="title" value="${draft.title}" maxlength="120" placeholder="Novità di Aulera" /></label>
           <label class="stack-sm"><span class="caption">Testo</span><textarea class="field admin-textarea" data-nf="body_markdown" rows="10" placeholder="Scrivi qui il messaggio…">${draft.body_markdown}</textarea></label>
-          <p class="caption">Supporta **grassetto**, *corsivo*, [link](https://…), titoli con # ed elenchi con -.</p>
+          <p class="caption">Formattazione: **grassetto**, *corsivo*, [testo](https://…), # titolo, - elenco.</p>
           <div class="admin-news-foot">
             <span class="caption tnum">${a.content_version ? `Visto da ${data.views} ${data.views === 1 ? "utente" : "utenti"}${a.updated_at ? ` · salvato il ${fmtDate(new Date(a.updated_at * 1000))}` : ""}` : "Nessun annuncio salvato"}</span>
             <button type="submit" class="btn btn-primary" data-save ${changed ? "" : "disabled"}>${icon("check")}Salva</button>
