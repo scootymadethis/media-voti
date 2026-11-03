@@ -1,49 +1,26 @@
-// Login SPID/CIE nell'app Android (Capacitor).
+// Login SPID/CIE nell'app Android di Aulera.
 //
-// Apre la pagina di login UFFICIALE di ClasseViva in una WebView interna
-// (@capacitor/inappbrowser). Lo studente sceglie "Entra con SPID" o "Entra con CIE" e si
-// autentica con il proprio gestore: Aulera non vede mai le credenziali. Quando ClasseViva
-// ha creato la sessione, l'app legge il cookie PHPSESSID dal CookieManager di Android
-// (CapacitorCookies, condiviso tra le WebView dell'app) e lo passa al backend
-// (POST /api/login/web-session), che lo verifica su /rest/w1/misc/whoami.
+// Il plugin nativo "SpaggiariLogin" (android/app/.../SpaggiariLoginPlugin.java) apre la pagina
+// di login UFFICIALE di ClasseViva in una WebView dedicata. Lo studente sceglie "Entra con SPID"
+// o "Entra con CIE" e si autentica con il proprio gestore (o con l'app CieID): Aulera non vede
+// mai le credenziali. Dopo il login il plugin legge il cookie PHPSESSID (HttpOnly) dal
+// CookieManager di Android e lo invia qui con l'evento "sessionCandidate"; questo modulo lo fa
+// verificare al backend (POST /api/login/web-session) e, se valido, chiude la WebView.
 //
-// Requisiti nell'app: npm i @capacitor/inappbrowser@^2.5 && npx cap sync android
-// Sul web questo modulo non fa nulla (isAvailable() === false).
+// Sul web (o in una versione dell'app senza il plugin) isAvailable() è false.
 (function () {
   const apiUrl = (path) => window.APP_CONFIG?.apiUrl?.(path) ?? path;
-  const SPAGGIARI_ORIGIN = "https://web.spaggiari.eu";
-  const LOGIN_URL = `${SPAGGIARI_ORIGIN}/home/app/default/login.php`;
-  const CHECK_MIN_INTERVAL_MS = 2500;
-  const FALLBACK_POLL_MS = 4000;
-  const MAX_WAIT_MS = 10 * 60 * 1000;
-  // Pagine del flusso di autenticazione: lì la sessione non è ancora pronta.
-  const AUTH_PATH_HINTS = ["login", "auth-p7", "sso", "spid", "cie", "idp", "saml", "logout"];
+  const LOGIN_URL = "https://web.spaggiari.eu/home/app/default/login.php";
+  const CHECK_MIN_INTERVAL_MS = 1500;
 
-  function plugins() {
-    return window.Capacitor?.Plugins || {};
+  function plugin() {
+    return window.Capacitor?.Plugins?.SpaggiariLogin || null;
   }
 
   function isAvailable() {
     const cap = window.Capacitor;
     const native = typeof cap?.isNativePlatform === "function" ? cap.isNativePlatform() : false;
-    return Boolean(native && plugins().InAppBrowser && plugins().CapacitorCookies);
-  }
-
-  function looksPostLogin(url) {
-    if (!url) return false;
-    try {
-      const u = new URL(url);
-      if (u.hostname !== "web.spaggiari.eu") return false;
-      const path = u.pathname.toLowerCase();
-      return !AUTH_PATH_HINTS.some((hint) => path.includes(hint));
-    } catch {
-      return false;
-    }
-  }
-
-  async function readPhpSessId() {
-    const cookies = await plugins().CapacitorCookies.getCookies({ url: SPAGGIARI_ORIGIN });
-    return cookies?.PHPSESSID || null;
+    return Boolean(native && plugin());
   }
 
   async function sendSessionToBackend(phpsessid) {
@@ -64,21 +41,17 @@
   }
 
   async function start({ onStatus = () => {} } = {}) {
+    const SpaggiariLogin = plugin();
     if (!isAvailable()) {
       onStatus("Aggiorna l'app Aulera per accedere con SPID o CIE.");
       return;
     }
-    const { InAppBrowser, CapacitorCookies } = plugins();
     const handles = [];
     let done = false;
     let checking = false;
     let lastCheck = 0;
-    let lastCookie = null;
-    let pollTimer = null;
-    const startedAt = Date.now();
 
     async function cleanup() {
-      clearInterval(pollTimer);
       for (const h of handles) {
         try {
           await h.remove();
@@ -88,37 +61,18 @@
       }
     }
 
-    async function tryComplete(url, { force = false } = {}) {
-      if (done || checking) return;
-      if (Date.now() - startedAt > MAX_WAIT_MS) {
-        done = true;
-        await cleanup();
-        onStatus("Tempo scaduto. Riprova l'accesso con SPID o CIE.");
-        try {
-          await InAppBrowser.close();
-        } catch {
-          /* già chiuso */
-        }
-        return;
-      }
-      if (!force && url && !looksPostLogin(url)) return;
+    async function onCandidate(event) {
+      const phpsessid = event?.phpsessid;
+      if (done || checking || !phpsessid) return;
       if (Date.now() - lastCheck < CHECK_MIN_INTERVAL_MS) return;
       checking = true;
       lastCheck = Date.now();
       try {
-        const phpsessid = await readPhpSessId();
-        // Senza navigazione, ricontrolla solo se il cookie è cambiato (ClasseViva lo rigenera al login).
-        if (!phpsessid || (force && phpsessid === lastCookie)) return;
-        lastCookie = phpsessid;
         const { res, data } = await sendSessionToBackend(phpsessid);
         if (res.ok) {
           done = true;
           await cleanup();
-          try {
-            await InAppBrowser.close();
-          } catch {
-            /* già chiuso */
-          }
+          await SpaggiariLogin.close();
           if (data?.user) localStorage.setItem("username", data.user);
           onStatus("Accesso effettuato!");
           window.location.href = "/dashboard/";
@@ -127,62 +81,24 @@
         }
       } catch (err) {
         console.warn("[spid] verifica sessione fallita:", err);
+        onStatus("Errore di rete / backend non raggiungibile");
       } finally {
         checking = false;
       }
     }
 
-    onStatus("Apro ClasseViva: scegli \"Entra con SPID\" o \"Entra con CIE\".");
-    try {
-      // Parte sempre da una sessione ClasseViva pulita.
-      await CapacitorCookies.clearCookies({ url: SPAGGIARI_ORIGIN });
-    } catch {
-      /* nessun cookie */
-    }
-
+    handles.push(await SpaggiariLogin.addListener("sessionCandidate", onCandidate));
     handles.push(
-      await InAppBrowser.addListener("browserPageNavigationCompleted", (event) => tryComplete(event?.url)),
-    );
-    handles.push(await InAppBrowser.addListener("browserPageLoaded", () => tryComplete(null, { force: true })));
-    handles.push(
-      await InAppBrowser.addListener("browserClosed", async () => {
+      await SpaggiariLogin.addListener("closed", async () => {
         if (done) return;
-        // Ultimo tentativo: l'utente potrebbe aver chiuso dopo aver completato il login.
-        await tryComplete(null, { force: true });
-        if (!done) {
-          done = true;
-          await cleanup();
-          onStatus("Accesso annullato.");
-        }
+        done = true;
+        await cleanup();
+        onStatus("Accesso annullato.");
       }),
     );
-    pollTimer = setInterval(() => tryComplete(null, { force: true }), FALLBACK_POLL_MS);
 
-    await InAppBrowser.openInWebView({
-      url: LOGIN_URL,
-      options: {
-        showURL: true,
-        showToolbar: true,
-        clearCache: false,
-        clearSessionCache: true,
-        mediaPlaybackRequiresUserAction: false,
-        closeButtonText: "Chiudi",
-        toolbarPosition: 0, // TOP
-        showNavigationButtons: true,
-        leftToRight: false,
-        customWebViewUserAgent: null,
-        android: { allowZoom: false, hardwareBack: true, pauseMedia: true },
-        iOS: {
-          allowOverScroll: true,
-          enableViewportScale: false,
-          allowInLineMediaPlayback: false,
-          surpressIncrementalRendering: false,
-          viewStyle: 2, // FULL_SCREEN
-          animationEffect: 2, // COVER_VERTICAL
-          allowsBackForwardNavigationGestures: true,
-        },
-      },
-    });
+    onStatus("Scegli \"Entra con SPID\" o \"Entra con CIE\" nella pagina di ClasseViva.");
+    await SpaggiariLogin.open({ url: LOGIN_URL, clearSession: true });
   }
 
   window.AuleraSpid = { isAvailable, start };

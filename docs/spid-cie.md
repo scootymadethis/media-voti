@@ -40,20 +40,39 @@ Variabili d'ambiente (tutte opzionali):
 | `WEB_SESSION_LOGIN_RATE_MAX` | `60` | verifiche di sessione per IP ogni 5 minuti |
 | `ALLOW_MANUAL_WEB_SESSION_LOGIN` | `false` | **solo sviluppo**: mostra nel pannello SPID un campo per incollare `PHPSESSID` |
 
-## Setup dell'app Android
+## App Android
 
-Serve il plugin `@capacitor/inappbrowser` 2.5.x (l'ultima versione compatibile con
-Capacitor 7), già in `package.json`:
+L'app (Capacitor 7, cartella `android/`) apre direttamente il sito
+`https://spaggiari2.federicoscutariu.it` (`server.url` in `capacitor.config.json`): l'interfaccia
+è sempre quella pubblicata e i cookie di Aulera sono di prima parte. `app-shell/` contiene solo
+la pagina mostrata se il sito non è raggiungibile.
+
+Il login SPID/CIE usa un plugin nativo dell'app, `SpaggiariLogin`
+(`android/app/src/main/java/it/federicoscutariu/spaggiari2/`):
+
+- `SpaggiariLoginActivity` apre `https://web.spaggiari.eu/home/app/default/login.php` in una
+  WebView dedicata. I link `intent://` e gli schemi delle app dei gestori SPID aprono l'app
+  esterna. Per la CIE, gli indirizzi con `/OpenApp` vengono passati all'app CieID
+  (`it.ipzs.cieid`) e l'URL che CieID restituisce (extra `URL`) viene ricaricato, come da
+  documentazione IPZS.
+- Dopo ogni pagina di ClasseViva successiva al login, il plugin legge `PHPSESSID` dal
+  `CookieManager` di Android (è HttpOnly: JavaScript non lo vede, e `CapacitorCookies` su
+  Android legge solo `document.cookie`) e lo manda alla pagina con l'evento `sessionCandidate`.
+  `public/spid-app.js` lo fa verificare al backend e chiude la WebView.
+- Pagina Dispositivi: *Inquadra il QR* usa `@capacitor-mlkit/barcode-scanning` (scanner Google,
+  nessun permesso fotocamera).
+
+Build (serve JDK 21 e l'Android SDK con platform 35):
 
 ```bash
 npm install
 npx cap sync android
+cd android && ./gradlew assembleDebug
+# APK: android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-`CapacitorCookies` è incluso in `@capacitor/core`. Facoltativo, per il pulsante
-*Inquadra il QR* nella pagina Dispositivi: `@capacitor-mlkit/barcode-scanning`
-(senza, si inserisce il codice a mano oppure si inquadra il QR con la fotocamera del telefono,
-che apre `/collega/?code=…`).
+L'APK di debug è firmato con la chiave di debug: va bene per installarlo a mano, non per il
+Play Store.
 
 ## Come provarlo senza l'app
 
@@ -69,11 +88,12 @@ cookie di sessione è pericoloso.
 
 ## Limiti noti
 
-- **Non provato su un telefono reale.** Il flusso dell'app (WebView, lettura del cookie) è
-  scritto sull'API documentata dei plugin ma va verificato su un dispositivo.
-- **CIE**: il passaggio all'app CieID dalla WebView potrebbe non funzionare; SPID con gestori
-  che usano notifiche push (es. PosteID) dovrebbe funzionare.
+- **Non provato su un telefono reale.** La parte JavaScript è provata con il plugin simulato;
+  la parte nativa (WebView, CieID, lettura del cookie) compila ma va verificata su un dispositivo.
+- **CIE**: il passaggio all'app CieID segue la documentazione IPZS ma non è stato provato.
+  SPID con gestori che usano notifiche push (es. PosteID) dovrebbe funzionare.
 - **iOS**: non gestito (non c'è un progetto iOS).
+- **L'app usa il sito pubblicato**: funziona solo dopo il deploy di queste modifiche.
 - **Durata**: quanto resta valida una sessione ClasseViva non è ancora misurato
   (`scripts/check_spid_session.py --watch 240`). Quando scade, si rifà SPID dall'app.
 - **Riavvii**: le sessioni sono in memoria, quindi un deploy scollega tutti i dispositivi.

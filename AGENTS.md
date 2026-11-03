@@ -7,7 +7,10 @@ Single product ("Aulera", repo `media-voti`, previously shown as Spaggiari 2): a
 static vanilla-JS frontend (`public/`) and a SQLite DB. It is an unofficial client for the
 Italian ClasseViva/Spaggiari school register. Python deps are in `requirements.txt`
 (installed into `.venv` by the update script). The `package.json` is only for the optional
-Capacitor Android build and is not needed to run the web app.
+Capacitor Android build (`android/`, `capacitor.config.json`, `app-shell/`) and is not needed
+to run the web app. Build: `npm install && npx cap sync android && cd android && ./gradlew
+assembleDebug` (JDK 21 + Android SDK 35; in Claude cloud containers Maven Central may return
+429 — a Gradle init script pointing at `https://maven-central.storage-download.googleapis.com/maven2/` works).
 
 ### Running the app (dev)
 Run the backend from the repo root with the venv, e.g.:
@@ -50,7 +53,8 @@ needed. See `README.md` / `scripts/dev-windows.ps1` for the split-server alterna
   is usable from the server; run it manually with your own session, it is not automated.
 - SPID/CIE support (see `docs/spid-cie.md`): `WebSessionUtente` authenticates with the
   ClasseViva web cookie against `/rest/w1` (same paths/payloads as `/rest/v1`). The Android
-  app (`public/spid-app.js`) captures the cookie after the official login; PCs are linked
+  app (`android/`, Capacitor 7, loads the live site via `server.url`) captures the cookie
+  after the official login with the native `SpaggiariLogin` plugin + `public/spid-app.js`; PCs are linked
   from the phone via QR/code (`/pair/*`, page `public/collega/`). To try it locally without
   the app, run with `ALLOW_MANUAL_WEB_SESSION_LOGIN=true` and use the dev field in the
   SPID panel of the login page (needs a real `PHPSESSID`).

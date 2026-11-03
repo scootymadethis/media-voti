@@ -1,0 +1,14 @@
+{
+  "appId": "it.federicoscutariu.spaggiari2",
+  "appName": "Aulera",
+  "webDir": "app-shell",
+  "server": {
+    "url": "https://spaggiari2.federicoscutariu.it",
+    "androidScheme": "https",
+    "cleartext": false,
+    "errorPath": "index.html"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

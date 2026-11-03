@@ -144,7 +144,15 @@ if (scanner && window.Capacitor?.isNativePlatform?.()) {
   scanBtn.hidden = false;
   scanBtn.addEventListener("click", async () => {
     try {
-      const result = await scanner.scan();
+      // Il QR si legge col modulo Google (nessun permesso fotocamera): se manca, lo scarica.
+      const mod = await scanner.isGoogleBarcodeScannerModuleAvailable?.();
+      if (mod && mod.available === false) {
+        await scanner.installGoogleBarcodeScannerModule();
+        codeMsg.textContent = "Sto preparando lo scanner QR: riprova tra qualche secondo, o scrivi il codice.";
+        codeMsg.dataset.tone = "";
+        return;
+      }
+      const result = await scanner.scan({ formats: ["QR_CODE"] });
       const raw = result?.barcodes?.[0]?.rawValue;
       if (!raw) return;
       const code = codeFromScan(raw);

@@ -172,7 +172,8 @@
       return;
     }
     loginMsg.textContent = "";
-    if (window.APP_CONFIG?.isEmbeddedApp && window.AuleraSpid?.isAvailable?.()) {
+    // Nell'app Android (anche quando carica il sito remoto) c'è il login SPID/CIE nativo.
+    if (window.AuleraSpid?.isAvailable?.()) {
       window.AuleraSpid.start({ onStatus: (text) => (loginMsg.textContent = text) });
       return;
     }
