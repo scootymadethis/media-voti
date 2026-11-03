@@ -109,6 +109,24 @@ public class SpaggiariLoginPlugin extends Plugin {
         call.resolve();
     }
 
+    /** Apre un URL https nel browser di sistema (download di allegati e materiali). */
+    @PluginMethod
+    public void openExternal(PluginCall call) {
+        String url = call.getString("url");
+        if (url == null || !url.startsWith("https://")) {
+            call.reject("URL non valido");
+            return;
+        }
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getActivity().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Nessuna app per aprire il file");
+        }
+    }
+
     @PluginMethod
     public void clearSession(PluginCall call) {
         clearSpaggiariCookies();
