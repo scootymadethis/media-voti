@@ -30,7 +30,10 @@ async function verifyLoginWithCard() {
   };
 }
 
-function loginFailedMessage(status, data) {
+function loginFailedMessage(status, data, { preferDetail = false } = {}) {
+  // /api/login ora restituisce il motivo reale (credenziali errate, solo SPID/CIE,
+  // Spaggiari non raggiungibile...): se c'è, lo mostriamo così com'è.
+  if (preferDetail && typeof data?.detail === "string" && data.detail) return data.detail;
   if (status === 401) return "Password errata";
   return data?.detail || data?.error || "Login fallito";
 }
@@ -87,14 +90,13 @@ form.addEventListener("submit", async (e) => {
     console.log("[login] response body:", data);
 
     if (!res.ok) {
-      msg.textContent = loginFailedMessage(res.status, data);
+      msg.textContent = loginFailedMessage(res.status, data, { preferDetail: true });
       console.warn("[login] login not ok, not setting localStorage.loggedIn");
       return;
     }
 
-    // La libreria ClasseVivaAPI può far tornare 200 su /login anche con password errata.
-    // Prima di segnare il login come valido, verifichiamo la sessione con /card:
-    // 200 = credenziali valide, 401/altro = login fallito.
+    // /login ora fallisce già con credenziali errate; la verifica con /card resta come
+    // controllo finale che il token Spaggiari funzioni davvero sulle API dati.
     msg.textContent = "Verifica credenziali...";
     const cardCheck = await verifyLoginWithCard();
     console.log("[login] card verification status:", cardCheck.status, cardCheck.data);

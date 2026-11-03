@@ -38,15 +38,23 @@ needed. See `README.md` / `scripts/dev-windows.ps1` for the split-server alterna
   first boot.
 - Core functionality (login, grades, absences, leaderboards) requires REAL ClasseViva
   student credentials — an external dependency reached at `https://web.spaggiari.eu`.
-  `POST /api/login` always returns `{"ok":true}` and creates a session, but the session is
-  only usable if `cvv-api`'s `Utente.login()` actually succeeded; `GET /api/session/me`
-  triggers the first real upstream fetch and returns 401 for an unauthenticated session.
-  Invalid creds surface as "Password errata" in the UI (upstream returns HTTP 403).
+  The ClasseViva client lives in `classeviva_client.py` (replaces the old `cvv-api`
+  package, same `Utente`/`RequestURLs` interface). `POST /api/login` now fails when
+  Spaggiari rejects the login: 401 for wrong credentials, 403 when the school only allows
+  SPID/CIE, 503 for rate limit / outage / rejected API key; the `detail` is shown in the UI.
+  `CLASSEVIVA_USER_AGENT`, `CLASSEVIVA_API_KEY`, `CLASSEVIVA_BASE_URL` override the app
+  identity sent to Spaggiari (the key is rotated periodically upstream).
+- Since Sept 2026 (Legge 182/2025) many schools allow ClasseViva access ONLY via SPID/CIE,
+  so username/password login no longer works for those users.
+  `scripts/check_spid_session.py` checks whether a SPID-obtained web session (`PHPSESSID`)
+  is usable from the server; run it manually with your own session, it is not automated.
 
 ### Tests / lint / build
 - Automated self-check: `.venv/bin/python scripts/test_session_me_cache.py`. It imports
   `main` directly and does NOT run the startup `init_db()`, so it needs a DB that already
   has the tables — run it with `DATABASE_PATH` pointing at a DB the app has already booted
   against, otherwise it fails with `no such table: user_badges`.
+- `scripts/test_classeviva_client.py` tests the ClasseViva client and `POST /login` with
+  mocked upstream responses (no network); same `DATABASE_PATH` caveat as above.
 - There is no lint config (no ruff/flake8/eslint) and no build step for the web app; the
   frontend is served as static files.
