@@ -40,7 +40,7 @@
     return { res, data };
   }
 
-  async function start({ onStatus = () => {} } = {}) {
+  async function start({ onStatus = () => {}, onSuccess = null } = {}) {
     const SpaggiariLogin = plugin();
     if (!isAvailable()) {
       onStatus("Aggiorna l'app Aulera per accedere con SPID o CIE.");
@@ -75,7 +75,8 @@
           await SpaggiariLogin.close();
           if (data?.user) localStorage.setItem("username", data.user);
           onStatus("Accesso effettuato!");
-          window.location.href = "/dashboard/";
+          if (typeof onSuccess === "function") onSuccess(data);
+          else window.location.href = "/oggi";
         } else {
           // Sessione non ancora valida (pagina intermedia): torna a mostrare ClasseViva.
           await SpaggiariLogin.resume?.();
