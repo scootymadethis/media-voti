@@ -18,7 +18,10 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -52,13 +55,57 @@ public class SpaggiariLoginActivity extends AppCompatActivity {
 
     private static WeakReference<SpaggiariLoginActivity> current = new WeakReference<>(null);
 
+    private static final long VERIFY_TIMEOUT_MS = 9000;
+
     private WebView webView;
     private ProgressBar progress;
     private TextView urlLabel;
+    private View overlay;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private boolean verifying = false;
+    private String lastPostLoginUrl = null;
+    private int retriesForUrl = 0;
+    private final Runnable verifyTimeout = () -> resumeAfterFailedCheck();
 
     static void finishCurrent() {
         SpaggiariLoginActivity activity = current.get();
         if (activity != null) activity.runOnUiThread(activity::finish);
+    }
+
+    /** La pagina Aulera ha scartato la sessione (non ancora valida): torna a mostrare ClasseViva. */
+    static void resumeCurrent() {
+        SpaggiariLoginActivity activity = current.get();
+        if (activity != null) activity.runOnUiThread(activity::resumeAfterFailedCheck);
+    }
+
+    private void resumeAfterFailedCheck() {
+        handler.removeCallbacks(verifyTimeout);
+        verifying = false;
+        overlay.setVisibility(View.GONE);
+        // ClasseViva può completare la sessione un attimo dopo: riprova sulla stessa pagina.
+        if (lastPostLoginUrl != null && retriesForUrl < 3) {
+            retriesForUrl++;
+            String url = lastPostLoginUrl;
+            handler.postDelayed(() -> detectSession(url), 1200);
+        }
+    }
+
+    /**
+     * Appena ClasseViva mostra una pagina successiva al login, copre la WebView e passa il
+     * cookie ad Aulera: lo studente non vede la dashboard di Spaggiari, vede "accesso in corso".
+     */
+    private void detectSession(String url) {
+        if (!isPostLoginPage(url)) return;
+        if (!url.equals(lastPostLoginUrl)) retriesForUrl = 0;
+        lastPostLoginUrl = url;
+        if (verifying) return;
+        String phpsessid = SpaggiariLoginPlugin.readPhpSessId(url);
+        if (phpsessid == null) return;
+        verifying = true;
+        overlay.setVisibility(View.VISIBLE);
+        handler.removeCallbacks(verifyTimeout);
+        handler.postDelayed(verifyTimeout, VERIFY_TIMEOUT_MS);
+        SpaggiariLoginPlugin.emitSessionCandidate(phpsessid, url);
     }
 
     private int dp(int value) {
@@ -108,8 +155,28 @@ public class SpaggiariLoginActivity extends AppCompatActivity {
         progress.setMax(100);
         root.addView(progress, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(3)));
 
+        FrameLayout content = new FrameLayout(this);
         webView = new WebView(this);
-        root.addView(webView, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        content.addView(webView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        LinearLayout cover = new LinearLayout(this);
+        cover.setOrientation(LinearLayout.VERTICAL);
+        cover.setGravity(Gravity.CENTER);
+        cover.setBackgroundColor(Color.parseColor("#070B12"));
+        cover.setClickable(true);
+        ProgressBar spinner = new ProgressBar(this);
+        cover.addView(spinner);
+        TextView coverText = new TextView(this);
+        coverText.setText("Accesso ad Aulera in corso…");
+        coverText.setTextColor(Color.parseColor("#F6F6F7"));
+        coverText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        coverText.setPadding(0, dp(16), 0, 0);
+        cover.addView(coverText);
+        cover.setVisibility(View.GONE);
+        overlay = cover;
+        content.addView(cover, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         setContentView(root);
 
         // Margini per barra di stato e barra di navigazione (edge-to-edge su Android 15).
@@ -158,21 +225,28 @@ public class SpaggiariLoginActivity extends AppCompatActivity {
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
             Uri uri = Uri.parse(url);
             urlLabel.setText(uri.getHost() != null ? uri.getHost() : "");
+            // Il cookie di sessione arriva con il redirect dal login: si può verificare subito.
+            detectSession(url);
+        }
+
+        @Override
+        public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
+            detectSession(url); // navigazioni interne delle pagine (history.pushState)
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
             CookieManager.getInstance().flush();
-            if (!isPostLoginPage(url)) return;
-            String phpsessid = SpaggiariLoginPlugin.readPhpSessId();
-            if (phpsessid != null) SpaggiariLoginPlugin.emitSessionCandidate(phpsessid, url);
+            detectSession(url);
         }
     }
 
     private static boolean isPostLoginPage(String url) {
         if (url == null) return false;
         Uri uri = Uri.parse(url);
-        if (!"web.spaggiari.eu".equals(uri.getHost())) return false;
+        String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+        if (!host.equals("spaggiari.eu") && !host.endsWith(".spaggiari.eu")) return false;
+        if (host.startsWith("www.")) return false; // sito vetrina, non il registro
         String path = uri.getPath() == null ? "" : uri.getPath().toLowerCase(Locale.ROOT);
         for (String hint : AUTH_PATH_HINTS) {
             if (path.contains(hint)) return false;
@@ -249,6 +323,7 @@ public class SpaggiariLoginActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
         if (current.get() == this) current = new WeakReference<>(null);
         if (webView != null) {
             webView.stopLoading();
