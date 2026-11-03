@@ -300,8 +300,7 @@ class ClassRolloverTest(unittest.TestCase):
             self.assertEqual(profile["class_code"], "5EI")
             self.assertEqual(profile["full_name"], "Ada Rossi")
 
-            absence = asyncio.run(
-                main.update_leaderboard(
+            absence = main.update_leaderboard(
                     main.LeaderboardUpdateBody(
                         class_code="4EI",
                         school_code="VRIT0007",
@@ -311,7 +310,6 @@ class ClassRolloverTest(unittest.TestCase):
                     ),
                     User(),
                 )
-            )
             self.assertEqual(absence["saved"]["class_code"], "5EI")
             self.assertEqual(absence["saved"]["school_year"], "2026/27")
             self.assertEqual(absence["saved"]["hours"], 0.0)
@@ -319,8 +317,7 @@ class ClassRolloverTest(unittest.TestCase):
             self.assertEqual(old["class_code"], "4EI")
             self.assertEqual(old["hours"], 22.0)
 
-            grades = asyncio.run(
-                main.update_average_leaderboard(
+            grades = main.update_average_leaderboard(
                     main.AverageLeaderboardUpdateBody(
                         class_code="4EI",
                         school_code="VRIT0007",
@@ -333,7 +330,6 @@ class ClassRolloverTest(unittest.TestCase):
                     ),
                     User(),
                 )
-            )
             self.assertEqual(grades["saved"]["class_code"], "5EI")
             self.assertEqual(grades["saved"]["school_year"], "2026/27")
             self.assertGreater(grades["saved"]["average"], 0)

@@ -12,9 +12,12 @@ from fastapi import (
     BackgroundTasks,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import BaseModel, Field
+import classeviva_client
 from classeviva_client import Utente, RequestURLs, ClasseVivaLoginError, WebSessionUtente
 import os
 import re
@@ -22,7 +25,11 @@ import sqlite3
 import time
 import secrets
 import json
+import anyio
+import asyncio
 import hashlib
+import html
+import hmac
 import copy
 import requests
 import unicodedata
@@ -97,7 +104,7 @@ def parse_allowed_origins() -> list[str]:
     ])
     raw = os.getenv("ALLOWED_ORIGINS", default_origins)
     origins = [item.strip() for item in raw.split(",") if item.strip()]
-    return origins or ["*"]
+    return origins or ["https://spaggiari2.federicoscutariu.it"]
 
 
 app.add_middleware(
@@ -120,26 +127,13 @@ UPSTREAM_ENDPOINT_CACHE_TTL = int(os.getenv("UPSTREAM_ENDPOINT_CACHE_TTL", "300"
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").strip().lower() not in {"0", "false", "no"}
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "S10371278X").strip()
 ADMIN_SESSION_TTL = 60 * 30  # allineato alla sessione principale
+ADMIN_PANEL_PASSWORD = os.getenv("ADMIN_PANEL_PASSWORD", "").strip()
 ADMIN_ALLOW_BOOTSTRAP = os.getenv("ADMIN_ALLOW_BOOTSTRAP", "").strip().lower() in {"1", "true", "yes"}
 LOGIN_RATE_LIMIT_WINDOW = int(os.getenv("LOGIN_RATE_LIMIT_WINDOW", "300"))
 LOGIN_RATE_LIMIT_MAX = int(os.getenv("LOGIN_RATE_LIMIT_MAX", "25"))
 ORARIO_CLASS_PATTERN = re.compile(r"^[A-Z0-9]{1,16}$")
-DEFAULT_EASTER_EGG_USERNAMES = (
-    "S10371217U,aaronrai829@gmail.com,S10371278X,510371115,S9456217C,S10371066B"
-)
-GAME_GODOT_INDEX = os.path.join(PUBLIC_DIR, "game", "godot", "index.html")
-
-
-def parse_easter_egg_usernames() -> set[str]:
-    raw = os.getenv("EASTER_EGG_USERNAMES", DEFAULT_EASTER_EGG_USERNAMES)
-    return {item.strip() for item in raw.split(",") if item.strip()}
-
-
-EASTER_EGG_USERNAMES = parse_easter_egg_usernames()
-
-
 def normalize_username(value: Any) -> str:
-    """Username canonico per confronti locali (admin, easter egg, evidenziazione)."""
+    """Username canonico per confronti locali (admin, evidenziazione)."""
     return str(value or "").strip().upper()
 
 
@@ -172,9 +166,6 @@ def username_aliases(value: Any, ident: Optional[Any] = None) -> set[str]:
 
 
 ADMIN_USERNAME_ALIASES = username_aliases(ADMIN_USERNAME)
-EASTER_EGG_USERNAME_ALIASES = set()
-for _egg_username in EASTER_EGG_USERNAMES:
-    EASTER_EGG_USERNAME_ALIASES.update(username_aliases(_egg_username))
 
 
 # ---- session store in memoria ----
@@ -187,11 +178,6 @@ login_attempts: dict[str, list[float]] = {}
 upstream_cache_lock = Lock()
 upstream_cache_locks: dict[str, Lock] = {}
 upstream_cache: dict[str, tuple[float, Any]] = {}
-
-
-class LoginBody(BaseModel):
-    username: str = Field(..., min_length=1, max_length=128)
-    password: str = Field(..., min_length=1, max_length=256)
 
 
 class AgendaBody(BaseModel):
@@ -219,7 +205,7 @@ class AverageLeaderboardUpdateBody(BaseModel):
 
 
 class AdminLoginBody(BaseModel):
-    password: str
+    password: Optional[str] = None
 
 
 class AdminVisibilityBody(BaseModel):
@@ -1621,10 +1607,23 @@ async def broadcast_average_leaderboard_change(action: str, username: str):
 
 
 
+def run_async_from_sync(fn, *args) -> None:
+    """Esegue una coroutine (es. broadcast WebSocket) da una route sincrona."""
+    try:
+        anyio.from_thread.run(fn, *args)
+    except anyio.NoEventLoopError:
+        asyncio.run(fn(*args))  # fuori dal server (test/script)
+
+
 def get_client_ip(request: Request) -> str:
+    # Nginx imposta X-Real-IP con l'IP reale; in X-Forwarded-For il primo valore è
+    # scelto dal client (falsificabile), l'ultimo è quello aggiunto dal proxy.
+    real_ip = (request.headers.get("x-real-ip") or "").strip()
+    if real_ip:
+        return real_ip
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip() or "unknown"
+        return forwarded.split(",")[-1].strip() or "unknown"
     if request.client and request.client.host:
         return request.client.host
     return "unknown"
@@ -1746,7 +1745,6 @@ def build_session_profile(u: Utente, card_res: Optional[dict] = None) -> dict:
         "school_code": None,
         "class_code": None,
         "is_admin": is_admin_username(username),
-        "easter_egg_eligible": is_easter_egg_username(username),
     }
 
     # 1) Dati locali. La classe arriva solo dall'anno in corso, non da quello prima.
@@ -1886,27 +1884,6 @@ def cached_call(key: str, fetcher, *, ttl: int = UPSTREAM_ENDPOINT_CACHE_TTL, cl
         # Gli errori non vengono cachati: solo una risposta valida popola la cache.
         _set_cached_value(key, value, ttl=ttl, clone=clone)
         return copy.deepcopy(value) if clone else value
-
-
-def cached_login_user(username: str, password: str) -> Utente:
-    normalized_username = username.strip()
-    # Include la password hashata: evita di accettare una password errata solo perché
-    # lo stesso utente ha fatto login correttamente nei 5 minuti precedenti.
-    password_hash = hashlib.sha256(password.encode("utf-8", errors="ignore")).hexdigest()
-    user_key = _cache_user_key_from_values(normalized_username)
-    key = _cache_key(["cvv-login", user_key, password_hash])
-
-    def fetch_login() -> Utente:
-        user = Utente(uid=normalized_username)
-        # Solleva ClasseVivaLoginError se Spaggiari rifiuta il login: gli errori non
-        # vengono messi in cache, quindi un nuovo tentativo riparte da zero.
-        user.login(password)
-        # Mantiene l'username digitato come identità app: niente round-trip extra.
-        user._app_username = normalized_username
-        user.uid = normalized_username
-        return user
-
-    return cached_call(key, fetch_login, ttl=UPSTREAM_ENDPOINT_CACHE_TTL, clone=False)
 
 
 def _response_json_or_error(resp: Any, *, context: str) -> Any:
@@ -2056,22 +2033,6 @@ def cached_external_get_json_for_user(
 
 def is_admin_username(username: str) -> bool:
     return bool(username_aliases(username) & ADMIN_USERNAME_ALIASES)
-
-
-def is_easter_egg_username(username: str) -> bool:
-    return bool(username_aliases(username) & EASTER_EGG_USERNAME_ALIASES)
-
-
-def godot_export_available() -> bool:
-    if not os.path.isfile(GAME_GODOT_INDEX):
-        return False
-    try:
-        with open(GAME_GODOT_INDEX, "r", encoding="utf-8", errors="ignore") as handle:
-            sample = handle.read(1200).lower()
-        # Placeholder lasciato nel repo finché non carichi l'export reale.
-        return "sostituisci questa cartella" not in sample
-    except OSError:
-        return False
 
 
 def create_admin_session(main_session_id: str) -> str:
@@ -2226,32 +2187,6 @@ def create_session(
             "card_cache": None,  # (scadenza_epoch, card_json) condivisa con /session/me
         }
     return sid
-
-
-@app.post("/login")
-def login(
-    body: LoginBody,
-    response: Response,
-    request: Request,
-    background_tasks: BackgroundTasks,
-):
-    client_ip = get_client_ip(request)
-    check_login_rate_limit(client_ip)
-    try:
-        u = cached_login_user(body.username, body.password)
-
-        sid = create_session(u, body.username.strip(), device_label=describe_device(request))
-        username = body.username.strip()
-        background_tasks.add_task(broadcast_admin_login, username)
-
-        set_session_cookie(response, sid)
-        return {"ok": True, "user": username}
-    except ClasseVivaLoginError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.user_message)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
 
 
 @app.get("/session/me")
@@ -2778,23 +2713,6 @@ def is_marconi_school_code(value: Any) -> bool:
     return bool(code and code in MARCONI_SCHOOL_CODES)
 
 
-def is_marconi_student_card(card_res) -> bool:
-    fields = extract_student_card_fields(card_res)
-    miur = str(fields.get("miurSchoolCode") or fields.get("miurDivisionCode") or "").strip().upper()
-    sch_code = str(fields.get("schCode") or fields.get("schoolCode") or "").strip().upper()
-    label = " ".join(
-        str(fields.get(key) or "")
-        for key in ("schName", "schDedication", "schCity", "schProv", "schCode")
-    ).lower()
-    name_ok = "marconi" in label
-    code_ok = is_marconi_school_code(miur) or is_marconi_school_code(sch_code)
-    if miur and not code_ok and not name_ok:
-        return False
-    if code_ok:
-        return True
-    return name_ok
-
-
 class UpstreamUnavailable(HTTPException):
     """Spaggiari ha risposto male (429/5xx) o irraggiungibile: NON è logout."""
 
@@ -2817,10 +2735,6 @@ def _fetch_student_card_raw(u: Utente) -> dict:
     except Exception as e:
         raise UpstreamUnavailable(f"Card non valida: {e}")
     return data if isinstance(data, dict) else {}
-
-
-def fetch_student_card_or_401(u: Utente) -> dict:
-    return _fetch_student_card_raw(u)
 
 
 def fetch_card_cached(sess: dict) -> dict:
@@ -3131,7 +3045,6 @@ def _session_profile_from_cache(sess: dict) -> dict:
             "school_code": data.get("school_code"),
             "class_code": data.get("class_code"),
             "is_admin": data.get("is_admin"),
-            "easter_egg_eligible": data.get("easter_egg_eligible"),
             "badges": data.get("badges") or [],
         }
 
@@ -3150,7 +3063,6 @@ def _store_session_profile(sess: dict, profile: dict) -> None:
         "school_code": profile.get("school_code"),
         "class_code": profile.get("class_code"),
         "is_admin": profile.get("is_admin"),
-        "easter_egg_eligible": profile.get("easter_egg_eligible"),
         "badges": profile.get("badges") or [],
     }
 
@@ -3165,14 +3077,6 @@ def require_marconi_orario_access_from_session(session_id: Optional[str]) -> tup
     if not is_marconi_session_profile(profile):
         raise HTTPException(status_code=403, detail=ORARIO_ACCESS_DENIED_DETAIL)
     return sess, profile
-
-
-def require_marconi_orario_access(u: Utente) -> dict:
-    # Backward-compatible fallback: usa comunque la cache globale per /card.
-    card_res = fetch_student_card_or_401(u)
-    if not is_marconi_student_card(card_res):
-        raise HTTPException(status_code=403, detail=ORARIO_ACCESS_DENIED_DETAIL)
-    return card_res
 
 
 @app.get("/orario/eligible")
@@ -3239,39 +3143,6 @@ def orario_class(
         raise HTTPException(status_code=502, detail=str(e))
 
 
-@app.post("/didattica")
-def didattica(u: Utente = Depends(current_user)):
-    try:
-        didattica = cached_cvv_request_json(u, "didattica", RequestURLs.didattica)
-        return {"ok": True, "didattica": didattica}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
-
-
-@app.post("/libri")
-def libri(u: Utente = Depends(current_user)):
-    try:
-        libri = cached_cvv_request_json(u, "libri", RequestURLs.libri)
-        return {"ok": True, "libri": libri}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
-
-
-@app.post("/calendario")
-def calendario(u: Utente = Depends(current_user)):
-    try:
-        calendario = cached_cvv_request_json(u, "calendario", RequestURLs.calendario)
-        return {"ok": True, "calendario": calendario}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
-
-
 @app.post("/card")
 def card(
     request: Request,
@@ -3332,81 +3203,288 @@ def get_school_years(u: Utente = Depends(current_user)):
     }
 
 
-@app.post("/lezioni_oggi")
-def lezioni_oggi(u: Utente = Depends(current_user)):
-    try:
-        lezioni_oggi = cached_cvv_request_json(u, "lezioni_oggi", RequestURLs.lezioni_oggi)
-        return {"ok": True, "lezioni_oggi": lezioni_oggi}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
+# ---- REGISTRO: SEZIONI (bacheca, didattica, note, documenti, lezioni, ...) ----
+# Tutte in GET, con cache per utente (UPSTREAM_ENDPOINT_CACHE_TTL). I download passano da
+# link temporanei (/file/{token}) così funzionano anche dall'app, aprendo il browser esterno.
+_EVT_CODE_RE = re.compile(r"^[A-Z0-9]{2,10}$")
+_NUM_RE = re.compile(r"^\d{1,12}$")
+_HASH_RE = re.compile(r"^[A-Za-z0-9_\-]{1,128}$")
+_NOTE_TYPE_RE = re.compile(r"^NT[A-Z]{2}$")
+FILE_LINK_TTL = int(os.getenv("FILE_LINK_TTL", "600"))
+file_links: dict[str, dict] = {}
+file_links_lock = Lock()
 
 
-@app.post("/lezioni_giorno")
-def lezioni_giorno(u: Utente = Depends(current_user)):
-    try:
-        lezioni_giorno = cached_cvv_request_json(u, "lezioni_giorno", RequestURLs.lezioni_giorno)
-        return {"ok": True, "lezioni_giorno": lezioni_giorno}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
+def _require(value: str, pattern: re.Pattern, field: str) -> str:
+    value = str(value or "").strip()
+    if not pattern.match(value):
+        raise HTTPException(status_code=400, detail=f"Parametro non valido: {field}")
+    return value
 
 
-@app.post("/note")
+def _web_user(u: Utente) -> WebSessionUtente:
+    if not isinstance(u, WebSessionUtente):
+        raise HTTPException(status_code=401, detail="Accedi di nuovo con SPID o CIE")
+    return u
+
+
+def cvv_json(u: Utente, method: str, path: str, *, cache: bool = True) -> Any:
+    """JSON da /rest/w1/students/{id}{path}; 401 upstream → sessione scaduta."""
+    user = _web_user(u)
+
+    def fetch() -> Any:
+        try:
+            resp = user.call(method, path)
+        except requests.RequestException as e:
+            raise UpstreamUnavailable(f"Spaggiari irraggiungibile: {e}")
+        if resp.status_code in (429,) or resp.status_code >= 500:
+            raise UpstreamUnavailable(f"Spaggiari non disponibile ({resp.status_code})")
+        raise_for_upstream_http_status(resp.status_code, context=path.split("/")[1] or "upstream")
+        try:
+            return resp.json()
+        except ValueError:
+            return {}
+
+    if not cache:
+        return fetch()
+    key = _cache_key(["cvv-w1", _cache_user_key(user), method, path])
+    return cached_call(key, fetch)
+
+
+@app.get("/bacheca")
+def bacheca(u: Utente = Depends(current_user)):
+    data = cvv_json(u, "GET", "/noticeboard")
+    items = data.get("items", []) if isinstance(data, dict) else []
+    items.sort(key=lambda it: str(it.get("pubDT") or ""), reverse=True)
+    return {"ok": True, "items": items}
+
+
+@app.post("/bacheca/{evt_code}/{pub_id}/leggi")
+def bacheca_leggi(evt_code: str, pub_id: str, u: Utente = Depends(current_user)):
+    """Apre una comunicazione: su ClasseViva la segna anche come letta."""
+    evt_code = _require(evt_code, _EVT_CODE_RE, "evtCode")
+    pub_id = _require(pub_id, _NUM_RE, "pubId")
+    data = cvv_json(u, "POST", f"/noticeboard/read/{evt_code}/{pub_id}/101", cache=False)
+    # La lista in cache ora è vecchia (readStatus): la invalido.
+    with upstream_cache_lock:
+        upstream_cache.pop(_cache_key(["cvv-w1", _cache_user_key(u), "GET", "/noticeboard"]), None)
+    return {"ok": True, "item": data}
+
+
+@app.get("/didattica")
+def didattica(u: Utente = Depends(current_user)):
+    data = cvv_json(u, "GET", "/didactics")
+    teachers = (data.get("didacticts") or data.get("didactics") or []) if isinstance(data, dict) else []
+    return {"ok": True, "teachers": teachers}
+
+
+@app.get("/note")
 def note(u: Utente = Depends(current_user)):
-    try:
-        note = cached_cvv_request_json(u, "note", RequestURLs.note)
-        return {"ok": True, "note": note}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    data = cvv_json(u, "GET", "/notes/all")
+    return {"ok": True, "notes": data if isinstance(data, dict) else {}}
 
 
-@app.post("/periods")
-def periods(u: Utente = Depends(current_user)):
-    try:
-        periods = cached_cvv_request_json(u, "periods", RequestURLs.periods)
-        return {"ok": True, "periods": periods}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
+@app.post("/note/{note_type}/{evt_id}/leggi")
+def note_leggi(note_type: str, evt_id: str, u: Utente = Depends(current_user)):
+    note_type = _require(note_type, _NOTE_TYPE_RE, "tipo")
+    evt_id = _require(evt_id, _NUM_RE, "evtId")
+    data = cvv_json(u, "POST", f"/notes/{note_type}/read/{evt_id}", cache=False)
+    with upstream_cache_lock:
+        upstream_cache.pop(_cache_key(["cvv-w1", _cache_user_key(u), "GET", "/notes/all"]), None)
+    return {"ok": True, "note": data}
 
 
-@app.post("/materie")
-def materie(u: Utente = Depends(current_user)):
-    try:
-        materie = cached_cvv_request_json(u, "materie", RequestURLs.materie)
-        return {"ok": True, "materie": materie}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
-
-
-@app.post("/noticeboard")
-def noticeboard(u: Utente = Depends(current_user)):
-    try:
-        noticeboard = cached_cvv_request_json(u, "noticeboard", RequestURLs.noticeboard)
-        return {"ok": True, "noticeboard": noticeboard}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
-
-
-@app.post("/documenti")
+@app.get("/documenti")
 def documenti(u: Utente = Depends(current_user)):
+    data = cvv_json(u, "POST", "/documents")
+    data = data if isinstance(data, dict) else {}
+    return {"ok": True, "documents": data.get("documents") or [], "school_reports": data.get("schoolReports") or []}
+
+
+@app.get("/lezioni")
+def lezioni(
+    u: Utente = Depends(current_user),
+    start: Optional[str] = Query(default=None),
+    end: Optional[str] = Query(default=None),
+):
+    start = parse_agenda_yyyymmdd(start or time.strftime("%Y%m%d"), field="start")
+    end = parse_agenda_yyyymmdd(end or start, field="end")
+    path = f"/lessons/{start}" if start == end else f"/lessons/{start}/{end}"
+    data = cvv_json(u, "GET", path)
+    return {"ok": True, "lessons": (data.get("lessons") or []) if isinstance(data, dict) else []}
+
+
+@app.get("/compiti")
+def compiti(u: Utente = Depends(current_user)):
+    data = cvv_json(u, "GET", "/homeworks/index")
+    items = (data.get("items") or data.get("homeworks") or []) if isinstance(data, dict) else []
+    return {"ok": True, "items": items}
+
+
+class HomeworkDoneBody(BaseModel):
+    done: bool
+
+
+@app.post("/compiti/{evt_id}/fatto")
+def compiti_fatto(evt_id: str, body: HomeworkDoneBody, u: Utente = Depends(current_user)):
+    evt_id = _require(evt_id, _NUM_RE, "evtId")
+    user = _web_user(u)
+    url = f"{classeviva_client.WEB_BASE_URL}/students/{user.ident}/homeworks/setHomeworkMarkedDone/NEWDC/{evt_id}"
+    headers = user.get_headers()
+    headers["Content-Type"] = "application/x-www-form-urlencoded"
     try:
-        documenti = cached_cvv_request_json(u, "documenti", RequestURLs.documenti)
-        return {"ok": True, "documenti": documenti}
+        resp = requests.post(
+            url, headers=headers, data={"homeworkMarkedDone": "true" if body.done else "false"},
+            timeout=20, allow_redirects=False,
+        )
+    except requests.RequestException as e:
+        raise UpstreamUnavailable(f"Spaggiari irraggiungibile: {e}")
+    raise_for_upstream_http_status(resp.status_code, context="compiti")
+    with upstream_cache_lock:
+        upstream_cache.pop(_cache_key(["cvv-w1", _cache_user_key(u), "GET", "/homeworks/index"]), None)
+    return {"ok": True, "done": body.done}
+
+
+@app.get("/medie")
+def medie(u: Utente = Depends(current_user)):
+    """Medie calcolate da ClasseViva (per materia e periodo)."""
+    data = cvv_json(u, "GET", "/avg/")
+    return {"ok": True, "averages": data if isinstance(data, dict) else {}}
+
+
+@app.get("/materie")
+def materie(u: Utente = Depends(current_user)):
+    data = cvv_json(u, "GET", "/subjects")
+    return {"ok": True, "subjects": (data.get("subjects") or []) if isinstance(data, dict) else []}
+
+
+@app.get("/periodi")
+def periodi(u: Utente = Depends(current_user)):
+    data = cvv_json(u, "GET", "/periods")
+    return {"ok": True, "periods": (data.get("periods") or []) if isinstance(data, dict) else []}
+
+
+@app.get("/libri")
+def libri(u: Utente = Depends(current_user)):
+    data = cvv_json(u, "GET", "/schoolbooks")
+    return {"ok": True, "courses": (data.get("schoolbooks") or []) if isinstance(data, dict) else []}
+
+
+@app.get("/calendario")
+def calendario(u: Utente = Depends(current_user)):
+    data = cvv_json(u, "GET", "/calendar/all")
+    return {"ok": True, "days": (data.get("calendar") or []) if isinstance(data, dict) else []}
+
+
+class FileLinkBody(BaseModel):
+    kind: str = Field(..., pattern=r"^(bacheca|didattica|documento|compito)$")
+    evt_code: Optional[str] = None
+    pub_id: Optional[str] = None
+    attach_num: Optional[str] = None
+    content_id: Optional[str] = None
+    hash: Optional[str] = None
+    evt_id: Optional[str] = None
+    file_id: Optional[str] = None
+
+
+@app.post("/file-link")
+def file_link(body: FileLinkBody, session_id: Optional[str] = Cookie(default=None)):
+    """Link temporaneo (FILE_LINK_TTL) per scaricare un file senza cookie di sessione."""
+    sess = get_session_record(session_id)
+    _web_user(sess["user"])
+    if body.kind == "bacheca":
+        evt = _require(body.evt_code, _EVT_CODE_RE, "evtCode")
+        pub = _require(body.pub_id, _NUM_RE, "pubId")
+        num = _require(body.attach_num or "1", _NUM_RE, "attachNum")
+        # ClasseViva dà l'allegato solo dopo aver letto la comunicazione.
+        steps = [("POST", f"/noticeboard/read/{evt}/{pub}/101"), ("GET", f"/noticeboard/attach/{evt}/{pub}/{num}")]
+    elif body.kind == "didattica":
+        cid = _require(body.content_id, _NUM_RE, "contentId")
+        steps = [("GET", f"/didactics/item/{cid}")]
+    elif body.kind == "compito":
+        eid = _require(body.evt_id, _NUM_RE, "evtId")
+        fid = _require(body.file_id, _NUM_RE, "fileId")
+        steps = [("GET", f"/homeworks/downloadTeacherFile/NEWDC/{eid}/{fid}")]
+    else:
+        h = _require(body.hash, _HASH_RE, "hash")
+        steps = [("POST", f"/documents/check/{h}"), ("POST", f"/documents/read/{h}")]
+    token = secrets.token_urlsafe(24)
+    now = time.time()
+    with file_links_lock:
+        for t in [t for t, v in file_links.items() if v["expires"] < now]:
+            file_links.pop(t, None)
+        file_links[token] = {"session_id": session_id, "steps": steps, "expires": now + FILE_LINK_TTL}
+    return {"ok": True, "url": f"/api/file/{token}", "expires_in": FILE_LINK_TTL}
+
+
+_FILENAME_RE = re.compile(r"filename\*?=(?:UTF-8'')?\"?([^\";]+)", re.IGNORECASE)
+
+
+@app.get("/file/{token}")
+def file_download(token: str):
+    with file_links_lock:
+        link = file_links.get(token)
+    if not link or link["expires"] < time.time():
+        raise HTTPException(status_code=404, detail="Link scaduto: riapri il file da Aulera")
+    try:
+        sess = get_session_record(link["session_id"])
     except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=401, detail="Sessione scaduta: accedi di nuovo")
+    user = _web_user(sess["user"])
+    *prep, (method, path) = link["steps"]
+    try:
+        for pm, pp in prep:
+            user.call(pm, pp).close()
+        resp = user.download(method, path)
+    except requests.RequestException as e:
+        raise HTTPException(status_code=503, detail=f"Spaggiari irraggiungibile: {e}")
+    if resp.status_code != 200:
+        resp.close()
+        raise_for_upstream_http_status(resp.status_code, context="file")
+        raise HTTPException(status_code=502, detail=f"File non disponibile ({resp.status_code})")
+
+    content_type = resp.headers.get("Content-Type") or "application/octet-stream"
+    if "json" in content_type:
+        # Contenuti "link" o "testo" della didattica: Spaggiari risponde in JSON.
+        try:
+            payload = resp.json()
+        except ValueError:
+            payload = {}
+        finally:
+            resp.close()
+        item = payload.get("item") if isinstance(payload, dict) else None
+        item = item if isinstance(item, dict) else {}
+        link = str(item.get("link") or "").strip()
+        if link.startswith(("https://", "http://")):
+            return RedirectResponse(link, status_code=302)
+        text = str(item.get("text") or "").strip()
+        if text:
+            safe = html.escape(text).replace("\n", "<br>")
+            return HTMLResponse(
+                "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
+                "<title>Aulera</title><body style='font:17px/1.6 system-ui;max-width:65ch;margin:40px auto;padding:0 20px'>"
+                f"{safe}</body>"
+            )
+        raise HTTPException(status_code=404, detail="Contenuto non disponibile")
+
+    match = _FILENAME_RE.search(resp.headers.get("Content-Disposition") or "")
+    filename = (match.group(1).strip() if match else "") or "file"
+    filename = re.sub(r"[\\/\r\n\t]+", "_", requests.utils.unquote(filename))[:180]
+    disposition = "inline" if content_type.startswith(("application/pdf", "image/")) else "attachment"
+    headers = {
+        "Content-Disposition": f"{disposition}; filename*=UTF-8''{requests.utils.quote(filename)}",
+        "Cache-Control": "private, no-store",
+    }
+    if resp.headers.get("Content-Length"):
+        headers["Content-Length"] = resp.headers["Content-Length"]
+
+    def stream():
+        try:
+            yield from resp.iter_content(chunk_size=64 * 1024)
+        finally:
+            resp.close()
+
+    return StreamingResponse(stream(), media_type=content_type, headers=headers)
 
 
 @app.get("/leaderboard/me")
@@ -3439,7 +3517,7 @@ def get_my_leaderboard_entry(
 
 
 @app.post("/leaderboard/update")
-async def update_leaderboard(
+def update_leaderboard(
     body: LeaderboardUpdateBody,
     u: Utente = Depends(current_user),
 ):
@@ -3465,7 +3543,6 @@ async def update_leaderboard(
         existing_hours = float(existing.get("hours") or 0) if existing else 0.0
         class_code = pick_current_class_code(
             resolve_live_class_code(u),
-            body.class_code,
             profile.get("class_code"),
             existing.get("class_code") if existing else None,
         )
@@ -3485,14 +3562,14 @@ async def update_leaderboard(
             if class_changed or visibility_changed:
                 saved = upsert_leaderboard_entry(
                     username=session_username,
-                    full_name=body.full_name or profile.get("full_name") or existing.get("full_name"),
+                    full_name=profile.get("full_name") or existing.get("full_name"),
                     class_code=class_code,
-                    school_code=body.school_code or profile.get("school_code") or existing.get("school_code"),
+                    school_code=profile.get("school_code") or existing.get("school_code"),
                     hours=existing_hours,
                     visible_in_leaderboard=bool(body.visible_in_leaderboard),
                     school_year=year,
                 )
-                await broadcast_leaderboard_change("upsert", session_username.strip())
+                run_async_from_sync(broadcast_leaderboard_change, "upsert", session_username.strip())
                 return {
                     "ok": True,
                     "saved": saved,
@@ -3510,15 +3587,15 @@ async def update_leaderboard(
 
         saved = upsert_leaderboard_entry(
             username=session_username,
-            full_name=body.full_name or profile.get("full_name") or (existing.get("full_name") if existing else None),
+            full_name=profile.get("full_name") or (existing.get("full_name") if existing else None),
             class_code=class_code,
-            school_code=body.school_code or profile.get("school_code") or (existing.get("school_code") if existing else None),
+            school_code=profile.get("school_code") or (existing.get("school_code") if existing else None),
             hours=computed_hours,
             visible_in_leaderboard=bool(body.visible_in_leaderboard),
             school_year=year,
         )
 
-        await broadcast_leaderboard_change("upsert", session_username.strip())
+        run_async_from_sync(broadcast_leaderboard_change, "upsert", session_username.strip())
 
         return {
             "ok": True,
@@ -3743,6 +3820,13 @@ def get_leaderboard(
                 entries = []
 
         entries.sort(key=lambda x: (-float(x.get("hours", 0)), x.get("username", "").lower()))
+        # Posizione dell'utente nella classifica completa (anche se non è in questa pagina).
+        _me_aliases = username_aliases(get_session_username(u), getattr(u, "ident", None))
+        me_summary = None
+        for _rank, _entry in enumerate(entries, start=1):
+            if normalize_username(_entry.get("username")) in _me_aliases:
+                me_summary = {"rank": _rank, "total": len(entries), "entry": dict(_entry)}
+                break
         entries = filter_entries_by_search_query(entries, q)
 
         total_items = len(entries)
@@ -3794,6 +3878,7 @@ def get_leaderboard(
             "total_pages": total_pages,
             "search_query": (q or "").strip() or None,
             "items": enriched_items,
+            "me": me_summary,
         }
     except HTTPException:
         raise
@@ -3837,7 +3922,7 @@ def get_my_average_leaderboard_entry(
 
 
 @app.post("/average-leaderboard/update")
-async def update_average_leaderboard(
+def update_average_leaderboard(
     body: AverageLeaderboardUpdateBody,
     u: Utente = Depends(current_user),
 ):
@@ -3873,7 +3958,6 @@ async def update_average_leaderboard(
         existing_average = float(existing.get("average") or 0) if existing else 0.0
         class_code = pick_current_class_code(
             resolve_live_class_code(u),
-            body.class_code,
             profile.get("class_code"),
             existing.get("class_code") if existing else None,
         )
@@ -3892,9 +3976,9 @@ async def update_average_leaderboard(
                 if class_changed or visibility_changed:
                     saved = upsert_average_leaderboard_entry(
                         username=session_username,
-                        full_name=body.full_name or profile.get("full_name") or existing.get("full_name"),
+                        full_name=profile.get("full_name") or existing.get("full_name"),
                         class_code=class_code,
-                        school_code=body.school_code or profile.get("school_code") or existing.get("school_code"),
+                        school_code=profile.get("school_code") or existing.get("school_code"),
                         subject_name=normalized_subject,
                         period_key=normalized_period_key,
                         period_label=body.period_label or existing.get("period_label"),
@@ -3902,7 +3986,7 @@ async def update_average_leaderboard(
                         visible_in_leaderboard=bool(body.visible_in_leaderboard),
                         school_year=year,
                     )
-                    await broadcast_average_leaderboard_change("upsert", session_username.strip())
+                    run_async_from_sync(broadcast_average_leaderboard_change, "upsert", session_username.strip())
                 save_average_history_point(
                     username=session_username,
                     school_year=year,
@@ -3926,9 +4010,9 @@ async def update_average_leaderboard(
 
         saved = upsert_average_leaderboard_entry(
             username=session_username,
-            full_name=body.full_name or profile.get("full_name") or (existing.get("full_name") if existing else None),
+            full_name=profile.get("full_name") or (existing.get("full_name") if existing else None),
             class_code=class_code,
-            school_code=body.school_code or profile.get("school_code") or (existing.get("school_code") if existing else None),
+            school_code=profile.get("school_code") or (existing.get("school_code") if existing else None),
             subject_name=normalized_subject,
             period_key=normalized_period_key,
             period_label=body.period_label,
@@ -3939,8 +4023,8 @@ async def update_average_leaderboard(
 
         # Aggiorna anche le medie per materia (stessa visibilità della media generale).
         subject_averages = calculate_subject_averages_from_payload(voti_payload)
-        full_name = body.full_name or profile.get("full_name") or (existing.get("full_name") if existing else None)
-        school_code = body.school_code or profile.get("school_code") or (existing.get("school_code") if existing else None)
+        full_name = profile.get("full_name") or (existing.get("full_name") if existing else None)
+        school_code = profile.get("school_code") or (existing.get("school_code") if existing else None)
         for subject_name, subject_average in subject_averages.items():
             if float(subject_average) <= 0:
                 continue
@@ -3964,7 +4048,7 @@ async def update_average_leaderboard(
             average=computed_average,
         )
 
-        await broadcast_average_leaderboard_change("upsert", session_username.strip())
+        run_async_from_sync(broadcast_average_leaderboard_change, "upsert", session_username.strip())
 
         return {
             "ok": True,
@@ -4113,6 +4197,13 @@ def get_average_leaderboard(
                 entries = []
 
         entries.sort(key=lambda x: (-float(x.get("average", 0)), x.get("username", "").lower()))
+        # Posizione dell'utente nella classifica completa (anche se non è in questa pagina).
+        _me_aliases = username_aliases(get_session_username(u), getattr(u, "ident", None))
+        me_summary = None
+        for _rank, _entry in enumerate(entries, start=1):
+            if normalize_username(_entry.get("username")) in _me_aliases:
+                me_summary = {"rank": _rank, "total": len(entries), "entry": dict(_entry)}
+                break
         entries = filter_entries_by_search_query(entries, q)
 
         total_items = len(entries)
@@ -4170,6 +4261,7 @@ def get_average_leaderboard(
             "total_pages": total_pages,
             "search_query": (q or "").strip() or None,
             "items": enriched_items,
+            "me": me_summary,
         }
     except HTTPException:
         raise
@@ -4345,20 +4437,6 @@ def admin_save_announcement(body: AnnouncementUpdateBody, _: Utente = Depends(cu
     }
 
 
-# ---- EASTER EGG (gioco Godot) ----
-@app.get("/easter-egg/eligible")
-def easter_egg_eligible(u: Utente = Depends(current_user)):
-    username = get_session_username(u)
-    return {
-        "ok": True,
-        "eligible": is_easter_egg_username(username),
-        "username": username,
-        "game_ready": godot_export_available(),
-        "game_url": "/game/godot/index.html",
-        "launcher_url": "/game/",
-    }
-
-
 # ---- ADMIN ----
 @app.get("/admin/eligible")
 def admin_eligible(u: Utente = Depends(current_user)):
@@ -4406,8 +4484,9 @@ def admin_bootstrap(
 
 @app.post("/admin/login")
 def admin_login(
-    body: AdminLoginBody,
     response: Response,
+    request: Request,
+    body: AdminLoginBody = Body(default=None),
     u: Utente = Depends(current_user),
     session_id: Optional[str] = Cookie(default=None),
     admin_session_id: Optional[str] = Cookie(default=None, alias="admin_session_id"),
@@ -4419,10 +4498,13 @@ def admin_login(
     if not session_id:
         raise HTTPException(status_code=401, detail="Sessione non valida")
 
-    try:
-        cached_login_user(username, body.password)
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+    # L'utente è già autenticato con SPID/CIE. Se ADMIN_PANEL_PASSWORD è impostata,
+    # serve anche quella (secondo fattore per il pannello).
+    if ADMIN_PANEL_PASSWORD and not hmac.compare_digest(
+        ((body.password if body else None) or "").encode("utf-8"), ADMIN_PANEL_PASSWORD.encode("utf-8")
+    ):
+        check_login_rate_limit(get_client_ip(request), bucket="admin", max_attempts=10)
+        raise HTTPException(status_code=401, detail="Password del pannello errata")
 
     clear_admin_session(admin_session_id)
     admin_sid = create_admin_session(session_id)
@@ -4456,7 +4538,6 @@ def admin_overview(_: Utente = Depends(current_admin)):
         "active_session_details": build_active_sessions_snapshot(),
         "leaderboard_entries": assenze_count,
         "average_leaderboard_entries": len(average_users),
-        "database_path": DATABASE_PATH,
     }
 
 
@@ -4593,4 +4674,20 @@ async def admin_badge_batch(body: BadgeBatchBody, _: Utente = Depends(current_ad
 
 
 if DEV_MODE and os.path.isdir(PUBLIC_DIR):
-    app.mount("/", StaticFiles(directory=PUBLIC_DIR, html=True), name="public")
+    class SpaStaticFiles(StaticFiles):
+        """Come Nginx (try_files ... /index.html): i percorsi dell'app servono index.html."""
+
+        async def get_response(self, path, scope):
+            try:
+                response = await super().get_response(path, scope)
+            except StarletteHTTPException as exc:
+                if exc.status_code != 404:
+                    raise
+                response = None
+            if response is None or response.status_code == 404:
+                if "." in path.rsplit("/", 1)[-1]:
+                    return response if response is not None else await super().get_response("__missing__", scope)
+                return await super().get_response("index.html", scope)
+            return response
+
+    app.mount("/", SpaStaticFiles(directory=PUBLIC_DIR, html=True), name="public")
