@@ -178,6 +178,7 @@ export default {
       const current = isCurrentYear();
       const hidden = current && vis && vis[board] === false;
       const unavailable = scope === "class" && !classAvailable;
+      if (unavailable) { setHTML(meBox, ""); return; } // lo spiega già lo stato vuoto dell'elenco
       setHTML(meBox, html`<section class="card card-pad classifica-me-card is-empty">
         <div class="hstack"><span class="row-icon">${icon(hidden ? "eyeOff" : "person")}</span>
           <div class="row-main"><p class="title-3">${hidden ? "Sei nascosto" : unavailable ? "Classe non disponibile" : current ? "Non sei ancora in classifica" : "Non eri in classifica"}</p>

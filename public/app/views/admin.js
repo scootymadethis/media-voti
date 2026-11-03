@@ -71,7 +71,7 @@ export default {
     let lbKind = "assenze";
     let lbFilter = "";
     let lbLimit = 60;
-    const data = { overview: null, sessions: [], logins: [], lb: { assenze: null, media: null }, badges: null, users: [], announcement: null, views: 0 };
+    const data = { overview: null, sessions: [], logins: [], lb: { assenze: null, media: null }, badges: null, users: null, announcement: null, views: 0 };
     let ws = null, wsTries = 0, wsTimer = null, pollTimer = null, wsState = "off";
     let closed = false;
     let selectedBadge = null;
@@ -412,7 +412,7 @@ export default {
       drawBadgeList();
       drawAssign();
       if (!data.badges) loadBadges();
-      if (!Array.isArray(data.users) || !data.users.length) searchUsers();
+      if (!Array.isArray(data.users)) searchUsers();
     }
     function drawBadgeList() {
       const box = $("[data-badge-list]", sec());
@@ -455,7 +455,8 @@ export default {
           </div>
         </div>`);
       $("[data-user-search]", box).addEventListener("input", (e) => { clearTimeout(userTimer); userTimer = setTimeout(() => { userQuery = e.target.value.trim(); searchUsers(); }, 250); });
-      box.addEventListener("click", async (e) => {
+      // onclick (non addEventListener): il contenitore resta, i ridisegni non accumulano handler.
+      box.onclick = async (e) => {
         const u = e.target.closest("[data-user]");
         if (u) {
           const name = u.dataset.user;
@@ -469,13 +470,14 @@ export default {
         b.disabled = true;
         try {
           const res = await A.post("/admin/badges/batch", { badge_id: badge.id, usernames: [...selectedUsers], action: b.dataset.batch });
-          toast(b.dataset.batch === "assign" ? `“${badge.label}” assegnato a ${res.changed ?? 0} ${res.changed === 1 ? "utente" : "utenti"}` : `“${badge.label}” rimosso da ${res.changed ?? 0} ${res.changed === 1 ? "utente" : "utenti"}`);
+          if (!res.changed) toast(b.dataset.batch === "assign" ? "Nessuna modifica: avevano già questo badge" : "Nessuna modifica: non avevano questo badge");
+          else toast(b.dataset.batch === "assign" ? `“${badge.label}” assegnato a ${res.changed ?? 0} ${res.changed === 1 ? "utente" : "utenti"}` : `“${badge.label}” rimosso da ${res.changed ?? 0} ${res.changed === 1 ? "utente" : "utenti"}`);
           selectedUsers.clear();
           data.lb = { assenze: null, media: null };
           await searchUsers();
         } catch (err) { guard(err); }
         updateCount();
-      });
+      };
       drawUsers();
     }
     function updateCount() {
@@ -489,7 +491,7 @@ export default {
     function drawUsers() {
       const box = $("[data-users]", sec());
       if (!box) return;
-      if (!data.users || (Array.isArray(data.users) && !data.users.length && userReq && !userQuery && false)) return;
+      if (!data.users) return setHTML(box, skeletonList(3));
       if (data.users.error) setHTML(box, errorState(data.users.error, false));
       else if (!data.users.length) setHTML(box, emptyState({ iconName: "person", title: userQuery ? "Nessun utente trovato" : "Nessun utente", text: "Gli utenti arrivano da sessioni, classifiche e badge già assegnati." }));
       else {

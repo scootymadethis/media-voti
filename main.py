@@ -51,24 +51,28 @@ DEV_MODE = os.getenv("DEV_MODE", "").strip().lower() in {"1", "true", "yes"}
 PUBLIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "public")
 
 
-class ApiPrefixMiddleware(BaseHTTPMiddleware):
-    """In dev, riscrive /api/* verso /* come fa Nginx in produzione."""
+class ApiPrefixMiddleware:
+    """In dev, riscrive /api/* verso /* come fa Nginx in produzione (HTTP e WebSocket).
 
-    async def dispatch(self, request, call_next):
-        path = request.scope.get("path", "")
-        if path == "/api":
-            request.scope["path"] = "/"
-        elif path.startswith("/api/"):
-            request.scope["path"] = path[4:] or "/"
-        elif (
-            request.method == "GET"
-            and "text/html" in (request.headers.get("accept") or "")
-            and "." not in path.rsplit("/", 1)[-1]
-        ):
-            # Navigazione del browser (es. /bacheca): è una pagina della SPA, non l'API omonima.
-            # In produzione lo fa Nginx (try_files → index.html).
-            return FileResponse(os.path.join(PUBLIC_DIR, "index.html"))
-        return await call_next(request)
+    Le navigazioni del browser (GET con Accept text/html, senza estensione) servono index.html:
+    sono pagine della SPA (es. /bacheca), non l'API omonima. In produzione lo fa Nginx.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in ("http", "websocket"):
+            path = scope.get("path", "")
+            if path == "/api" or path.startswith("/api/"):
+                scope = dict(scope, path=path[4:] or "/")
+            elif scope["type"] == "http" and scope.get("method") == "GET" and "." not in path.rsplit("/", 1)[-1]:
+                accept = dict(scope.get("headers") or []).get(b"accept", b"").decode("latin-1")
+                if "text/html" in accept:
+                    response = FileResponse(os.path.join(PUBLIC_DIR, "index.html"))
+                    await response(scope, receive, send)
+                    return
+        await self.app(scope, receive, send)
 
 
 if DEV_MODE:
@@ -2897,6 +2901,13 @@ def get_user_profile_for_leaderboards(u: Utente, card_res: Optional[dict] = None
     school_code = saved.get("school_code")
     class_code = saved.get("class_code")
 
+    if card_res is None and not (full_name and school_code):
+        # Primo salvataggio: senza card nome e scuola resterebbero vuoti (niente classifica di
+        # classe). La card è in cache per utente, quindi costa al massimo una chiamata ogni 5 min.
+        try:
+            card_res = _fetch_student_card_raw(u)
+        except HTTPException:
+            card_res = None
     if isinstance(card_res, dict):
         card_fields = extract_student_card_fields(card_res)
         card_full_name = f"{(card_fields.get('firstName') or '').strip()} {(card_fields.get('lastName') or '').strip()}".strip()
@@ -2908,6 +2919,8 @@ def get_user_profile_for_leaderboards(u: Utente, card_res: Optional[dict] = None
         class_code = _extract_class_code_from_card_fields(card_fields) or class_code
 
     class_code = pick_current_class_code(resolve_live_class_code(u), class_code)
+    if not full_name:
+        full_name = f"{getattr(u, 'first_name', '') or ''} {getattr(u, 'last_name', '') or ''}".strip()
 
     return {
         "full_name": full_name or None,
@@ -3835,6 +3848,8 @@ def get_leaderboard(
             if normalize_username(_entry.get("username")) in _me_aliases:
                 me_summary = {"rank": _rank, "total": len(entries), "entry": dict(_entry)}
                 break
+        for _rank, _entry in enumerate(entries, start=1):
+            _entry["_rank"] = _rank
         entries = filter_entries_by_search_query(entries, q)
 
         total_items = len(entries)
@@ -3859,7 +3874,7 @@ def get_leaderboard(
             )
             enriched_items.append(
                 {
-                    "rank": idx,
+                    "rank": item.get("_rank", idx),
                     "username": item.get("username"),
                     "full_name": item.get("full_name") or item.get("username"),
                     "class_code": item.get("class_code"),
@@ -4212,6 +4227,8 @@ def get_average_leaderboard(
             if normalize_username(_entry.get("username")) in _me_aliases:
                 me_summary = {"rank": _rank, "total": len(entries), "entry": dict(_entry)}
                 break
+        for _rank, _entry in enumerate(entries, start=1):
+            _entry["_rank"] = _rank
         entries = filter_entries_by_search_query(entries, q)
 
         total_items = len(entries)
@@ -4236,7 +4253,7 @@ def get_average_leaderboard(
             )
             enriched_items.append(
                 {
-                    "rank": idx,
+                    "rank": item.get("_rank", idx),
                     "username": item.get("username"),
                     "full_name": item.get("full_name") or item.get("username"),
                     "class_code": item.get("class_code"),
