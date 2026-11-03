@@ -617,6 +617,7 @@ button.row:active, a.row:active { background: var(--fill); }
     transition: transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out);
   }
   .sheet.is-open { transform: translate(-50%, -50%); opacity: 1; }
+  .sheet.sheet-wide { width: min(760px, calc(100% - 48px)); }
   .sheet-grabber { display: none; }
   .sheet-head { padding-top: 22px; }
 }

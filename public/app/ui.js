@@ -237,7 +237,7 @@ export function openSheet({ title = "", content, onClose, wide = false } = {}) {
   sheet.className = "sheet glass glass-strong";
   sheet.setAttribute("role", "dialog");
   sheet.setAttribute("aria-modal", "true");
-  if (wide) sheet.style.width = "min(760px, calc(100% - 48px))";
+  if (wide) sheet.classList.add("sheet-wide");
   setHTML(sheet, html`<div class="sheet-grabber" aria-hidden="true"></div>
     <div class="sheet-head"><h2 class="title-2">${title}</h2>
       <button type="button" class="btn btn-icon" data-close aria-label="Chiudi">${icon("close")}</button></div>

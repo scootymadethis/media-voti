@@ -22,7 +22,9 @@ export function badgeChip(b) {
 export const badgeChips = (list) => (list?.length ? html`<span class="account-badges">${list.map(badgeChip)}</span>` : "");
 
 const displayName = (it) => {
-  const n = String(it?.full_name || "").trim();
+  let n = String(it?.full_name || "").trim();
+  // La propria voce può non avere ancora il nome (solo username): usa quello della sessione.
+  if ((it?.is_me || it?.__me) && (!n || n === it?.username) && state.session?.full_name) n = state.session.full_name;
   return n && n !== it?.username ? titleCase(n) : n || it?.username || "Studente";
 };
 const fmtAvg = (v) => (v === null || v === undefined || Number.isNaN(Number(v)) ? "—" : Number(v).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -105,28 +107,30 @@ export default {
         ${cls ? segmented("lb-scope", [{ value: "class", label: `Classe ${cls}` }, { value: "global", label: "Globale" }], scope) : ""}
       </div>
       <div class="classifica-layout">
-        <div class="classifica-me" data-me></div>
         <div class="classifica-main">
-          <div data-podium></div>
+          <div class="classifica-podium-slot" data-podium></div>
           <div class="classifica-list-head" data-list-head hidden>
             <label class="search classifica-search">${icon("search")}<input class="field" type="search" data-search placeholder="Cerca per nome o classe" autocomplete="off" enterkeyhint="search" aria-label="Cerca nella classifica" /></label>
           </div>
-          <div data-list></div>
+          <div class="classifica-list-slot" data-list></div>
           <button type="button" class="classifica-sticky" data-sticky hidden aria-label="Vai alla tua posizione"></button>
         </div>
-        <div class="classifica-privacy" data-privacy></div>
+        <aside class="classifica-aside">
+          <div class="classifica-me" data-me></div>
+          <div class="classifica-privacy" data-privacy></div>
+        </aside>
       </div>`);
 
     const meBox = $("[data-me]", root), podiumBox = $("[data-podium]", root), listBox = $("[data-list]", root);
     const listHead = $("[data-list-head]", root), sticky = $("[data-sticky]", root), privacyBox = $("[data-privacy]", root);
-    const main = $(".classifica-main", root);
+    const main = $(".classifica-layout", root);
 
     const value = (it) => (board === "media" ? it?.average : it?.hours);
     const valueText = (it) => (board === "media" ? fmtAvg(it?.average) : fmtHours(it?.hours));
     const valuePill = (it) => board === "media"
       ? html`<span class="grade grade-sm ${gradeClass(Number(it?.average))} classifica-value">${fmtAvg(it?.average)}</span>`
       : html`<span class="classifica-hours tnum">${fmtHours(it?.hours)}</span>`;
-    const scopeLabel = () => (scope === "class" ? `Classe ${cls}` : "Tutti gli studenti");
+    const scopeLabel = () => (scope === "class" ? `Classe ${cls}` : "Globale");
 
     const buildUrl = (p, size = PAGE) => {
       const params = new URLSearchParams({ type: scope, page: String(p), page_size: String(size) });
@@ -160,9 +164,9 @@ export default {
           hint = gap < 0.005 ? html`Sei a pari merito con <strong>${displayName(above)}</strong>.` : html`Ti mancano <strong class="tnum">${fmtAvg(gap)}</strong> per superare ${displayName(above)}.`;
         } else if (board === "assenze") hint = "Ore di assenza registrate nell'anno.";
         setHTML(meBox, html`<section class="card card-pad classifica-me-card">
+          <p class="overline">La tua posizione · ${scopeLabel()}</p>
           <div class="classifica-me-top">
-            <div><p class="overline">La tua posizione · ${scopeLabel()}</p>
-              <p class="classifica-me-rank tnum">${ordinal(me.rank)}<span> su ${me.total}</span></p></div>
+            <p class="classifica-me-rank tnum">${ordinal(me.rank)}<span> su ${me.total}</span></p>
             <div class="classifica-me-value"><span class="${board === "media" ? `grade ${gradeClass(Number(mine))}` : "classifica-hours lg tnum"}">${valueText(me.entry)}</span>
               <span class="caption">${board === "media" ? "media generale" : "di assenza"}</span></div>
           </div>
@@ -258,8 +262,9 @@ export default {
     };
 
     /* ---------- riga "Tu" fissa ---------- */
-    let myRowVisible = false, meCardVisible = true;
-    const meCardObserver = new IntersectionObserver(([e]) => { meCardVisible = e.isIntersecting; updateSticky(); });
+    let myRowVisible = false, meCardPassed = false;
+    // La riga fissa compare solo dopo aver superato la card "La tua posizione".
+    const meCardObserver = new IntersectionObserver(([e]) => { meCardPassed = !e.isIntersecting && e.boundingClientRect.top < 0; updateSticky(); });
     meCardObserver.observe(meBox);
     cleanups.push(() => meCardObserver.disconnect());
     const observeMyRow = () => {
@@ -272,7 +277,7 @@ export default {
       updateSticky();
     };
     const updateSticky = () => {
-      const show = !!me && !!items.length && !myRowVisible && !meCardVisible;
+      const show = !!me && !!items.length && !myRowVisible && meCardPassed;
       if (me) {
         setHTML(sticky, html`<span class="classifica-rank tnum">${me.rank}</span>
           <span class="account-avatar sm is-me" aria-hidden="true">${initials(displayName(me.entry))}</span>
@@ -300,7 +305,7 @@ export default {
       total = data.total_items ?? items.length;
       totalPages = data.total_pages || 1;
       page = Math.ceil(items.length / PAGE) || 1;
-      me = data.me && data.me.rank ? data.me : null;
+      me = data.me && data.me.rank ? { ...data.me, entry: { ...data.me.entry, __me: true } } : null;
       classAvailable = data.class_scope_available !== false;
     };
 

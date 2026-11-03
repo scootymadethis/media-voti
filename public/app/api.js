@@ -124,6 +124,8 @@ export async function openFile(params) {
     await nativeOpen({ url: absolute });
     return;
   }
-  const w = window.open(full, "_blank", "noopener");
-  if (!w) location.href = full;
+  // Con "noopener" window.open restituisce sempre null: lo stacco a mano.
+  const w = window.open(full, "_blank");
+  if (w) w.opener = null;
+  else location.href = full;
 }

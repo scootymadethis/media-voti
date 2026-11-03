@@ -99,10 +99,10 @@ export default {
       }
       setHTML(list, html`${sections.map((s) => html`
         ${multi ? html`<h2 class="title-3 libri-course">${courseName(s.course.courseDesc) || "Corso"}</h2>` : ""}
-        ${s.groups.map(([subject, books]) => html`<section class="com-group">
-          <h2 class="overline com-group-label">${subject}</h2>
+        <div class="libri-groups">${s.groups.map(([subject, books]) => html`<section class="com-group">
+          <h2 class="overline com-group-label">${subject}<span class="faint tnum">${books.length > 1 ? ` · ${books.length}` : ""}</span></h2>
           <div class="card libri-list">${books.map(bookRow)}</div>
-        </section>`)}`)}`);
+        </section>`)}</div>`)}`);
     };
 
     const draw = () => {

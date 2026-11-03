@@ -12,7 +12,7 @@ from fastapi import (
     BackgroundTasks,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -60,6 +60,14 @@ class ApiPrefixMiddleware(BaseHTTPMiddleware):
             request.scope["path"] = "/"
         elif path.startswith("/api/"):
             request.scope["path"] = path[4:] or "/"
+        elif (
+            request.method == "GET"
+            and "text/html" in (request.headers.get("accept") or "")
+            and "." not in path.rsplit("/", 1)[-1]
+        ):
+            # Navigazione del browser (es. /bacheca): è una pagina della SPA, non l'API omonima.
+            # In produzione lo fa Nginx (try_files → index.html).
+            return FileResponse(os.path.join(PUBLIC_DIR, "index.html"))
         return await call_next(request)
 
 

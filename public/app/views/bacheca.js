@@ -78,6 +78,7 @@ export default {
     let cat = "";
     let sheet = null;
     let deepLink = ctx.params.get("id");
+    const justRead = new Set(); // lette ora: restano visibili in "Da leggere" finché non cambi filtro
 
     setHTML(root, html`${pageHeader({ eyebrow: "Comunicazioni", title: "Bacheca", subtitle: "Circolari e comunicazioni della scuola." })}
       <div data-body>
@@ -130,7 +131,7 @@ export default {
       if (!list) return;
       updateCounts();
       const q = query.trim().toLowerCase();
-      const shown = items.filter((n) => (filter === "all" || !n.readStatus)
+      const shown = items.filter((n) => (filter === "all" || !n.readStatus || justRead.has(n.pubId))
         && (!cat || catOf(n) === cat)
         && (!q || `${n.cntTitle} ${n.cntCategory} ${(n.attachments || []).map((a) => a.fileName).join(" ")}`.toLowerCase().includes(q)));
       if (!shown.length) {
@@ -170,7 +171,7 @@ export default {
           </div>
           <div class="com-chips" data-cats role="group" aria-label="Categorie"></div>
           <div data-list></div>`);
-        bindSegmented(body, "filter", (v) => { filter = v; drawList(); });
+        bindSegmented(body, "filter", (v) => { filter = v; justRead.clear(); drawList(); });
         $(".com-search input", body).addEventListener("input", (e) => { query = e.target.value; drawList(); });
       }
       drawCats();
@@ -282,6 +283,7 @@ export default {
           }
           if (wasUnread) {
             n.readStatus = true;
+            justRead.add(n.pubId);
             invalidate("bacheca");
             emit("unread");
             drawList();

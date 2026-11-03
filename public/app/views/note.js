@@ -15,6 +15,16 @@ const typeOf = (t) => TYPES[t] || { label: "Nota", plural: "Altre", icon: "note"
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const plain = (t) => String(t ?? "").replace(/\r\n?/g, "\n").trim();
 
+function ago(d) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = Math.round((today - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+  if (days <= 0) return "Oggi";
+  if (days === 1) return "Ieri";
+  if (days < 30) return `${days} giorni fa`;
+  const months = Math.round(days / 30.4);
+  return months <= 1 ? "Un mese fa" : `${months} mesi fa`;
+}
+
 function paragraphs(text) {
   return raw(plain(text).split(/\n{2,}/).map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join(""));
 }
@@ -128,8 +138,8 @@ export default {
         <div class="note-sheet-head">
           <span class="com-ic com-ic-lg c-${t.tone}">${icon(t.icon)}</span>
           <div class="stack-sm" style="gap:4px">
-            <p class="title-3">${t.label}${n.warningType ? html` <span class="muted">· ${capitalize(String(n.warningType).toLowerCase())}</span>` : ""}</p>
-            ${d ? html`<p class="caption">${fmtDate(d, { weekday: true, year: true })}</p>` : ""}
+            <p class="title-3">${d ? fmtDate(d, { weekday: true, year: d.getFullYear() !== new Date().getFullYear() }) : "Data non indicata"}</p>
+            <p class="caption">${[d ? ago(d) : "", n.warningType ? capitalize(String(n.warningType).toLowerCase()) : ""].filter(Boolean).join(" · ") || t.label}</p>
           </div>
         </div>
         <article class="note-text" data-text>${wasUnread && !plain(n.evtText)

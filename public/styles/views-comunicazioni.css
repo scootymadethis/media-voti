@@ -234,6 +234,10 @@
 .libri-course { margin: 28px 4px 0; }
 
 .libri-list { overflow: hidden; }
+@media (min-width: 1100px) {
+  .libri-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; align-items: start; }
+  .libri-groups > .com-group:nth-child(2) { margin-top: 8px; }
+}
 .libri-book { position: relative; display: flex; gap: 16px; padding: 16px 18px; }
 .libri-book + .libri-book::before { content: ""; position: absolute; top: 0; left: 18px; right: 0; height: 1px; background: var(--hairline); }
 .libri-cover {
