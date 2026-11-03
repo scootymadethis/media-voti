@@ -296,7 +296,7 @@ async function syncLeaderboards() {
   if (Date.now() - last < 6 * 3600_000) return;
   store.set("lbSync", Date.now());
   try {
-    const [abs, avg] = await Promise.all([get("/leaderboard/me").catch(() => null), get("/average-leaderboard/me").catch(() => null)]);
+    const [abs, avg] = await Promise.all([get("/leaderboard/me").catch(() => null), get("/average-leaderboard/me?subject_name=Media%20generale&period_key=generale").catch(() => null)]);
     const visAbs = abs?.item ? abs.item.visible_in_leaderboard !== false : abs?.default_visible_in_leaderboard !== false;
     const visAvg = avg?.item ? avg.item.visible_in_leaderboard !== false : avg?.default_visible_in_leaderboard !== false;
     await Promise.allSettled([

@@ -1,48 +1,64 @@
 # Aulera
 
-Interfaccia del registro (repo `media-voti`).
+Client non ufficiale del registro elettronico ClasseViva (repo `media-voti`): un backend FastAPI
+(`main.py`) e un'app web a pagina singola (`public/`), più le app Android e iPhone (Capacitor) che
+la incapsulano. Dal 2026 l'accesso avviene **solo con SPID o CIE**.
 
-Small FastAPI + frontend project to query ClasseViva-like API and present data.
+## Cosa fa
 
-## Novità incluse
+- **Oggi**: media, lezioni del giorno, prossimi impegni, ultimi voti, bacheca e presenze.
+- **Voti**: medie per materia e periodo, andamento, obiettivo ("quanto mi serve") e simulatore.
+- **Agenda e compiti** (con "fatto"), **orario** (settimana intera anche da telefono), **assenze**, **lezioni**.
+- **Bacheca** con allegati, **note**, **didattica** (file e link dei docenti), **documenti**, **libri**.
+- **Classifiche** di classe e d'istituto (media e assenze) in tempo reale, con visibilità a scelta.
+- **Dispositivi**: il PC si collega dal telefono con un QR o un codice.
+- Pannello **admin** (sessioni, classifiche, badge, annuncio).
 
-- la pagina **Assenze** non mostra più il popup iniziale
-- la visibilità in classifica è gestita solo dal toggle **compari / scompari**
-- di default un nuovo utente **compare** in classifica
-- le entry della classifica sono salvate in **SQLite**, quindi restano anche dopo il riavvio del backend
-- aggiornamento **in tempo reale** per tutti i client quando una entry viene aggiunta, nascosta, mostrata o aggiornata
+## Struttura
+
+| Percorso | Contenuto |
+|---|---|
+| `main.py` | API FastAPI (sessioni, proxy verso ClasseViva, classifiche, admin) |
+| `classeviva_client.py` | Client ClasseViva con la sessione web (`/rest/w1`) ottenuta via SPID/CIE |
+| `public/index.html` | Shell della SPA (import map con la versione degli asset) |
+| `public/app/` | `main.js` (router e struttura), `ui.js`, `api.js`, `state.js`, `grades.js`, `views/*.js` |
+| `public/styles/` | Design system (`app.css`) e stili delle viste |
+| `android/`, `ios/` | App Capacitor 7 con il plugin nativo `SpaggiariLogin` |
+| `app-shell/` | Pagina offline delle app (le app caricano il sito pubblicato) |
+| `docs/spid-cie.md` | Come funzionano accesso SPID/CIE, collegamento del PC e build delle app |
 
 ## Variabili ambiente
 
-Puoi copiare `.env.example` oppure esportarle direttamente:
-
-- `ALLOWED_ORIGINS` → dominio frontend autorizzato, es. `https://tuodominio.it`
+- `ALLOWED_ORIGINS` → domini autorizzati, es. `https://tuodominio.it`
 - `DATABASE_PATH` → file SQLite persistente, es. `/opt/spaggiari2/data/spaggiari2.db`
 - `COOKIE_SECURE` → `true` in produzione HTTPS, `false` solo in sviluppo locale
+- `ADMIN_USERNAME` → codice ClasseViva dell'amministratore; `ADMIN_PANEL_PASSWORD` (opzionale) → password aggiuntiva per il pannello
+- Altre opzioni (codici di collegamento, link ai file, ...) in [`docs/spid-cie.md`](docs/spid-cie.md).
 
-Accesso con SPID/CIE (app Android + collegamento del PC con QR/codice): vedi
-[`docs/spid-cie.md`](docs/spid-cie.md) per funzionamento, variabili e setup dell'app.
-
-## Run (development)
-
-1. Crea virtualenv e installa dipendenze:
+## Sviluppo
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+.venv/bin/pip install -r requirements.txt
 ```
 
-2. Avvia il backend:
+Con un ClasseViva **finto** (dati di esempio, nessun account necessario):
 
 ```bash
-export ALLOWED_ORIGINS=http://localhost:5500
-export DATABASE_PATH=$(pwd)/data/spaggiari2.db
-export COOKIE_SECURE=false
-python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+.venv/bin/python scripts/dev_fake_server.py
 ```
 
-3. Servi il frontend e apri `http://localhost:5500`.
+Apri `http://127.0.0.1:8000` e, nel riquadro di accesso, usa *Sviluppo: accedi con un cookie di sessione* con un valore
+qualsiasi di almeno 16 caratteri. Con un account vero, avvia il backend normale con `DEV_MODE=true` e
+`ALLOW_MANUAL_WEB_SESSION_LOGIN=true` e incolla il tuo `PHPSESSID` (vedi `docs/spid-cie.md`).
+
+Usa sempre `127.0.0.1`, non `localhost`: `localhost` è riservato all'app Capacitor.
+
+Quando cambi il frontend, aggiorna la versione `?v=` nella import map di `public/index.html` (e nei `<link>` CSS):
+così i browser non usano file vecchi dalla cache.
+
+Test: `scripts/test_web_session_pairing.py`, `test_session_me_cache.py`, `test_agenda_422.py`,
+`test_historical_class.py`, `test_school_year.py` (con `DATABASE_PATH` su un DB temporaneo).
 
 ## Setup Linux consigliato (produzione)
 
@@ -126,12 +142,21 @@ server {
     root /var/www/spaggiari2;
     index index.html;
 
+    # SPA: i percorsi dell'app (/oggi, /voti, ...) servono index.html.
+    # index.html va sempre rivalidato: contiene la versione degli asset (import map).
     location / {
         try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache";
+    }
+
+    # JS/CSS hanno ?v=N nell'URL: possono stare in cache a lungo.
+    location ~* ^/(app|styles|vendor)/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
     }
 
     location /api/ {
         proxy_pass http://127.0.0.1:8000/;
+        proxy_buffering off;  # download dei file in streaming
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

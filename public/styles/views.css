@@ -11,8 +11,9 @@
 .year-btn { min-height: 38px; padding: 0 14px; font-size: 0.875rem; }
 .year-btn svg:last-child { width: 14px; height: 14px; opacity: 0.6; }
 
-.more-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.more-tile { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: var(--r-lg); background: var(--fill); }
+.more-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.more-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 92px; padding: 12px 6px; border-radius: var(--r-lg); background: var(--fill); text-align: center; }
+.more-tile .title-3 { font-size: 0.86rem; font-weight: 600; }
 .more-tile:active { background: var(--fill-2); }
 
 /* Statistiche (numeri grandi) */
@@ -52,10 +53,13 @@ body.is-login { background: var(--bg); }
 }
 .login-app-hero { display: flex; flex-direction: column; align-items: center; gap: 18px; }
 .login-app-hero .large-title { font-size: clamp(2.3rem, 9vw, 3rem); }
-.app-icon { width: 96px; height: 96px; border-radius: 28px; display: grid; place-items: center; animation: icon-in 700ms var(--ease-out) both; }
+.login-app-hero { position: relative; }
+.login-app-hero::before { content: ""; position: absolute; z-index: -1; top: -60px; left: 50%; width: 340px; height: 340px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, var(--aurora-1), transparent); pointer-events: none; }
+.app-icon { width: 96px; height: 96px; border-radius: 28px; display: grid; place-items: center; }
 .app-icon img { width: 64px; height: 64px; }
 @keyframes icon-in { from { opacity: 0; transform: scale(0.9); filter: blur(6px); } }
 .login-app-hero > * { animation: rise 600ms var(--ease-out) both; }
+.login-app-hero > .app-icon { animation: icon-in 700ms var(--ease-out) both; }
 .login-app-hero > :nth-child(2) { animation-delay: 80ms; }
 .login-app-hero > :nth-child(3) { animation-delay: 160ms; }
 .login-app-actions { display: flex; flex-direction: column; gap: 12px; animation: rise 600ms 240ms var(--ease-out) both; }
