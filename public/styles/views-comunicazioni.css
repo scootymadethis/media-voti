@@ -13,15 +13,14 @@
 
 /* ---------- elementi condivisi ---------- */
 .com-ic {
-  --c: var(--accent);
   width: 40px;
   height: 40px;
   flex: none;
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--c) 15%, transparent);
-  color: var(--c);
+  background: color-mix(in srgb, var(--c, var(--accent)) 15%, transparent);
+  color: var(--c, var(--accent));
 }
 .com-ic svg { width: 20px; height: 20px; }
 .com-ic-lg { width: 48px; height: 48px; border-radius: 15px; }
@@ -70,7 +69,7 @@
 }
 .com-chip:active { transform: scale(0.97); }
 .com-chip[aria-pressed="true"] { background: var(--text); color: var(--bg); }
-.com-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.com-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--accent)); flex: none; }
 .com-chip-count { font-size: 0.78rem; font-weight: 600; opacity: 0.55; }
 @media (hover: hover) and (pointer: fine) { .com-chip:not([aria-pressed="true"]):hover { background: var(--fill-2); color: var(--text); } }
 
@@ -134,7 +133,7 @@
 
 .bacheca-sheet { display: flex; flex-direction: column; gap: 18px; }
 .bacheca-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.bacheca-cat { background: color-mix(in srgb, var(--c) 15%, transparent); color: var(--c); }
+.bacheca-cat { background: color-mix(in srgb, var(--c, var(--accent)) 15%, transparent); color: var(--c, var(--accent)); }
 .bacheca-text { display: flex; flex-direction: column; gap: 12px; font-size: 1.02rem; line-height: 1.6; color: var(--text); overflow-wrap: anywhere; }
 .bacheca-text[aria-busy="true"] { gap: 10px; }
 .bacheca-text .link { word-break: break-all; }
@@ -238,7 +237,6 @@
 .libri-book { position: relative; display: flex; gap: 16px; padding: 16px 18px; }
 .libri-book + .libri-book::before { content: ""; position: absolute; top: 0; left: 18px; right: 0; height: 1px; background: var(--hairline); }
 .libri-cover {
-  --c: var(--accent);
   position: relative;
   flex: none;
   width: 56px;
@@ -247,9 +245,9 @@
   overflow: hidden;
   display: grid;
   place-items: center;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--c) 42%, var(--bg-elev)), color-mix(in srgb, var(--c) 14%, var(--bg-elev)));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--c, var(--accent)) 42%, var(--bg-elev)), color-mix(in srgb, var(--c, var(--accent)) 14%, var(--bg-elev)));
   box-shadow: inset 3px 0 0 rgb(0 0 0 / 0.14), 0 1px 2px rgb(0 0 0 / 0.12);
-  color: color-mix(in srgb, var(--c) 70%, var(--text));
+  color: color-mix(in srgb, var(--c, var(--accent)) 70%, var(--text));
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.05rem;

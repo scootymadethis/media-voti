@@ -1,1 +1,233 @@
-/* Stili delle viste: views-account */
+/* ==========================================================================
+   Viste account: Classifica, Dispositivi, Profilo, Admin.
+   ========================================================================== */
+
+/* ---------- elementi condivisi ---------- */
+.account-avatar {
+  --av: 44px;
+  flex: none;
+  width: var(--av);
+  height: var(--av);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--fill-2);
+  color: var(--text-2);
+  font-weight: 700;
+  font-size: calc(var(--av) * 0.36);
+  letter-spacing: -0.01em;
+}
+.account-avatar.sm { --av: 36px; }
+.account-avatar.is-me { background: var(--accent-soft); color: var(--accent); }
+.account-avatar.xl {
+  --av: 84px;
+  color: var(--accent-ink);
+  background: linear-gradient(140deg, var(--accent), var(--blue));
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 30%, transparent);
+  font-family: var(--font-display);
+}
+
+.account-badges { display: inline-flex; flex-wrap: wrap; gap: 4px; vertical-align: middle; }
+.account-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: var(--r-pill);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* Righe con interruttore (privacy, annuncio) */
+.row .switch { margin-left: auto; }
+.switch:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ===================== CLASSIFICA ===================== */
+.classifica-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.classifica-toolbar .segmented { max-width: 100%; }
+@media (max-width: 480px) {
+  .classifica-toolbar .segmented { flex: 1 1 100%; }
+}
+
+.classifica-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "me" "main" "privacy";
+}
+.classifica-me { grid-area: me; min-width: 0; }
+.classifica-main { grid-area: main; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.classifica-privacy { grid-area: privacy; min-width: 0; }
+@media (min-width: 1024px) {
+  .classifica-layout {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "main me" "main privacy";
+    align-items: start;
+  }
+  .classifica-privacy { align-self: start; }
+}
+
+/* --- la tua posizione --- */
+.classifica-me-card { display: flex; flex-direction: column; gap: 12px; }
+.classifica-me-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.classifica-me-rank {
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 2rem + 1.6vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.classifica-me-rank span { font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text-2); }
+.classifica-me-value { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.classifica-me-value .grade { min-width: 64px; height: 44px; font-size: 1.2rem; }
+.classifica-me-hint strong { color: var(--text); font-weight: 650; }
+.classifica-me-bar { height: 6px; }
+.classifica-me-bar > span { background: linear-gradient(90deg, var(--accent), var(--blue)); }
+.classifica-me-card.is-empty .row-icon { width: 40px; height: 40px; border-radius: 12px; }
+
+/* --- podio --- */
+.classifica-podium {
+  --gold: #f5c451;
+  --silver: #c9d1dd;
+  --bronze: #dc9a66;
+  padding: 18px 14px 0;
+  overflow: hidden;
+}
+:root[data-theme="light"] .classifica-podium { --gold: #c98d00; --silver: #8792a5; --bronze: #b5672f; }
+.classifica-podium-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 0 6px 18px; }
+.classifica-podium-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 8px; }
+.classifica-step {
+  --medal: var(--silver);
+  --ped: 64px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  text-align: center;
+}
+.classifica-step.is-rank-1 { --medal: var(--gold); --ped: 92px; }
+.classifica-step.is-rank-3 { --medal: var(--bronze); --ped: 46px; }
+.classifica-avatar {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--medal) 18%, var(--card));
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1.15rem;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--medal) 70%, transparent), 0 8px 22px color-mix(in srgb, var(--medal) 22%, transparent);
+}
+.is-rank-1 .classifica-avatar { width: 72px; height: 72px; font-size: 1.35rem; }
+.classifica-medal {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--medal);
+  color: #1b1405;
+  font-size: 0.75rem;
+  font-weight: 800;
+  box-shadow: 0 0 0 3px var(--bg-elev);
+}
+.classifica-step-name { margin-top: 6px; max-width: 100%; font-weight: 620; font-size: 0.9rem; line-height: 1.25; overflow-wrap: anywhere; }
+.classifica-step.is-me .classifica-step-name { color: var(--accent); }
+.classifica-step-value { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; letter-spacing: -0.02em; }
+.is-rank-1 .classifica-step-value { font-size: 1.35rem; }
+.classifica-pedestal {
+  width: 100%;
+  height: var(--ped);
+  margin-top: 6px;
+  border-radius: 16px 16px 0 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--medal) 26%, transparent), color-mix(in srgb, var(--medal) 4%, transparent));
+  border: 1px solid color-mix(in srgb, var(--medal) 30%, transparent);
+  border-bottom: 0;
+}
+.classifica-step .account-badges { justify-content: center; }
+.classifica-podium.is-loading { padding-top: 26px; }
+.classifica-avatar-skel { width: 60px; height: 60px; border-radius: 50%; }
+.classifica-podium.is-loading .classifica-pedestal { background: var(--fill); border-color: transparent; }
+
+/* --- elenco --- */
+.classifica-search .field { background: var(--card); }
+.classifica-list .row { gap: 12px; padding: 10px 16px; }
+.classifica-rank { flex: none; width: 26px; text-align: center; font-weight: 700; font-size: 0.95rem; color: var(--text-3); }
+.classifica-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.classifica-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.classifica-you { min-height: 20px; padding: 0 8px; font-size: 0.7rem; }
+.classifica-trail { flex: none; display: flex; align-items: center; gap: 8px; }
+.classifica-value { min-width: 54px; }
+.classifica-hours {
+  display: inline-grid;
+  place-items: center;
+  min-width: 54px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: var(--fill);
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+}
+.classifica-hours.lg { height: 44px; min-width: 72px; font-size: 1.15rem; border-radius: 14px; }
+.classifica-row.is-me { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.classifica-row.is-me .classifica-rank { color: var(--accent); }
+.classifica-delta { display: inline-flex; align-items: center; gap: 1px; font-size: 0.75rem; font-weight: 700; }
+.classifica-delta svg { width: 13px; height: 13px; stroke-width: 2.4; }
+.classifica-delta.up { color: var(--good); }
+.classifica-delta.down { color: var(--bad); }
+.classifica-more { background: var(--card); border: 1px solid var(--hairline); }
+.classifica-foot { text-align: center; padding: 4px; }
+.classifica-empty-cta { display: flex; justify-content: center; padding: 0 20px 28px; margin-top: -16px; }
+
+/* --- riga "Tu" fissa in basso --- */
+.classifica-sticky {
+  position: sticky;
+  z-index: 5;
+  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 22px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 16px;
+  border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-elev));
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.28);
+  text-align: left;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+:root[data-theme="light"] .classifica-sticky { box-shadow: 0 10px 28px rgb(20 30 50 / 0.14); }
+.classifica-sticky.is-shown { opacity: 1; transform: none; pointer-events: auto; }
+.classifica-sticky.is-shown:active { transform: scale(0.98); }
+.classifica-sticky .classifica-rank { color: var(--accent); }
+.classifica-sticky .row-main { display: flex; align-items: baseline; min-width: 0; }
+.classifica-sticky .row-title { color: var(--accent); }
+.classifica-sticky .row-sub { margin: 0 0 0 4px; white-space: nowrap; }
+@media (min-width: 1024px) { .classifica-sticky { bottom: 16px; } }
+
+/* --- privacy --- */
+.classifica-privacy-title { padding: 0 4px 8px; }
+.classifica-privacy-card .row { gap: 16px; }
+.classifica-privacy-note { display: flex; gap: 8px; align-items: flex-start; padding: 10px 4px 0; }
+.classifica-privacy-note svg { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--ok); }
