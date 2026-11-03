@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Aulera</string>
+    <string name="title_activity_main">Aulera</string>
+    <string name="package_name">it.federicoscutariu.spaggiari2</string>
+    <string name="custom_url_scheme">it.federicoscutariu.spaggiari2</string>
+</resources>

@@ -60,3 +60,36 @@
 @media (max-width: 1050px) { .auth-story { padding: 32px; }.auth-access { padding: 32px; }.auth-brand-caption { display: none; }.auth-story h1 { font-size: 46px; }.story-tile { padding: 12px; }.story-tile-agenda { right: -20px; }.story-tile-voti { left: -16px; } }
 @media (max-width: 760px) { .auth-page { padding: 16px; }.auth-layout { display: block; width: min(480px,100%); min-height: auto; border-radius: 24px; }.auth-story { padding: 26px 28px 28px; border-right: 0; border-bottom: 1px solid #a7ddf01c; }.auth-brand-caption { display: block; }.auth-story-copy { padding-top: 28px; }.auth-kicker { font-size: 11px; margin-bottom: 10px; }.auth-story h1 { font-size: 36px; line-height: 1.1; }.auth-story h1 br:nth-of-type(2) { display: none; }.auth-story h1 span::before { content: ' '; }.auth-description,.auth-illustration,.auth-story-footer { display: none; }.auth-access { padding: 30px 28px; }.auth-access-top,.auth-access-bottom { display: none; }.login { margin: 0; gap: 22px; max-width: none; }.login-text { font-size: 30px; }.login-eyebrow { font-size: 8px; margin-bottom: 10px; }.login-heading > p { font-size: 12px; }.fields { margin-top: 0; }.auth-page .footer { max-width: 290px; line-height: 1.6; } }
 @media (max-width: 360px) { .auth-page { padding: 10px; }.auth-story,.auth-access { padding: 24px 20px; }.auth-brand-caption { display: none; }.auth-story h1 { font-size: 32px; } }
+
+/* Accesso con SPID/CIE e abbinamento del PC */
+.login-divider { display: flex; align-items: center; gap: 12px; color: #5f7a90; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; margin: -6px 0 -8px; }
+.login-divider::before,.login-divider::after { content: ""; flex: 1; height: 1px; background: #9ac1dc1f; }
+.spid-btn { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 58px; padding: 10px 16px; border-radius: 12px; border: 1px solid #9ac1dc33; background: #101d2e; color: #e6f1f8; text-align: left; transition: border-color 160ms,background 160ms; }
+.spid-btn:hover { border-color: #52becb; background: #12233a; }
+.spid-btn:focus-visible { outline: 2px solid #8de2ed; outline-offset: 3px; }
+.spid-btn svg { flex-shrink: 0; width: 24px; height: 24px; color: #71bdcb; }
+.spid-btn-title { display: block; font-size: 14px; font-weight: 600; }
+.spid-btn-sub { display: block; margin-top: 2px; color: #8199ad; font-size: 11px; line-height: 1.45; }
+.pair-panel { width: 100%; max-width: 390px; margin: 48px auto 36px; display: flex; flex-direction: column; gap: 20px; }
+.pair-panel[hidden],.login[hidden] { display: none; }
+.pair-panel h2:focus { outline: none; }
+.pair-steps { margin: 0; padding-left: 20px; color: #a9bccd; font-size: 13px; line-height: 1.7; display: grid; gap: 4px; }
+.pair-steps strong { color: #dcebf5; font-weight: 600; }
+.pair-card { display: flex; align-items: center; gap: 20px; padding: 16px; border-radius: 16px; border: 1px solid #9ac1dc25; background: #0d1828; }
+.pair-qr { flex-shrink: 0; width: 148px; height: 148px; padding: 8px; border-radius: 12px; background: #fff; }
+.pair-qr svg { display: block; width: 100%; height: 100%; }
+.pair-qr svg path,.pair-qr svg rect[fill="black"] { fill: #0a1220; }
+.pair-code-box { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pair-code-label { color: #71bdcb; font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.pair-code { font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size: 26px; font-weight: 600; letter-spacing: .08em; color: #f0f6fc; white-space: nowrap; }
+.pair-expiry { color: #8199ad; font-size: 11px; font-variant-numeric: tabular-nums; }
+.pair-panel.is-expired .pair-qr,.pair-panel.is-expired .pair-code { opacity: .25; }
+.pair-status { text-align: center; color: #b4d5df; font-size: 12px; min-height: 18px; }
+.pair-status[data-tone="ok"] { color: #7ee2a8; }
+.pair-status[data-tone="warn"] { color: #f5c542; }
+.pair-back { align-self: center; font-size: 12px; }
+.manual-session { color: #8199ad; font-size: 11px; }
+.manual-session summary { cursor: pointer; }
+.manual-session form { display: grid; gap: 10px; margin-top: 10px; }
+.manual-session p:empty { display: none; }
+@media (max-width: 760px) { .pair-panel { margin: 0; max-width: none; gap: 18px; } .pair-card { flex-direction: column; align-items: center; text-align: center; } .pair-code-box { align-items: center; } }

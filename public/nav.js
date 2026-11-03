@@ -12,6 +12,8 @@
       '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v4.5l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
     goToAdmin:
       '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 19.5c1.2-3 3.4-4.5 6.5-4.5s5.3 1.5 6.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+    goToCollega:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="12" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 17.5h5M9 14v3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="16.5" y="8" width="5" height="10.5" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
     logout:
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6H6.5A1.5 1.5 0 0 0 5 7.5v9A1.5 1.5 0 0 0 6.5 18H9M10 12h9M16 8.5 19.5 12 16 15.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     egg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5c3.2 0 5.5 4.2 5.5 8.2 0 3.6-2.2 8.8-5.5 8.8s-5.5-5.2-5.5-8.8c0-4 2.3-8.2 5.5-8.2Z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
@@ -73,6 +75,7 @@
     else if (action.includes("goToVoti")) icon = ICONS.goToVoti;
     else if (action.includes("goToAssenze")) icon = ICONS.goToAssenze;
     else if (action.includes("goToAdmin")) icon = ICONS.goToAdmin;
+    else if (action.includes("goToCollega")) icon = ICONS.goToCollega;
     else if (action.includes("logout")) icon = ICONS.logout;
     if (!icon) return;
     btn.dataset.iconized = "1";
@@ -140,12 +143,36 @@
     window.location.href = "/admin/";
   };
 
+  window.goToCollega = function goToCollega() {
+    window.location.href = "/collega/";
+  };
+
+  // Voce "Dispositivi" (collegare un PC / vedere gli accessi attivi) in ogni pagina con navbar.
+  function addDevicesNav() {
+    const isCurrent = window.location.pathname.startsWith("/collega");
+    const make = () => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `nav-link${isCurrent ? " is-current" : ""}`;
+      btn.setAttribute("onclick", "goToCollega()");
+      btn.textContent = "Dispositivi";
+      return btn;
+    };
+    const actions = document.querySelector(".navbar .navbar-actions");
+    const exit = actions?.querySelector(".nav-exit");
+    if (actions && exit && !actions.querySelector('[onclick="goToCollega()"]')) actions.insertBefore(make(), exit);
+    const drawerNav = document.querySelector(".nav-drawer .buttons");
+    const drawerExit = drawerNav?.querySelector(".nav-exit");
+    if (drawerNav && drawerExit && !drawerNav.querySelector('[onclick="goToCollega()"]')) drawerNav.insertBefore(make(), drawerExit);
+  }
+
   window.initAdminNav = function initAdminNav() {
     hideAdminNavButtons();
     refreshAdminNavFromServer();
   };
 
   document.addEventListener("DOMContentLoaded", () => {
+    addDevicesNav();
     buildWorkspace();
     decorateNavigation();
     if (typeof window.initAdminNav === "function") {

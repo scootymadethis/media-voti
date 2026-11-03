@@ -7,7 +7,10 @@ Single product ("Aulera", repo `media-voti`, previously shown as Spaggiari 2): a
 static vanilla-JS frontend (`public/`) and a SQLite DB. It is an unofficial client for the
 Italian ClasseViva/Spaggiari school register. Python deps are in `requirements.txt`
 (installed into `.venv` by the update script). The `package.json` is only for the optional
-Capacitor Android build and is not needed to run the web app.
+Capacitor Android build (`android/`, `capacitor.config.json`, `app-shell/`) and is not needed
+to run the web app. Build: `npm install && npx cap sync android && cd android && ./gradlew
+assembleDebug` (JDK 21 + Android SDK 35; in Claude cloud containers Maven Central may return
+429 — a Gradle init script pointing at `https://maven-central.storage-download.googleapis.com/maven2/` works).
 
 ### Running the app (dev)
 Run the backend from the repo root with the venv, e.g.:
@@ -48,12 +51,21 @@ needed. See `README.md` / `scripts/dev-windows.ps1` for the split-server alterna
   so username/password login no longer works for those users.
   `scripts/check_spid_session.py` checks whether a SPID-obtained web session (`PHPSESSID`)
   is usable from the server; run it manually with your own session, it is not automated.
+- SPID/CIE support (see `docs/spid-cie.md`): `WebSessionUtente` authenticates with the
+  ClasseViva web cookie against `/rest/w1` (same paths/payloads as `/rest/v1`). The Android
+  app (`android/`, Capacitor 7, loads the live site via `server.url`) captures the cookie
+  after the official login with the native `SpaggiariLogin` plugin + `public/spid-app.js`; PCs are linked
+  from the phone via QR/code (`/pair/*`, page `public/collega/`). To try it locally without
+  the app, run with `ALLOW_MANUAL_WEB_SESSION_LOGIN=true` and use the dev field in the
+  SPID panel of the login page (needs a real `PHPSESSID`).
 
 ### Tests / lint / build
 - Automated self-check: `.venv/bin/python scripts/test_session_me_cache.py`. It imports
   `main` directly and does NOT run the startup `init_db()`, so it needs a DB that already
   has the tables — run it with `DATABASE_PATH` pointing at a DB the app has already booted
   against, otherwise it fails with `no such table: user_badges`.
+- `scripts/test_web_session_pairing.py` tests web-session login, PC pairing and device
+  revoke with a mocked Spaggiari (no network).
 - `scripts/test_classeviva_client.py` tests the ClasseViva client and `POST /login` with
   mocked upstream responses (no network); same `DATABASE_PATH` caveat as above.
 - There is no lint config (no ruff/flake8/eslint) and no build step for the web app; the
