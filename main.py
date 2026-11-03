@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel, Field
-from ClasseVivaAPI import Utente, RequestURLs
+from classeviva_client import Utente, RequestURLs, ClasseVivaLoginError
 import os
 import re
 import sqlite3
@@ -1894,8 +1894,10 @@ def cached_login_user(username: str, password: str) -> Utente:
     key = _cache_key(["cvv-login", user_key, password_hash])
 
     def fetch_login() -> Utente:
-        user = Utente(uid=normalized_username, pwd=password)
-        user.login()
+        user = Utente(uid=normalized_username)
+        # Solleva ClasseVivaLoginError se Spaggiari rifiuta il login: gli errori non
+        # vengono messi in cache, quindi un nuovo tentativo riparte da zero.
+        user.login(password)
         # Mantiene l'username digitato come identità app: niente round-trip extra.
         user._app_username = normalized_username
         user.uid = normalized_username
@@ -2228,6 +2230,8 @@ def login(
             path="/",
         )
         return {"ok": True, "user": username}
+    except ClasseVivaLoginError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.user_message)
     except HTTPException:
         raise
     except Exception as e:
