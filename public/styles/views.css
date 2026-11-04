@@ -57,7 +57,7 @@ body.is-login { background: var(--bg); }
 .login-app-hero::before { content: ""; position: absolute; z-index: -1; top: -60px; left: 50%; width: 340px; height: 340px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, var(--aurora-1), transparent); pointer-events: none; }
 .app-icon { width: 96px; height: 96px; border-radius: 28px; display: grid; place-items: center; }
 .app-icon img { width: 64px; height: 64px; }
-@keyframes icon-in { from { opacity: 0; transform: scale(0.9); filter: blur(6px); } }
+@keyframes icon-in { from { opacity: 0; transform: scale(0.88); } }
 .login-app-hero > * { animation: rise 600ms var(--ease-out) both; }
 .login-app-hero > .app-icon { animation: icon-in 700ms var(--ease-out) both; }
 .login-app-hero > :nth-child(2) { animation-delay: 80ms; }
@@ -127,8 +127,23 @@ body.is-login { background: var(--bg); }
 .hero-copy > :nth-child(3) { animation-delay: 140ms; }
 .hero-copy > :nth-child(4) { animation-delay: 210ms; }
 .hero-login { animation: card-in 900ms 180ms var(--ease-out) both; }
-@keyframes hero-in { from { opacity: 0; transform: translateY(16px); filter: blur(6px); } }
-@keyframes card-in { from { opacity: 0; transform: translateY(24px) scale(0.97); filter: blur(8px); } }
+@keyframes hero-in { from { opacity: 0; transform: translateY(18px); } }
+@keyframes card-in { from { opacity: 0; transform: translateY(24px) scale(0.97); } }
+/* "Accedi" dalla barra in alto: il riquadro di accesso pulsa una volta (anello che si espande e svanisce). */
+.pair-card { position: relative; }
+.pair-card::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px var(--accent);
+  opacity: 0;
+  pointer-events: none;
+}
+.pair-card.is-attention { animation: pair-nudge 520ms cubic-bezier(0.23, 1, 0.32, 1); }
+.pair-card.is-attention::after { animation: pair-ring 900ms cubic-bezier(0.23, 1, 0.32, 1); }
+@keyframes pair-nudge { 40% { transform: scale(1.015); } }
+@keyframes pair-ring { 0% { opacity: 0.9; transform: scale(1); } 100% { opacity: 0; transform: scale(1.06); } }
 
 .pair-card { border-radius: 28px; padding: 22px; display: flex; flex-direction: column; gap: 18px; }
 .pair-top { display: flex; gap: 14px; align-items: flex-start; }
@@ -156,32 +171,171 @@ body.is-login { background: var(--bg); }
   gap: 64px;
   padding: 40px 0 80px;
 }
-.story-phone-wrap { position: sticky; top: calc(50vh - 300px); height: 600px; display: grid; place-items: center; }
-.story-phone {
+.story-phone-wrap { position: sticky; top: calc(50vh - 310px); height: 620px; display: grid; place-items: center; }
+
+/* iPhone finto. Misure da 15 Pro in scala: cornice in titanio (gradiente), bordo nero, schermo che
+   ritaglia con clip-path (più affidabile di overflow+radius quando i figli hanno transform). */
+.iphone {
+  --w: 296px;
+  --h: 606px;
   position: relative;
-  width: 290px;
-  height: 590px;
-  border-radius: 48px;
-  padding: 14px;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--bg-elev) 70%, transparent);
+  width: var(--w);
+  height: var(--h);
+  flex: none;
 }
-.phone-notch { position: absolute; z-index: 3; top: 18px; left: 50%; width: 92px; height: 26px; border-radius: 14px; background: #000; transform: translateX(-50%); }
+.iphone-body {
+  position: absolute;
+  inset: 0;
+  border-radius: 54px;
+  padding: 4px;
+  background: linear-gradient(140deg, #d6d6db 0%, #8d8d93 18%, #f4f4f7 38%, #6d6d72 62%, #bfbfc5 82%, #7a7a80 100%);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.35),
+    0 1px 1px rgb(0 0 0 / 0.2),
+    0 40px 70px -28px rgb(0 0 0 / 0.55),
+    0 18px 30px -18px rgb(0 0 0 / 0.35);
+}
+:root[data-theme="dark"] .iphone-body,
+:root:not([data-theme="light"]) .iphone-body {
+  background: linear-gradient(140deg, #5c5c62 0%, #2c2c2f 20%, #77777d 40%, #252527 64%, #545459 84%, #2a2a2d 100%);
+}
+:root[data-theme="light"] .iphone-body {
+  background: linear-gradient(140deg, #d6d6db 0%, #8d8d93 18%, #f4f4f7 38%, #6d6d72 62%, #bfbfc5 82%, #7a7a80 100%);
+}
+/* bordo nero tra cornice e display */
+.iphone-body::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50px;
+  background: #050505;
+}
+.iphone-screen {
+  position: absolute;
+  inset: 11px;
+  border-radius: 43px;
+  clip-path: inset(0 round 43px);
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--bg);
+  color: var(--text);
+}
+/* riflesso del vetro, sopra tutto */
+.iphone-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: linear-gradient(125deg, rgb(255 255 255 / 0.09) 0%, rgb(255 255 255 / 0.03) 30%, transparent 46%);
+  pointer-events: none;
+}
+.iphone-key {
+  position: absolute;
+  width: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #6d6d72, #c7c7cc 60%, #8e8e93);
+}
+.iphone-key.k-action { left: -2px; top: 112px; height: 26px; }
+.iphone-key.k-up { left: -2px; top: 160px; height: 48px; }
+.iphone-key.k-down { left: -2px; top: 220px; height: 48px; }
+.iphone-key.k-side { right: -2px; top: 178px; height: 78px; }
+
+.iphone-status {
+  position: absolute;
+  z-index: 5;
+  inset: 0 0 auto;
+  height: 50px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 20px 0 28px;
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  background: linear-gradient(var(--bg) 55%, transparent);
+}
+.iphone-time { font-variant-numeric: tabular-nums; }
+.iphone-island { width: 84px; height: 25px; border-radius: 14px; background: #000; }
+.iphone-icons { display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
+.iphone-icons svg { fill: currentColor; }
+
 .phone-screen {
   position: absolute;
-  inset: 14px;
-  padding: 58px 16px 16px;
-  border-radius: 36px;
-  background: var(--bg);
+  inset: 0;
+  padding: 58px 14px 96px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px;
   opacity: 0;
-  transform: scale(0.97);
-  filter: blur(4px);
-  transition: opacity 500ms var(--ease-out), transform 500ms var(--ease-out), filter 500ms var(--ease-out);
+  transform: translateY(14px) scale(0.985);
+  transition: opacity 360ms ease, transform 520ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform, opacity;
+  pointer-events: none;
 }
-.phone-screen.is-active { opacity: 1; transform: none; filter: none; }
+.phone-screen.is-active { opacity: 1; transform: none; transition-delay: 60ms; }
+/* le righe entrano in cascata quando la schermata diventa attiva */
+.phone-screen > * { opacity: 0; transform: translateY(10px); transition: opacity 300ms ease, transform 480ms cubic-bezier(0.23, 1, 0.32, 1); }
+.phone-screen.is-active > * { opacity: 1; transform: none; }
+.phone-screen.is-active > :nth-child(2) { transition-delay: 40ms; }
+.phone-screen.is-active > :nth-child(3) { transition-delay: 80ms; }
+.phone-screen.is-active > :nth-child(4) { transition-delay: 120ms; }
+.phone-screen.is-active > :nth-child(5) { transition-delay: 160ms; }
+.phone-screen.is-active > :nth-child(6) { transition-delay: 200ms; }
+.phone-screen.is-active > :nth-child(n + 7) { transition-delay: 240ms; }
+
+.iphone-tabs {
+  position: absolute;
+  z-index: 5;
+  left: 12px;
+  right: 12px;
+  bottom: 24px;
+  height: 58px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 5px;
+  border-radius: 29px;
+  background: color-mix(in srgb, var(--bg-elev) 78%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  backdrop-filter: blur(18px) saturate(1.6);
+  box-shadow: inset 0 0 0 0.5px var(--hairline), 0 8px 24px -12px rgb(0 0 0 / 0.4);
+}
+.iphone-tab-pill {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: calc((100% - 10px) / 4);
+  border-radius: 24px;
+  background: var(--fill-2);
+  transform: translateX(calc(var(--tab, 0) * 100%));
+  transition: transform 520ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.iphone-tab {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  color: var(--text-2);
+  transition: color 300ms ease;
+}
+.iphone-tab svg { width: 20px; height: 20px; }
+.iphone-tab small { font-size: 0.56rem; font-weight: 600; }
+.iphone-tab.is-on { color: var(--accent); }
+.iphone-home {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 8px;
+  width: 104px;
+  height: 4px;
+  margin-left: -52px;
+  border-radius: 2px;
+  background: var(--text);
+  opacity: 0.85;
+}
+.phone-screen .grade.g-fire { margin: 0 6px; }
+.phone-screen .mock-row { padding-block: 9px; }
 .mock-title { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 4px; }
 .mock-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: var(--fill); }
 .mock-row b { display: block; font-size: 0.82rem; font-weight: 600; }
@@ -228,11 +382,11 @@ body.is-login { background: var(--bg); }
 .landing-foot { width: min(1120px, calc(100% - 2 * var(--gutter))); margin: 0 auto; padding: 32px 0 48px; border-top: 1px solid var(--hairline); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; color: var(--text-3); font-size: 0.82rem; }
 
 /* Rivelazioni legate allo scroll (solo landing). */
-.reveal { transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out), filter 700ms var(--ease-out); }
-:root:not(.has-scroll-timeline) .reveal:not(.is-in) { opacity: 0; transform: translateY(28px); filter: blur(6px); }
+.reveal { transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out); }
+:root:not(.has-scroll-timeline) .reveal:not(.is-in) { opacity: 0; transform: translateY(28px); }
 @supports (animation-timeline: view()) {
   .has-scroll-timeline .reveal { transition: none; animation: reveal-scroll linear both; animation-timeline: view(); animation-range: entry 0% cover 28%; }
-  @keyframes reveal-scroll { from { opacity: 0; transform: translateY(40px) scale(0.98); filter: blur(6px); } }
+  @keyframes reveal-scroll { from { opacity: 0; transform: translateY(40px) scale(0.98); } }
   /* L'hero si allontana mentre scorri via. */
   .hero-copy { animation: hero-away linear both; animation-timeline: scroll(root); animation-range: 0 90vh; }
   @keyframes hero-away { to { opacity: 0.15; transform: translateY(-60px) scale(0.96); } }
@@ -240,12 +394,37 @@ body.is-login { background: var(--bg); }
 
 @media (max-width: 960px) {
   .hero { grid-template-columns: 1fr; gap: 36px; padding-top: 104px; min-height: auto; }
-  .story { grid-template-columns: 1fr; gap: 0; }
-  .story-phone-wrap { top: 76px; height: 520px; z-index: 0; }
-  .story-phone { transform: scale(0.86); }
-  .story-steps { position: relative; z-index: 1; margin-top: -40vh; }
-  .story-step { min-height: 70vh; justify-content: flex-end; padding-bottom: 24px; }
-  .story-step > * { background: color-mix(in srgb, var(--bg) 82%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-radius: 14px; padding: 4px 10px; width: fit-content; }
+  .story { grid-template-columns: 1fr; gap: 20px; padding-top: 24px; width: 100%; }
+  .story-phone-wrap { position: relative; top: auto; height: calc(606px * 0.77); display: flex; justify-content: center; align-items: flex-start; }
+  .iphone { transform: scale(0.77); transform-origin: 50% 0; }
+  .story-steps {
+    flex-direction: row;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding: 4px var(--gutter) 12px;
+    scroll-padding-inline: var(--gutter);
+    overscroll-behavior-x: contain;
+  }
+  .story-steps::-webkit-scrollbar { display: none; }
+  .story-step {
+    flex: 0 0 min(86%, 420px);
+    min-height: 0;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 20px;
+    border-radius: 24px;
+    background: var(--bg-elev);
+    box-shadow: inset 0 0 0 0.5px var(--hairline);
+    scroll-snap-align: center;
+    opacity: 0.5;
+    transform: scale(0.97);
+    transition: opacity 400ms var(--ease-out), transform 500ms var(--ease-out);
+  }
+  .story-step.is-active { opacity: 1; transform: none; }
+  .story-title { font-size: 1.6rem; }
+  .story-step .body-2 { font-size: 1rem; }
   .feature-grid, .how-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 719px) {
@@ -255,7 +434,8 @@ body.is-login { background: var(--bg); }
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-copy, .has-scroll-timeline .reveal { animation: none !important; }
-  .phone-screen { transform: none !important; filter: none !important; }
+  .phone-screen, .phone-screen > *, .story-step { transform: none !important; }
+  .iphone-tab-pill { transition: none; }
 }
 
 /* ===================== OGGI ===================== */
@@ -292,7 +472,9 @@ a.home-card { color: inherit; }
 .agenda-mini li.is-hw .agenda-mini-day span { color: var(--accent); }
 .agenda-mini li.is-note .agenda-mini-day span { color: var(--ok); }
 .home-grade-list { margin-top: 10px; display: grid; }
-.home-grade-list li { display: flex; align-items: center; gap: 14px; padding: 8px 0; }
+.home-grade { display: flex; align-items: center; gap: 14px; padding: 8px 0; width: 100%; text-align: left; border-radius: 14px; }
+@media (hover: hover) and (pointer: fine) { .home-grade:hover .row-title { color: var(--accent); } }
+.home-grade .row-title { transition: color var(--dur-fast) ease; }
 .home-grade-list li + li { border-top: 1px solid var(--hairline); }
 .board-mini { display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border-radius: var(--r-md); background: var(--fill); }
 .board-mini .dot { margin-top: 7px; }

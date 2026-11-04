@@ -169,11 +169,14 @@ export function initials(name) {
 
 /* ---------------- voti ---------------- */
 // Verde: buono (≥ 6,5) · Giallo: sufficienza al limite (6–6,49) · Rosso: insufficiente (< 6)
-// Sotto il 4: "rosso fuoco" (pastiglia con le fiamme).
+// Sotto il 4: "rosso fuoco" (pastiglia con le fiamme); sotto il 3 anche le corna da demone.
+// Da 9 in su: "g-top" (pastiglia premium; aprendo il voto parte la celebrazione).
 export function gradeClass(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "g-none";
+  if (value >= 9) return "g-good g-top";
   if (value >= 6.5) return "g-good";
   if (value >= 6) return "g-ok";
+  if (value < 3) return "g-bad g-fire g-devil";
   if (value < 4) return "g-bad g-fire";
   return "g-bad";
 }

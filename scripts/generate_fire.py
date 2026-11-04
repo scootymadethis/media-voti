@@ -49,13 +49,40 @@ def layer(color, half, rad, count, hbase, w, seed):
     tongues.append(f'<path fill="{color}" d="{tongue(CX + 2, CY - b + 2, 0, -1, hbase * 1.55, w * 1.25, 1)}"/>')
     return base + "".join(tongues)
 
+# Uso: python3 scripts/generate_fire.py <variante 0|1> [devil]
+#   variante: due fotogrammi diversi delle fiamme (si alternano in dissolvenza nel CSS)
+#   devil:    aggiunge le corna da demone sopra la pastiglia (voti sotto il 3)
+# Il centro (la pastiglia del voto, mezzo lato ~36,7 unità, raggio ~23) è forato: la pastiglia è lo
+# sfondo dell'elemento e le fiamme le stanno attorno. Incorporato come data URI in app.css.
 variant = int(sys.argv[1]) if len(sys.argv) > 1 else 0
-# Uso: python3 scripts/generate_fire.py > fire.svg  (poi va incorporato come data URI in app.css,
-# regola .grade.g-fire::before; la pastiglia è il rettangolo centrale, mezzo lato ~36,7 unità)
-seed = 1.3 * variant
+devil = len(sys.argv) > 2 and sys.argv[2] == "devil"
+seed = 1.3 + 2.6 * variant
+SCALE = 0.85  # fiamme un po' più basse della prima versione
+
+HOLE = 36.4
+hole = f'<rect x="{CX-HOLE:.1f}" y="{CY-HOLE:.1f}" width="{2*HOLE:.1f}" height="{2*HOLE:.1f}" rx="23" fill="#000"/>'
+flames = (layer("#E5370E", 40, 15, 12, 30 * SCALE, 10, seed)
+          + layer("#FF8A00", 38.5, 14, 11, 20 * SCALE, 8, seed + 2.1)
+          + layer("#FFD23F", 37.2, 13, 10, 11 * SCALE, 6, seed + 4.2))
+
+horns = ""
+if devil:
+    # Corna cartoon: base sul bordo alto della pastiglia, curva verso l'esterno e punta in su.
+    def horn(side):
+        # mezzaluna: base larga sul bordo, curva verso l'esterno, punta sottile rivolta in alto
+        bx = CX + side * 17
+        by = CY - HOLE + 4
+        f = lambda x, y: f"{x:.1f} {y:.1f}"
+        body = (f'M{f(bx - side*8, by)}'
+                f' C{f(bx - side*9, by-16)} {f(bx + side*4, by-27)} {f(bx + side*17, by-33)}'
+                f' C{f(bx + side*10, by-25)} {f(bx + side*9, by-13)} {f(bx + side*10, by)} Z')
+        shine = (f'M{f(bx - side*3, by-5)} C{f(bx - side*2, by-15)} {f(bx + side*6, by-23)} {f(bx + side*12, by-28)}')
+        return (f'<path d="{body}" fill="#C8161F" stroke="#4A0309" stroke-width="2.4" stroke-linejoin="round"/>'
+                f'<path d="{shine}" fill="none" stroke="#FF7A6B" stroke-width="2" stroke-linecap="round" opacity="0.9"/>')
+    horns = horn(-1) + horn(1)
+
 svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140">'
-       + layer("#E5370E", 40, 15, 12, 30, 10, seed)
-       + layer("#FF8A00", 38.5, 14, 11, 20, 8, seed + 2.1)
-       + layer("#FFD23F", 37.2, 13, 10, 11, 6, seed + 4.2)
-       + '</svg>')
+       f'<defs><mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="120" height="140">'
+       f'<rect width="120" height="140" fill="#fff"/>{hole}</mask></defs>'
+       f'<g mask="url(#m)">{flames}</g>{horns}</svg>')
 print(svg)
