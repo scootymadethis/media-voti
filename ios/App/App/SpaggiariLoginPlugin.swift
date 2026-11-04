@@ -112,7 +112,7 @@ public class SpaggiariLoginPlugin: CAPPlugin, CAPBridgedPlugin {
     static func handleReturnURL(_ url: URL) -> Bool {
         guard url.scheme?.lowercased() == returnScheme else { return false }
         if let next = continuationURL(from: url) {
-            shared?.loginController?.load(next)
+            shared?.loginController?.loadAfterCieId(next)
         } else {
             shared?.loginController?.reloadCurrent()
         }
@@ -195,6 +195,8 @@ final class SpaggiariLoginViewController: UIViewController, WKNavigationDelegate
     private var retries = 0
     private var timeoutWork: DispatchWorkItem?
     private var progressObservation: NSKeyValueObservation?
+    /// Momento del ritorno dall'app CieID: per qualche secondo gli URL "/OpenApp" restano nella WebView.
+    private var cieReturnAt: Date?
 
     init(startURL: URL, plugin: SpaggiariLoginPlugin) {
         self.startURL = startURL
@@ -281,7 +283,17 @@ final class SpaggiariLoginViewController: UIViewController, WKNavigationDelegate
     }
 
     func reloadCurrent() {
+        cieReturnAt = Date()
         webView.reload()
+    }
+
+    /// URL restituito dall'app CieID dopo la lettura della carta. Di solito contiene ancora
+    /// "/OpenApp": su iOS anche i caricamenti fatti da codice passano da decidePolicyFor (su Android
+    /// loadUrl non passa da shouldOverrideUrlLoading), quindi senza questo segno l'URL veniva
+    /// rimandato a CieID, che rispondeva che la sessione non era più valida.
+    func loadAfterCieId(_ url: URL) {
+        cieReturnAt = Date()
+        webView.load(URLRequest(url: url))
     }
 
     func resumeAfterFailedCheck() {
@@ -326,7 +338,12 @@ final class SpaggiariLoginViewController: UIViewController, WKNavigationDelegate
         let scheme = url.scheme?.lowercased() ?? ""
 
         // CIE con app CieID (flusso IPZS): CIEID://<url>&sourceApp=<schema di ritorno>.
-        if absolute.contains("/OpenApp"), let cie = URL(string: "CIEID://\(absolute)&sourceApp=\(SpaggiariLoginPlugin.returnScheme)") {
+        // Non di nuovo per l'URL che CieID ci ha appena restituito (contiene già sourceApp, o arriva
+        // nei secondi subito dopo il ritorno): quello va caricato qui per completare l'accesso.
+        let justReturned = cieReturnAt.map { Date().timeIntervalSince($0) < 20 } ?? false
+        let fromCieId = absolute.contains("sourceApp=") || justReturned
+        if absolute.contains("/OpenApp"), !fromCieId,
+           let cie = URL(string: "CIEID://\(absolute)&sourceApp=\(SpaggiariLoginPlugin.returnScheme)") {
             UIApplication.shared.open(cie, options: [:]) { ok in
                 if !ok, let store = URL(string: "https://apps.apple.com/it/app/cieid/id1504644677") {
                     UIApplication.shared.open(store)
