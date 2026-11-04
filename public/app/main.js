@@ -146,7 +146,7 @@ function buildShell() {
   });
   setHTML(app, html`
     <aside class="sidebar glass" aria-label="Navigazione">
-      <div class="brand-row"><a class="brand" href="/oggi"><img src="/assets/skoolio-mark.svg" alt="" /><span class="brand-name">Skoolio</span></a>
+      <div class="brand-row"><a class="brand" href="/oggi" aria-label="Skoolio"><img class="logo-img logo-on-dark" src="/assets/skoolio-logo.png" alt="Skoolio" width="771" height="160" /><img class="logo-img logo-on-light" src="/assets/skoolio-logo-dark.png" alt="Skoolio" width="771" height="160" /></a>
         <a class="bell-btn" href="/notifiche" aria-label="Notifiche">${icon("bell")}<span class="bell-badge" data-unread="notifiche" hidden></span></a></div>
       <nav>${groups.map((g) => html`<div class="nav-group"><p class="nav-group-label overline">${g.name}</p>${g.items.map(navItem)}</div>`)}</nav>
       <div class="sidebar-foot">

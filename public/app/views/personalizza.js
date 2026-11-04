@@ -19,7 +19,7 @@ export default {
         ${pageHeader({ eyebrow: "Account", title: "Personalizza", subtitle: "Colori e layout di Skoolio. Valgono su telefono e computer." })}
 
         <section class="card card-pad cz-preview" aria-hidden="true">
-          <div class="cz-preview-top"><img src="/assets/skoolio-mark.svg" alt="" /><div><p class="title-3">Skoolio</p><p class="caption">Anteprima</p></div>
+          <div class="cz-preview-top"><img src="/assets/skoolio-512.png" alt="" /><div><p class="title-3">Skoolio</p><p class="caption">Anteprima</p></div>
             <span class="btn btn-primary cz-preview-btn">Pulsante</span></div>
           <div class="cz-grades"><span class="grade g-good">8½</span><span class="grade g-good">7</span><span class="grade g-ok">6</span><span class="grade g-bad">5</span><span class="grade g-bad g-fire">3</span></div>
           <div class="cz-tabs">${tabs.map((t, i) => { const r = routeOf(t); return r ? html`<span class="${i === 0 ? "on" : ""}">${icon(r.icon)}<small>${r.title}</small></span>` : ""; })}<span>${icon("more")}<small>Altro</small></span></div>
