@@ -12,6 +12,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 os.environ.setdefault("DATABASE_PATH", os.path.join(tempfile.mkdtemp(), "test.db"))
 os.environ.setdefault("COOKIE_SECURE", "false")
+os.environ.setdefault("CLASSEVIVA_KEEPALIVE_SECONDS", "0")
 
 import classeviva_client as cv
 
@@ -207,6 +208,82 @@ def test_bacheca_and_file_link():
         assert anon.get("/file/tokenfinto123").status_code == 404
         bad = phone.post("/file-link", json={"kind": "bacheca", "evt_code": "CF;rm", "pub_id": "1"})
         assert bad.status_code == 400
+
+
+def test_sessions_survive_restart_and_are_encrypted():
+    import sqlite3
+    main.sessions.clear()
+    main._store(lambda conn: conn.execute("DELETE FROM auth_sessions"))
+    with TestClient(main.app) as phone, TestClient(main.app) as pc:
+        login = web_login(phone)
+        assert login.status_code == 200
+        assert "max-age=2592000" in login.headers["set-cookie"].lower(), login.headers["set-cookie"]
+        start = pc.post("/pair/start", headers=PC_UA).json()
+        phone.post("/pair/confirm", json={"code": start["code"]})
+        pc.post("/pair/status", json={"pair_id": start["pair_id"]})
+        phone_sid = phone.cookies.get("session_id")
+        # Il cookie ClasseViva e il session id non devono comparire in chiaro nel DB.
+        dump = "\n".join(sqlite3.connect(main.DATABASE_PATH).iterdump())
+        assert "spidcookie1234567890" not in dump and phone_sid not in dump
+        # "Riavvio": la memoria si svuota, le sessioni restano su disco.
+        main.sessions.clear()
+        main.upstream_cache.clear()
+        me = phone.get("/session/me")
+        assert me.status_code == 200, me.text
+        assert me.json()["username"] == "S7654321X"
+        # Il PC non è ancora tornato in memoria ma compare tra i dispositivi e si può scollegare.
+        devices = phone.get("/devices").json()["devices"]
+        assert len(devices) == 2, devices
+        pc_dev = next(d for d in devices if not d["current"])
+        assert phone.post("/devices/revoke", json={"device_id": pc_dev["device_id"]}).status_code == 200
+        assert pc.get("/session/me").status_code == 401
+        # Logout: la sessione sparisce anche dal disco.
+        phone.post("/logout")
+        main.sessions.clear()
+        assert phone.get("/session/me").status_code == 401
+
+
+def test_keepalive_measures_and_ends_expired_sessions():
+    with TestClient(main.app) as phone:
+        assert web_login(phone, "spidcookieNEW1234567").status_code == 200
+        assert main.keepalive_pass()["ok"] >= 1
+        stats = main._store(main.session_store.stats_summary, main.time.time())
+        assert stats["active_count"] >= 1
+        # ClasseViva chiude la sessione: il keep-alive se ne accorge e chiude i dispositivi.
+        VALID_COOKIES.discard("spidcookieNEW1234567")
+        try:
+            outcome = main.keepalive_pass()
+            assert outcome["expired"] >= 1, outcome
+            main.sessions.clear()
+            assert phone.get("/session/me").status_code == 401
+            stats = main._store(main.session_store.stats_summary, main.time.time())
+            assert stats["expired_count"] >= 1 and stats["median_hours"] is not None
+        finally:
+            VALID_COOKIES.add("spidcookieNEW1234567")
+
+
+def test_seal_detects_tampering():
+    token = main.session_store.seal("segreto-di-prova")
+    assert main.session_store.unseal(token) == "segreto-di-prova"
+    bad = token[:-2] + ("A" if token[-2] != "A" else "B") + token[-1]
+    assert main.session_store.unseal(bad) is None
+
+
+def test_upstream_error_is_not_logout():
+    with TestClient(main.app) as phone:
+        web_login(phone)
+        sid = phone.cookies.get("session_id")
+        main.sessions[sid]["card_cache"] = None
+        main.sessions[sid]["me_cache"] = None
+        main.upstream_cache.clear()
+        original = cv.requests.get
+        cv.requests.get = lambda url, headers=None, **kw: FakeResponse(404, {"error": "boom"}) if url.endswith("/card") else original(url, headers, **kw)
+        try:
+            r = phone.get("/session/me")
+            assert r.status_code == 502, r.text
+            assert sid in main.sessions, "un errore diverso da 401 non deve sloggare"
+        finally:
+            cv.requests.get = original
 
 
 def test_expired_code():

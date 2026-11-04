@@ -306,6 +306,26 @@ class WebSessionUtente(Utente):
             return resp
         return _SyntheticResponse(502)
 
+    def ping(self, timeout: float = 15) -> Optional[bool]:
+        """Controllo leggero (whoami) che tiene viva la sessione web.
+
+        True = valida, False = scaduta/rifiutata da ClasseViva, None = non verificabile
+        (rete, 429, 5xx): in quel caso la sessione NON va considerata morta.
+        """
+        try:
+            resp = requests.get(
+                f"{WEB_BASE_URL}/misc/whoami", headers=self.get_headers(), timeout=timeout, allow_redirects=False
+            )
+        except requests.RequestException:
+            return None
+        if resp.status_code == 429 or resp.status_code >= 500:
+            return None
+        if resp.status_code == 200 and self._is_session_response(resp):
+            return True
+        if resp.status_code in (401, 403) or 300 <= resp.status_code < 400 or not self._is_session_response(resp):
+            return False
+        return None
+
     def login_from_session(self) -> dict:
         """Verifica il cookie con /misc/whoami e /card. Solleva ClasseVivaLoginError se non valido."""
         try:

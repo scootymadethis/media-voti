@@ -32,6 +32,7 @@ la incapsulano. Dal 2026 l'accesso avviene **solo con SPID o CIE**.
 - `ALLOWED_ORIGINS` → domini autorizzati, es. `https://tuodominio.it`
 - `DATABASE_PATH` → file SQLite persistente, es. `/opt/spaggiari2/data/spaggiari2.db`
 - `COOKIE_SECURE` → `true` in produzione HTTPS, `false` solo in sviluppo locale
+- `AULERA_SECRET_KEY` → segreto per cifrare le sessioni salvate (se manca viene creato `aulera-secret.key` accanto al DB)
 - `ADMIN_USERNAME` → codice ClasseViva dell'amministratore; `ADMIN_PANEL_PASSWORD` (opzionale) → password aggiuntiva per il pannello
 - Altre opzioni (codici di collegamento, link ai file, ...) in [`docs/spid-cie.md`](docs/spid-cie.md).
 
@@ -211,6 +212,6 @@ Tabella usata:
 
 ## Note
 
-- Le sessioni login restano in memoria, ma **la classifica no**: quella ora è persistente su SQLite.
+- Le sessioni durano 30 giorni e sono salvate su SQLite (cookie ClasseViva cifrato): un riavvio non scollega nessuno. Imposta `AULERA_SECRET_KEY` in produzione, oppure conserva il file `aulera-secret.key` accanto al database.
 - Il realtime usa WebSocket su `/ws/leaderboard` (esposto al frontend tramite `/api/ws/leaderboard`).
 - Se cambi dominio, aggiorna `ALLOWED_ORIGINS`.
