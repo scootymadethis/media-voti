@@ -116,7 +116,7 @@ export default {
       const toJustify = events.filter((e) => !e.isJustified).length;
       fill("assenze", html`<a class="card card-pad home-card pressable" href="/assenze">
         <div class="spread"><p class="overline">Presenze</p>${icon("chevronRight", "chev")}</div>
-        <div class="stats-row cols-3" style="margin-top:14px">
+        <div class="stats-row cols-3 home-abs-stats" style="margin-top:14px">
           <div class="stat"><span class="stat-num">${count("ABA0")}</span><span class="stat-label">Assenze</span></div>
           <div class="stat"><span class="stat-num">${count("ABR0") + count("ABR1")}</span><span class="stat-label">Ritardi</span></div>
           <div class="stat"><span class="stat-num">${count("ABU0")}</span><span class="stat-label">Uscite</span></div>
