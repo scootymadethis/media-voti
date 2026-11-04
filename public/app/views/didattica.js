@@ -76,7 +76,7 @@ export default {
         ctx.navigate("/didattica", { replace: true });
         return;
       }
-      document.title = `${folder.name} · Aulera`;
+      document.title = `${folder.name} · Skoolio`;
       const last = parseDate(folder.last);
       const updated = last ? (relativeDay(last) === fmtDate(last) ? `il ${fmtDate(last)}` : relativeDay(last).toLowerCase()) : "";
       $(".page-header .eyebrow", head).textContent = teacher.name;

@@ -4,6 +4,34 @@ import { state, setTheme, yearLabel, on } from "aulera/state";
 import { html, icon, setHTML, $, segmented, bindSegmented, openSheet, toast, titleCase, initials, fmtDate } from "aulera/ui";
 import { pageHeader, yearButton, bindYearPicker, logout } from "aulera/main";
 
+/* Calendario abbonabile: link segreto webcal:// che il telefono aggiorna da solo. */
+async function openCalendarSheet(regenerate = false) {
+  let data;
+  try {
+    data = await post(`/calendario-feed${regenerate ? "?regenerate=true" : ""}`);
+  } catch (err) { toast(err.message, { error: true }); return; }
+  const https = `${location.origin}${data.path}`;
+  const webcal = https.replace(/^https?:/, "webcal:");
+  const google = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`;
+  const sheet = openSheet({
+    title: "Calendario sul telefono",
+    content: html`<div class="stack">
+      <p class="body-2">Compiti, verifiche e annotazioni dell'agenda compaiono nel calendario del telefono e si aggiornano da soli.</p>
+      <a class="btn btn-primary btn-block" href="${webcal}">${icon("calendar")}Aggiungi al Calendario (iPhone, Mac)</a>
+      <a class="btn btn-block" href="${google}" target="_blank" rel="noopener">${icon("link")}Aggiungi a Google Calendar</a>
+      <button type="button" class="btn btn-block" data-copy>${icon("doc")}Copia il link</button>
+      <p class="caption">Il link è personale: chi lo ha vede la tua agenda. Se l'hai condiviso per errore, generane uno nuovo.</p>
+      <button type="button" class="btn btn-ghost" data-regen>${icon("refresh")}Genera un nuovo link</button>
+    </div>`,
+  });
+  sheet.body.addEventListener("click", async (e) => {
+    if (e.target.closest("[data-copy]")) {
+      try { await navigator.clipboard.writeText(https); toast("Link copiato"); } catch { toast(https); }
+    }
+    if (e.target.closest("[data-regen]")) { sheet.close(); openCalendarSheet(true); toast("Nuovo link creato: quello vecchio non funziona più"); }
+  });
+}
+
 const AVG = { subject_name: "Media generale", period_key: "generale" };
 const AVG_Q = new URLSearchParams(AVG).toString();
 const WEB_VERSION = new URL(import.meta.url).searchParams.get("v") || "1";
@@ -90,6 +118,12 @@ export default {
           <section class="profilo-section">
             <p class="overline profilo-label">Account</p>
             <div class="card list">
+              <a class="row" href="/personalizza"><span class="row-icon">${icon("palette")}</span>
+                <div class="row-main"><p class="row-title">Personalizza</p><p class="row-sub">Colori, barra in basso e schede della home</p></div>${icon("chevronRight", "chev")}</a>
+              <button type="button" class="row" data-ics><span class="row-icon">${icon("calendar")}</span>
+                <div class="row-main"><p class="row-title">Calendario sul telefono</p><p class="row-sub">Compiti e verifiche nel Calendario di iPhone o Google</p></div>${icon("chevronRight", "chev")}</button>
+              <a class="row" href="/notifiche"><span class="row-icon">${icon("bell")}</span>
+                <div class="row-main"><p class="row-title">Notifiche</p><p class="row-sub">Novità dal registro e preferenze</p></div>${icon("chevronRight", "chev")}</a>
               <a class="row" href="/dispositivi"><span class="row-icon">${icon("devices")}</span>
                 <div class="row-main"><p class="row-title">Dispositivi</p><p class="row-sub">Collega un computer, scollega gli accessi</p></div>${icon("chevronRight", "chev")}</a>
               <a class="row" href="/classifica"><span class="row-icon">${icon("trophy")}</span>
@@ -103,13 +137,13 @@ export default {
             <p class="overline profilo-label">Informazioni</p>
             <div class="card list profilo-info">
               <div class="row"><span class="row-icon">${icon("info")}</span><div class="row-main"><p class="row-title">Progetto indipendente</p>
-                <p class="row-sub">Aulera non è affiliato a ClasseViva né a Gruppo Spaggiari Parma.</p></div></div>
+                <p class="row-sub">Skoolio non è affiliato a ClasseViva né a Gruppo Spaggiari Parma.</p></div></div>
               <div class="row"><span class="row-icon">${icon("spid")}</span><div class="row-main"><p class="row-title">Accesso ufficiale</p>
-                <p class="row-sub">Entri dalla pagina ufficiale di ClasseViva con SPID o CIE: le tue credenziali non passano da Aulera.</p></div></div>
+                <p class="row-sub">Entri dalla pagina ufficiale di ClasseViva con SPID o CIE: le tue credenziali non passano da Skoolio.</p></div></div>
               <div class="row"><span class="row-icon">${icon("lock")}</span><div class="row-main"><p class="row-title">Solo la sessione</p>
-                <p class="row-sub">Aulera riceve solo la sessione temporanea di ClasseViva, che scade quando esci o dopo qualche ora.</p></div></div>
+                <p class="row-sub">Skoolio riceve solo la sessione temporanea di ClasseViva, che scade quando esci o dopo qualche ora.</p></div></div>
             </div>
-            <p class="caption profilo-version tnum" data-version>Aulera · versione web ${WEB_VERSION}</p>
+            <p class="caption profilo-version tnum" data-version>Skoolio · versione web ${WEB_VERSION}</p>
           </section>
 
           <button type="button" class="btn btn-danger btn-block btn-lg profilo-logout" data-logout>${icon("logout")}Esci</button>
@@ -191,14 +225,15 @@ export default {
     const appInfo = window.Capacitor?.isNativePlatform?.() ? window.Capacitor?.Plugins?.App?.getInfo : null;
     if (appInfo) {
       appInfo().then((info) => {
-        if (info?.version) $("[data-version]", root).textContent = `Aulera ${info.version}${info.build ? ` (${info.build})` : ""} · web ${WEB_VERSION}`;
+        if (info?.version) $("[data-version]", root).textContent = `Skoolio ${info.version}${info.build ? ` (${info.build})` : ""} · web ${WEB_VERSION}`;
       }).catch(() => {});
     }
 
     /* ---------- esci ---------- */
+    $("[data-ics]", root)?.addEventListener("click", () => openCalendarSheet());
     $("[data-logout]", root).addEventListener("click", () => {
       const sheet = openSheet({
-        title: "Uscire da Aulera?",
+        title: "Uscire da Skoolio?",
         content: html`<p class="body-2">Per rientrare servirà di nuovo SPID o CIE. I computer collegati restano connessi finché non li scolleghi.</p>
           <div class="profilo-sheet-actions"><button type="button" class="btn" data-no>Annulla</button><button type="button" class="btn btn-danger" data-yes>${icon("logout")}Esci</button></div>`,
       });

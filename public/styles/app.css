@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Aulera — design system
+   Skoolio — design system
    Motion: regole di Emil Kowalski (emilkowalski/skills): ease-out per entrate/uscite,
    ease-in-out per movimenti sullo schermo, drawer iOS per i pannelli, solo transform/opacity,
    niente animazioni su azioni ripetute, prefers-reduced-motion/transparency rispettati.
@@ -34,86 +34,98 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
-  /* Tema scuro (predefinito) */
-  --bg: #05070b;
-  --bg-elev: #0d1118;
-  --text: #f5f7fa;
-  --text-2: rgb(232 238 245 / 0.66);
-  --text-3: rgb(232 238 245 / 0.42);
+  /* Colore principale (personalizzabile: data-accent su <html>). Predefinito: rosso. */
+  --acc-d: #ff453a;
+  --acc-l: #e0262f;
+
+  /* Tema scuro (predefinito): grigi di sistema iOS, non nero puro */
+  --bg: #1c1c1e;
+  --bg-elev: #2c2c2e;
+  --text: #f5f5f7;
+  --text-2: rgb(235 235 245 / 0.64);
+  --text-3: rgb(235 235 245 / 0.38);
   --hairline: rgb(255 255 255 / 0.08);
   --hairline-strong: rgb(255 255 255 / 0.14);
-  --fill: rgb(255 255 255 / 0.06);
-  --fill-2: rgb(255 255 255 / 0.1);
-  --fill-3: rgb(255 255 255 / 0.16);
-  --card: rgb(255 255 255 / 0.045);
-  --card-hover: rgb(255 255 255 / 0.07);
-  --accent: #3fd6c6;
-  --accent-strong: #19bfae;
-  --accent-ink: #022320;
-  --accent-soft: rgb(63 214 198 / 0.14);
-  --blue: #6b9cff;
-  --violet: #a78bfa;
-  --good: #34d399;
-  --great: #5eead4;
-  --ok: #fbbf24;
-  --bad: #fb7185;
-  --good-soft: rgb(52 211 153 / 0.14);
-  --ok-soft: rgb(251 191 36 / 0.14);
-  --bad-soft: rgb(251 113 133 / 0.14);
+  --fill: rgb(118 118 128 / 0.2);
+  --fill-2: rgb(118 118 128 / 0.28);
+  --fill-3: rgb(118 118 128 / 0.38);
+  --card: #2c2c2e;
+  --card-hover: #333336;
+  --accent: var(--acc-d);
+  --accent-strong: color-mix(in srgb, var(--accent) 82%, white);
+  --accent-ink: #ffffff;
+  --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
+  --blue: #0a84ff;
+  --violet: #bf5af2;
+  --good: #30d158;
+  --great: #30d158;
+  --ok: #ffd60a;
+  --bad: #ff453a;
+  --good-soft: rgb(48 209 88 / 0.16);
+  --ok-soft: rgb(255 214 10 / 0.16);
+  --bad-soft: rgb(255 69 58 / 0.16);
 
-  --glass-bg: rgb(20 26 36 / 0.5);
-  --glass-bg-strong: rgb(16 21 30 / 0.72);
-  --glass-border: rgb(255 255 255 / 0.12);
-  --glass-hi: rgb(255 255 255 / 0.2);
+  --glass-bg: rgb(44 44 46 / 0.55);
+  --glass-bg-strong: rgb(44 44 46 / 0.78);
+  --glass-border: rgb(255 255 255 / 0.1);
+  --glass-hi: rgb(255 255 255 / 0.16);
   --glass-lo: rgb(0 0 0 / 0.25);
-  --glass-shadow: 0 12px 40px rgb(0 0 0 / 0.38), 0 2px 8px rgb(0 0 0 / 0.2);
-  --glass-blur: blur(22px) saturate(180%);
+  --glass-shadow: 0 12px 40px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.22);
+  --glass-blur: blur(24px) saturate(180%);
   --scrim: rgb(0 0 0 / 0.5);
-  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.04) inset;
+  --shadow-card: none;
 
-  --aurora-1: rgb(32 201 182 / 0.3);
-  --aurora-2: rgb(77 122 255 / 0.26);
-  --aurora-3: rgb(147 104 255 / 0.2);
+  --aurora-1: color-mix(in srgb, var(--accent) 22%, transparent);
+  --aurora-2: color-mix(in srgb, var(--accent) 9%, transparent);
+  --aurora-3: rgb(255 159 10 / 0.07);
 }
+
+:root[data-accent="orange"] { --acc-d: #ff9f0a; --acc-l: #d46f00; }
+:root[data-accent="pink"] { --acc-d: #ff375f; --acc-l: #e0244e; }
+:root[data-accent="purple"] { --acc-d: #bf5af2; --acc-l: #9b3fd1; }
+:root[data-accent="blue"] { --acc-d: #0a84ff; --acc-l: #0071e3; }
+:root[data-accent="teal"] { --acc-d: #40c8e0; --acc-l: #0a8fa8; }
+:root[data-accent="green"] { --acc-d: #30d158; --acc-l: #1f9d47; }
+:root[data-accent="graphite"] { --acc-d: #98989d; --acc-l: #5b5b60; }
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #f2f3f7;
+  --bg: #f2f2f7;
   --bg-elev: #ffffff;
-  --text: #0b0d12;
-  --text-2: rgb(11 13 18 / 0.62);
-  --text-3: rgb(11 13 18 / 0.42);
-  --hairline: rgb(0 0 0 / 0.08);
-  --hairline-strong: rgb(0 0 0 / 0.13);
-  --fill: rgb(0 0 0 / 0.045);
-  --fill-2: rgb(0 0 0 / 0.07);
-  --fill-3: rgb(0 0 0 / 0.11);
-  --card: rgb(255 255 255 / 0.72);
-  --card-hover: rgb(255 255 255 / 0.92);
-  --accent: #0a9e90;
-  --accent-strong: #087f74;
+  --text: #1d1d1f;
+  --text-2: rgb(60 60 67 / 0.68);
+  --text-3: rgb(60 60 67 / 0.42);
+  --hairline: rgb(60 60 67 / 0.12);
+  --hairline-strong: rgb(60 60 67 / 0.2);
+  --fill: rgb(118 118 128 / 0.1);
+  --fill-2: rgb(118 118 128 / 0.16);
+  --fill-3: rgb(118 118 128 / 0.24);
+  --card: #ffffff;
+  --card-hover: #fafafa;
+  --accent: var(--acc-l);
+  --accent-strong: color-mix(in srgb, var(--accent) 85%, black);
   --accent-ink: #ffffff;
-  --accent-soft: rgb(10 158 144 / 0.12);
-  --blue: #2f6bff;
-  --violet: #7c5cf0;
-  --good: #0f9d68;
-  --great: #0a9e90;
-  --ok: #c27c00;
-  --bad: #e0344f;
-  --good-soft: rgb(15 157 104 / 0.11);
-  --ok-soft: rgb(194 124 0 / 0.12);
-  --bad-soft: rgb(224 52 79 / 0.1);
-  --glass-bg: rgb(255 255 255 / 0.58);
-  --glass-bg-strong: rgb(255 255 255 / 0.8);
+  --accent-soft: color-mix(in srgb, var(--accent) 11%, transparent);
+  --blue: #0071e3;
+  --violet: #9b3fd1;
+  --good: #1f9d47;
+  --great: #1f9d47;
+  --ok: #b38200;
+  --bad: #e0262f;
+  --good-soft: rgb(31 157 71 / 0.11);
+  --ok-soft: rgb(255 204 0 / 0.2);
+  --bad-soft: rgb(224 38 47 / 0.1);
+  --glass-bg: rgb(255 255 255 / 0.62);
+  --glass-bg-strong: rgb(255 255 255 / 0.84);
   --glass-border: rgb(255 255 255 / 0.75);
   --glass-hi: rgb(255 255 255 / 0.9);
-  --glass-lo: rgb(0 0 0 / 0.06);
-  --glass-shadow: 0 12px 40px rgb(30 40 60 / 0.14), 0 1px 3px rgb(30 40 60 / 0.08);
-  --scrim: rgb(20 24 32 / 0.28);
-  --shadow-card: 0 1px 2px rgb(20 30 50 / 0.05), 0 8px 24px rgb(20 30 50 / 0.05);
-  --aurora-1: rgb(32 201 182 / 0.22);
-  --aurora-2: rgb(77 122 255 / 0.16);
-  --aurora-3: rgb(170 120 255 / 0.12);
+  --glass-lo: rgb(0 0 0 / 0.05);
+  --glass-shadow: 0 12px 40px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.06);
+  --scrim: rgb(0 0 0 / 0.25);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 6px 20px rgb(0 0 0 / 0.04);
+  --aurora-1: color-mix(in srgb, var(--accent) 12%, transparent);
+  --aurora-2: color-mix(in srgb, var(--accent) 5%, transparent);
+  --aurora-3: rgb(255 159 10 / 0.05);
 }
 
 /* ---------- base ---------- */
@@ -180,7 +192,7 @@ a { color: inherit; text-decoration: none; }
 .muted { color: var(--text-2); }
 .faint { color: var(--text-3); }
 .gradient-text {
-  background: linear-gradient(100deg, var(--text) 10%, var(--accent) 55%, var(--blue) 95%);
+  background: linear-gradient(100deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, #ff9f0a) 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 
@@ -218,7 +230,7 @@ a { color: inherit; text-decoration: none; }
 .card {
   position: relative;
   background: var(--card);
-  border: 1px solid var(--hairline);
+  border: 1px solid transparent;
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-card);
 }
@@ -397,6 +409,48 @@ a { color: inherit; text-decoration: none; }
 .g-ok { --g: var(--ok); }
 .g-bad { --g: var(--bad); }
 .g-none { --g: var(--blue); }
+
+/* Voto "rosso fuoco" (sotto il 4): un contorno di fiamme in stile cartoon (illustrazione piatta,
+   tre strati rosso/arancio/giallo) che sale dalla pastiglia. Il disegno è un SVG generato
+   (scripts/generate_fire.py); il tremolio è a scatti (steps) per un effetto da cartone animato.
+   Solo transform; fermo con prefers-reduced-motion. */
+.grade.g-fire {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  background: transparent;
+  color: #fff;
+  text-shadow: 0 1px 0 rgb(140 20 0 / 0.6);
+}
+.grade.g-fire::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(180deg, #ff5a2a 0%, #e8261c 100%);
+  box-shadow: inset 0 0 0 2px #ffd23f;
+}
+.grade.g-fire::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  left: -32%;
+  right: -32%;
+  top: -64.5%;
+  bottom: -26.4%;
+  background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 140%22%3E%3Crect x=%2220.0%22 y=%2244.0%22 width=%2280.0%22 height=%2280.0%22 rx=%2215%22 fill=%22%23E5370E%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M92.8 102.0C94.7 93.5 106.0 91.7 106.3 86.7C109.6 96.7 113.7 107.9 106.1 112.6Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M89.1 112.5C88.9 107.5 96.7 110.8 106.2 118.8C100.2 115.7 105.2 124.9 100.5 125.1Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M28.7 126.2C24.7 126.4 31.5 122.8 43.0 118.3C37.2 121.1 47.2 118.6 44.8 120.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M19.5 125.1C14.6 125.9 17.2 117.9 14.0 119.0C21.7 113.9 30.4 108.0 30.9 112.5Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M13.9 112.6C7.5 110.8 9.7 101.3 17.5 91.4C15.1 98.5 25.7 95.4 27.2 102.0Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M13.2 65.7C3.5 58.6 3.1 43.7 -2.8 40.5C9.6 42.2 23.5 43.6 27.9 55.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M14.8 52.7C4.8 38.8 8.2 18.3 20.4 4.9C16.6 19.1 33.3 27.1 35.6 45.6Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M24.7 45.2C18.8 33.9 28.9 20.6 24.4 14.8C37.4 22.6 52.2 31.0 48.7 43.9Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M71.3 43.9C67.0 24.1 78.8 3.0 96.7 -6.4C87.0 7.6 100.6 23.8 95.3 45.2Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M84.4 45.6C84.8 29.3 99.8 16.2 98.8 7.2C106.0 21.8 114.4 37.7 105.2 52.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M92.1 55.7C92.7 47.5 103.8 45.5 116.6 49.6C108.1 50.2 113.9 60.9 106.8 65.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M49.5 46.0C43.9 28.3 55.1 8.8 73.2 -0.5C63.9 12.5 78.9 26.5 74.5 46.0Z%22/%3E%3Crect x=%2221.5%22 y=%2245.5%22 width=%2277.0%22 height=%2277.0%22 rx=%2214%22 fill=%22%23FF8A00%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M92.6 102.9C94.2 96.1 103.4 94.5 103.7 90.5C106.2 98.6 109.4 107.6 103.1 111.5Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M87.9 113.4C86.6 110.4 91.6 114.2 98.6 121.1C94.6 117.9 99.5 124.4 97.1 123.4Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M19.2 118.9C15.5 119.5 18.2 113.5 15.7 114.4C21.9 110.5 28.9 106.0 28.9 109.3Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M16.0 88.0C9.6 84.4 10.0 74.8 15.8 66.1C14.7 73.1 24.4 72.5 27.0 80.0Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M16.9 57.5C9.3 50.5 11.0 37.7 6.2 34.4C17.0 37.0 29.0 39.5 31.3 50.3Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M23.5 48.1C18.3 41.0 25.8 31.7 39.0 26.1C32.6 32.5 44.6 37.1 42.3 45.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M68.1 45.5C64.0 32.5 72.9 18.4 69.7 11.5C79.6 21.2 90.9 31.6 87.2 45.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M83.9 47.1C83.1 35.4 94.2 26.0 108.4 24.1C99.6 29.9 107.6 41.3 101.1 52.1Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M91.9 56.8C91.8 51.0 100.2 50.2 99.5 46.7C103.8 53.8 108.9 61.8 103.9 64.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M52.0 47.5C47.5 35.7 56.5 22.7 71.0 16.5C63.5 25.2 75.5 34.5 72.0 47.5Z%22/%3E%3Crect x=%2222.8%22 y=%2246.8%22 width=%2274.4%22 height=%2274.4%22 rx=%2213%22 fill=%22%23FFD23F%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M92.5 104.0C92.0 101.0 97.0 102.3 96.2 100.3C99.4 104.9 103.1 110.0 100.4 110.5Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M19.6 110.5C16.0 109.7 17.5 104.3 15.1 104.3C20.6 102.5 26.8 100.4 27.5 104.0Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M19.0 63.7C14.5 61.3 15.9 54.5 21.2 48.2C19.6 53.2 27.0 52.6 28.1 57.8Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M23.2 51.4C19.3 48.2 24.3 42.5 21.5 41.0C29.2 42.3 38.0 43.4 36.6 48.3Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M52.8 46.8C49.6 39.8 56.0 32.1 66.5 28.4C61.1 33.5 69.7 39.1 67.2 46.8Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M83.4 48.3C81.8 41.3 89.4 35.9 87.8 32.0C93.8 38.3 100.8 45.1 96.8 51.4Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M91.9 57.8C91.3 54.2 97.0 54.4 104.4 57.5C99.9 57.0 104.2 62.3 101.0 63.7Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M54.5 48.8C51.1 42.3 57.9 35.2 68.8 31.7C63.1 36.5 72.1 41.6 69.5 48.8Z%22/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  transform-origin: 50% 85%;
+  animation: g-flame 0.9s steps(1, end) infinite;
+  pointer-events: none;
+}
+@keyframes g-flame {
+  0% { transform: none; }
+  25% { transform: scaleY(1.06) skewX(-4deg); }
+  50% { transform: scaleY(0.97) scaleX(1.03) skewX(3deg); }
+  75% { transform: scaleY(1.04) skewX(-2deg) scaleX(0.98); }
+}
+@media (prefers-reduced-motion: reduce) { .grade.g-fire::before { animation: none; } }
 
 /* Anello media */
 .ring { position: relative; display: grid; place-items: center; }
@@ -689,3 +743,34 @@ button.row:active, a.row:active { background: var(--fill); }
   .sheet, .menu, .toast, .topbar, .tab-indicator, .seg-indicator, .switch::after, .ring .ring-value { transition-property: opacity !important; transition-duration: 200ms !important; }
   .btn:active, .pressable:active, .tab:active { transform: none; }
 }
+
+/* ---------- campanella notifiche ---------- */
+.brand-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-right: 6px; }
+.brand-row .brand { padding-bottom: 18px; }
+.bell-btn, .bell-float { position: relative; display: grid; place-items: center; color: var(--text-2); transition: transform var(--dur-press) var(--ease-out), color var(--dur-fast) ease; }
+.bell-btn { width: 36px; height: 36px; margin-bottom: 18px; border-radius: 50%; }
+.bell-btn:active, .bell-float:active { transform: scale(0.94); }
+.bell-btn svg, .bell-float svg { width: 21px; height: 21px; }
+@media (hover: hover) and (pointer: fine) { .bell-btn:hover { color: var(--text); background: var(--fill); } }
+.bell-float { position: fixed; z-index: 26; top: calc(var(--safe-top) + 10px); right: 14px; width: 42px; height: 42px; border-radius: 50%; color: var(--text); }
+.bell-badge { position: absolute; top: 3px; right: 2px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--bad); color: #fff; font-size: 0.64rem; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--bg); }
+@media (min-width: 1024px) { .bell-float { display: none; } }
+/* La barra compatta (scroll) occupa la stessa zona: la campanella resta sopra, a destra. */
+.topbar .topbar-side.end { padding-right: 48px; }
+@media (min-width: 1024px) { .topbar .topbar-side.end { padding-right: 0; } }
+
+/* ---------- icone attive: due toni come gli SF Symbols ---------- */
+.tab[aria-current="page"] svg,
+.nav-item[aria-current="page"] svg { fill: currentColor; fill-opacity: 0.2; stroke-width: 1.9; }
+
+/* ---------- personalizzazione ---------- */
+.no-aurora .aurora { display: none; }
+.density-compact { --gutter: clamp(12px, 3vw, 28px); }
+.density-compact .card-pad { padding: 14px; }
+.density-compact .row { min-height: 48px; padding-top: 9px; padding-bottom: 9px; }
+.density-compact .page-header { padding: 18px 0 14px; }
+.density-compact .large-title { font-size: clamp(1.7rem, 1.2rem + 2vw, 2.4rem); }
+.density-compact .grid, .density-compact .stack, .density-compact .home-grid { gap: 10px; }
+/* Mobile: come la barra di navigazione iOS, la campanella sta in una riga sopra il titolo grande. */
+@media (max-width: 1023px) { .main { padding-top: calc(var(--safe-top) + 56px); } .page-header { padding-top: 4px; } }
+.toast.is-clickable { cursor: pointer; }

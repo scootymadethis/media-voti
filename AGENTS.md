@@ -3,7 +3,7 @@
 ## Cursor Cloud specific instructions
 
 ### What this is
-Single product ("Aulera", repo `media-voti`, previously shown as Spaggiari 2): a FastAPI backend (`main.py`) plus a
+Single product ("Skoolio", repo `media-voti`, previously Aulera / Spaggiari 2): a FastAPI backend (`main.py`) plus a
 static vanilla-JS frontend (`public/`) and a SQLite DB. It is an unofficial client for the
 Italian ClasseViva/Spaggiari school register. Python deps are in `requirements.txt`
 (installed into `.venv` by the update script). The `package.json` is only for the optional
@@ -58,6 +58,12 @@ needed. See `README.md` / `scripts/dev-windows.ps1` for the split-server alterna
   a background keep-alive thread pings ClasseViva every `CLASSEVIVA_KEEPALIVE_SECONDS` and records
   lifetimes in `cvv_session_stats` (admin → "Durata sessioni ClasseViva"). Tests should set
   `CLASSEVIVA_KEEPALIVE_SECONDS=0`.
+- `notifications.py` (sync with ClasseViva from the keep-alive thread, `/notifiche*` API, `public/app/notify.js`)
+  and `friends.py` (`/amici*`) are APIRouter modules included at the end of `main.py`; they access main via
+  `import main as core` inside functions. Synced user preferences: `GET/PUT /preferenze` (`state.setPrefs`).
+  Agenda ICS feed: `POST /calendario-feed`, `GET /calendario/{token}.ics`. The Android app also has a WorkManager
+  `NotificationWorker` polling `/api/notifiche` every 15 min. `.github/workflows/ios-ipa.yml` builds an unsigned IPA.
+- Grade colors: green ≥ 6.5, yellow 6–6.49, red < 6, `g-fire` (cartoon flames, `scripts/generate_fire.py`) < 4.
 - Username/password login was removed (ClasseViva is SPID/CIE-only); the admin panel relies on the
   SPID session plus optional `ADMIN_PANEL_PASSWORD`.
 - SPID/CIE support (see `docs/spid-cie.md`): `WebSessionUtente` authenticates with the

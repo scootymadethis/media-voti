@@ -18,13 +18,13 @@
 		<string>CIEID</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Aulera usa la fotocamera per leggere il QR mostrato sul computer e collegarlo al tuo account.</string>
+	<string>Skoolio usa la fotocamera per leggere il QR mostrato sul computer e collegarlo al tuo account.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>it</string>
 	<key>CFBundleDisplayName</key>
-        <string>Aulera</string>
+        <string>Skoolio</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

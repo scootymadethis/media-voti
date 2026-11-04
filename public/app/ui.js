@@ -84,6 +84,9 @@ const P = {
   flask: '<path d="M9.5 3.5h5M10 3.5v6L4.8 18.2A1.5 1.5 0 0 0 6.1 20.5h11.8a1.5 1.5 0 0 0 1.3-2.3L14 9.5v-6"/><path d="M7.5 14.5h9"/>',
   target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/>',
+  friends: '<circle cx="9" cy="8.5" r="3.3"/><path d="M3 19.5c.9-3.2 3.2-4.8 6-4.8s5.1 1.6 6 4.8"/><circle cx="16.8" cy="9.5" r="2.6"/><path d="M16.5 14.7c2.3.1 4 1.5 4.6 4"/>',
+  palette: '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 2-.8 2-1.8 0-.6-.3-1-.6-1.4-.3-.4-.6-.8-.6-1.4 0-1 .8-1.7 1.8-1.7H17a3.5 3.5 0 0 0 3.5-3.6C20.5 6.9 16.7 3.5 12 3.5Z"/><circle cx="7.6" cy="11" r="1.2"/><circle cx="10.2" cy="7.4" r="1.2"/><circle cx="14.6" cy="7.4" r="1.2"/>',
+  grip: '<path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke-width="3"/>',
   bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
   lock: '<rect x="5" y="10.5" width="14" height="10" rx="2.2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
   spid: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-3.8 3.7-5.5 7-5.5s6 1.7 7 5.5"/><path d="M17.5 3.5h3v3"/>',
@@ -165,16 +168,20 @@ export function initials(name) {
 }
 
 /* ---------------- voti ---------------- */
+// Verde: buono (≥ 6,5) · Giallo: sufficienza al limite (6–6,49) · Rosso: insufficiente (< 6)
+// Sotto il 4: "rosso fuoco" (pastiglia con le fiamme).
 export function gradeClass(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "g-none";
-  if (value >= 8) return "g-great";
-  if (value >= 6) return "g-good";
-  if (value >= 5) return "g-ok";
+  if (value >= 6.5) return "g-good";
+  if (value >= 6) return "g-ok";
+  if (value < 4) return "g-bad g-fire";
   return "g-bad";
 }
 export function gradeColor(value) {
-  const c = gradeClass(value);
-  return { "g-great": "var(--great)", "g-good": "var(--good)", "g-ok": "var(--ok)", "g-bad": "var(--bad)", "g-none": "var(--blue)" }[c];
+  if (value === null || value === undefined || Number.isNaN(value)) return "var(--blue)";
+  if (value >= 6.5) return "var(--good)";
+  if (value >= 6) return "var(--ok)";
+  return "var(--bad)";
 }
 
 /** Anello SVG con valore 0–10. */
@@ -352,32 +359,42 @@ export function openMenu(anchor, items, onPick) {
 /* ---------------- toast (stile Sonner) ---------------- */
 let toaster = null;
 const toasts = [];
-export function toast(message, { error = false, duration = 4000 } = {}) {
+export function toast(message, { error = false, duration = 4000, onClick = null } = {}) {
   if (!toaster) {
     toaster = document.createElement("div");
     toaster.className = "toaster";
     toaster.setAttribute("aria-live", "polite");
     document.body.append(toaster);
   }
+  let remaining = duration, started = Date.now(), timer = null;
   const el = document.createElement("div");
   el.className = `toast glass glass-strong${error ? " is-error" : ""}`;
   el.dataset.mounted = "false";
   setHTML(el, html`<span class="dot"></span><span>${message}</span>`);
+  if (typeof onClick === "function") {
+    el.classList.add("is-clickable");
+    el.setAttribute("role", "button");
+    el.tabIndex = 0;
+    el.addEventListener("click", () => { onClick(); remove(); });
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") { onClick(); remove(); } });
+  }
   toaster.append(el);
   toasts.unshift(el);
   layoutToasts();
   requestAnimationFrame(() => requestAnimationFrame(() => { el.dataset.mounted = "true"; layoutToasts(); }));
-  let remaining = duration, started = Date.now(), timer = null;
-  const remove = () => {
+  function remove() {
+    if (el.dataset.removed === "true") return;
+    clearTimeout(timer);
     el.dataset.removed = "true";
     toasts.splice(toasts.indexOf(el), 1);
     layoutToasts();
     setTimeout(() => el.remove(), 400);
-  };
+  }
   const run = () => { started = Date.now(); timer = setTimeout(remove, remaining); };
   el.addEventListener("pointerenter", () => { clearTimeout(timer); remaining -= Date.now() - started; });
   el.addEventListener("pointerleave", run);
   run();
+  return el;
 }
 function layoutToasts() {
   toasts.forEach((t, i) => {

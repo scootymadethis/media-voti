@@ -70,6 +70,10 @@ def fake_upstream(method, url, headers=None, **kwargs):
         r = FakeResponse(302, None, content_type="text/html")
         r.headers["Location"] = "https://cdndoc.spaggiari.eu/x/circ.pdf?AUTH=abc"
         return r
+    if "/students/7654321/agenda/all/" in url:
+        return FakeResponse(200, {"agenda": [{"evtId": 42, "evtCode": "AGHW", "evtDatetimeBegin": "2026-11-10T08:00:00+01:00",
+            "evtDatetimeEnd": "2026-11-10T09:00:00+01:00", "isFullDay": False, "notes": "Esercizi; pag. 12, n. 3",
+            "authorName": "ROSSI ANNA", "subjectDesc": "MATEMATICA"}]})
     if url.endswith("/students/7654321/noticeboard"):
         if method.upper() != "GET":
             return FakeResponse(405, {"error": "method"})
@@ -284,6 +288,26 @@ def test_upstream_error_is_not_logout():
             assert sid in main.sessions, "un errore diverso da 401 non deve sloggare"
         finally:
             cv.requests.get = original
+
+
+def test_calendar_feed():
+    with TestClient(main.app) as phone:
+        web_login(phone)
+        feed = phone.post("/calendario-feed")
+        assert feed.status_code == 200, feed.text
+        path = feed.json()["path"].replace("/api", "", 1)
+        anon = TestClient(main.app)
+        ics = anon.get(path)
+        assert ics.status_code == 200, ics.text
+        assert ics.headers["content-type"].startswith("text/calendar")
+        body = ics.text
+        assert "BEGIN:VCALENDAR" in body and "UID:42@skoolio" in body
+        assert "SUMMARY:Compiti · Matematica" in body and "DTSTART;VALUE=DATE:20261110" in body
+        assert "Esercizi\\; pag. 12\\, n. 3" in body  # escape ICS
+        assert anon.get("/calendario/" + "x" * 30 + ".ics").status_code == 404
+        # Nuovo link: il vecchio smette di funzionare.
+        new_path = phone.post("/calendario-feed?regenerate=true").json()["path"].replace("/api", "", 1)
+        assert new_path != path and anon.get(path).status_code == 404
 
 
 def test_expired_code():

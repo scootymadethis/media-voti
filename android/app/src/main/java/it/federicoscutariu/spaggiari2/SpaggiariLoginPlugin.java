@@ -7,10 +7,13 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
+import com.getcapacitor.PermissionState;
 import java.lang.ref.WeakReference;
 
 /**
- * Login ClasseViva con SPID/CIE per Aulera.
+ * Login ClasseViva con SPID/CIE per Skoolio.
  *
  * Apre la pagina di login UFFICIALE di ClasseViva in una WebView dedicata
  * ({@link SpaggiariLoginActivity}). Lo studente si autentica con il proprio gestore SPID o
@@ -21,7 +24,10 @@ import java.lang.ref.WeakReference;
  *
  * Eventi: "sessionCandidate" {phpsessid, url}, "closed" {}.
  */
-@CapacitorPlugin(name = "SpaggiariLogin")
+@CapacitorPlugin(
+    name = "SpaggiariLogin",
+    permissions = { @Permission(strings = { "android.permission.POST_NOTIFICATIONS" }, alias = "notifications") }
+)
 public class SpaggiariLoginPlugin extends Plugin {
 
     static final String SPAGGIARI_URL = "https://web.spaggiari.eu";
@@ -125,6 +131,25 @@ public class SpaggiariLoginPlugin extends Plugin {
         } catch (Exception e) {
             call.reject("Nessuna app per aprire il file");
         }
+    }
+
+    /** Chiede il permesso di mostrare notifiche (Android 13+); risolve {granted}. */
+    @PluginMethod
+    public void requestNotifications(PluginCall call) {
+        if (android.os.Build.VERSION.SDK_INT < 33 || getPermissionState("notifications") == PermissionState.GRANTED) {
+            JSObject ret = new JSObject();
+            ret.put("granted", true);
+            call.resolve(ret);
+            return;
+        }
+        requestPermissionForAlias("notifications", call, "notificationsResult");
+    }
+
+    @PermissionCallback
+    private void notificationsResult(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("granted", getPermissionState("notifications") == PermissionState.GRANTED);
+        call.resolve(ret);
     }
 
     @PluginMethod

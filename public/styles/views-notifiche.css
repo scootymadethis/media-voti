@@ -1,0 +1,98 @@
+/* ==========================================================================
+   Vista "Notifiche" e toast delle notifiche (notify.js). Prefisso .notifiche- / .notif-
+   ========================================================================== */
+
+/* ---------- toni delle icone per tipo ---------- */
+.notifiche-ic {
+  --c: var(--accent);
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--c) 15%, transparent);
+  color: var(--c);
+}
+.notifiche-ic svg { width: 19px; height: 19px; }
+.notifiche-ic.t-accent { --c: var(--accent); }
+.notifiche-ic.t-blue { --c: var(--blue); }
+.notifiche-ic.t-violet { --c: var(--violet); }
+.notifiche-ic.t-ok { --c: var(--ok); }
+.notifiche-ic.t-good { --c: var(--good); }
+.notifiche-ic.t-bad { --c: var(--bad); }
+
+/* ---------- layout: elenco + preferenze (a destra su desktop) ---------- */
+.notifiche-layout { display: grid; gap: 32px; align-items: start; }
+@media (min-width: 1024px) {
+  .notifiche-layout { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 28px; }
+  .notifiche-side { position: sticky; top: 24px; }
+}
+
+.notifiche-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin: -6px 0 4px; padding: 0 4px; }
+.notifiche-readall { min-height: 44px; padding: 0 6px; margin-right: -6px; font-weight: 600; }
+.notifiche-readall svg { width: 16px; height: 16px; }
+
+.notifiche-day + .notifiche-day { margin-top: 24px; }
+.notifiche-day-title { padding: 0 4px; margin: 0 0 8px; }
+
+/* ---------- riga notifica ---------- */
+.notifiche-row { align-items: flex-start; gap: 13px; padding-top: 14px; padding-bottom: 14px; min-height: 64px; }
+.notifiche-row .notifiche-ic { margin-top: 1px; }
+.notifiche-row .row-main { display: grid; gap: 2px; }
+.notifiche-row-head { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.notifiche-row-head .row-title { flex: 1; min-width: 0; font-weight: 520; color: var(--text-2); }
+.notifiche-row .row-sub { margin-top: 0; color: var(--text-3); }
+.notifiche-time { flex: none; font-size: 0.78rem; color: var(--text-3); }
+.notifiche-row .dot { align-self: center; margin-left: 2px; }
+.notifiche-row + .notifiche-row::before { left: 69px; }
+
+/* Non lette: testo pieno, pallino colorato e un velo appena percettibile. */
+.notifiche-row.is-unread { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.notifiche-row.is-unread .row-title { font-weight: 640; color: var(--text); }
+.notifiche-row.is-unread .row-sub { color: var(--text-2); }
+.notifiche-row.is-unread .notifiche-time { color: var(--accent); font-weight: 600; }
+.notifiche-row:not(.is-unread) .notifiche-ic { opacity: 0.72; }
+
+.notifiche-more { margin-top: 16px; }
+
+/* ---------- stato vuoto ---------- */
+.notifiche-empty { display: grid; justify-items: center; text-align: center; gap: 10px; padding: 44px 24px 32px; }
+.notifiche-empty .body-2 { max-width: 40ch; color: var(--text-2); }
+.notifiche-empty .btn { margin-top: 10px; }
+.notifiche-empty-art {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  margin-bottom: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.notifiche-empty-art svg { width: 34px; height: 34px; }
+
+/* ---------- preferenze ---------- */
+.notifiche-pref, .notifiche-sys { gap: 13px; min-height: 64px; }
+.notifiche-pref + .notifiche-pref::before { left: 69px; }
+.notifiche-sys-card { margin-top: 16px; }
+.notifiche-sys { align-items: center; }
+.notifiche-enable { min-height: 36px; padding: 0 16px; font-size: 0.9rem; flex: none; }
+.notifiche-foot { padding: 12px 4px 0; line-height: 1.45; }
+.switch:disabled { opacity: 0.5; }
+
+/* Pulsante "Aggiorna ora" in corso: l'icona gira (stato temporaneo, si ferma alla risposta). */
+.btn.is-busy svg { animation: notifiche-spin 900ms linear infinite; }
+@keyframes notifiche-spin { to { transform: rotate(360deg); } }
+
+/* ---------- toast cliccabile (notify.js) ---------- */
+.toast.notif-toast { cursor: pointer; align-items: flex-start; }
+.toast.notif-toast .dot { background: var(--accent); margin-top: 7px; }
+.notif-toast-text { display: grid; gap: 1px; min-width: 0; }
+.notif-toast-text strong { font-weight: 640; overflow-wrap: anywhere; }
+.notif-toast-text small { font-size: 0.82rem; font-weight: 450; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.toast.notif-toast:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn.is-busy svg { animation: none; }
+}

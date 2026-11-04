@@ -185,7 +185,7 @@ export default {
     const draw = () => {
       if (empty404 || !events.length) {
         setHTML(body, html`${snapshot ? snapshotChip() : ""}<div class="card">${empty404
-          ? emptyState({ iconName: "history", title: "Nessun dato salvato", text: `Per l'${yearLabel().replace(/^A\.S\./, "anno")} non ci sono presenze salvate su Aulera.` })
+          ? emptyState({ iconName: "history", title: "Nessun dato salvato", text: `Per l'${yearLabel().replace(/^A\.S\./, "anno")} non ci sono presenze salvate su Skoolio.` })
           : emptyState({ iconName: "absences", title: "Nessuna assenza", text: isCurrentYear() ? "Finora nessuna assenza, ritardo o uscita: continua così." : "In quest'anno non risultano assenze, ritardi o uscite." })}</div>`);
         return;
       }

@@ -13,6 +13,13 @@ function greeting() {
   return "Buonasera";
 }
 
+// Ordine e visibilità delle schede: Personalizza → Schede della home.
+const CARD_CLASS = { media: "home-avg", lezioni: "home-today", agenda: "home-next", voti: "home-grades", bacheca: "home-board", assenze: "home-abs" };
+function homeSlots() {
+  const order = [...(state.prefs?.home_order || []), ...Object.keys(CARD_CLASS)].filter((id, i, a) => a.indexOf(id) === i && CARD_CLASS[id]);
+  const hidden = new Set(state.prefs?.home_hidden || []);
+  return order.map((id, i) => hidden.has(id) ? "" : html`<div class="${CARD_CLASS[id]}" style="order:${i}">${slot(id)}</div>`);
+}
 const slot = (name) => html`<div data-slot="${name}"><div class="card card-pad"><div class="skeleton-line" style="width:40%"></div><div class="skeleton" style="height:120px;margin-top:16px"></div></div></div>`;
 
 export default {
@@ -27,12 +34,7 @@ export default {
         subtitle: cls ? `Classe ${cls}` : "",
       })}
       <div class="home-grid">
-        <div class="home-avg">${slot("media")}</div>
-        <div class="home-today">${slot("lezioni")}</div>
-        <div class="home-next">${slot("agenda")}</div>
-        <div class="home-grades">${slot("voti")}</div>
-        <div class="home-board">${slot("bacheca")}</div>
-        <div class="home-abs">${slot("assenze")}</div>
+        ${homeSlots()}
       </div>`);
 
     const fill = (name, content) => { const el = $(`[data-slot="${name}"]`, root); if (el) setHTML(el, content); };

@@ -1,13 +1,14 @@
 // Avvio, router e struttura (sidebar desktop, tab bar mobile, barra compatta).
 import { get, post, onUnauthorized, clearCache, load } from "aulera/api";
-import { state, applyTheme, loadYears, emit, on, store, setYear, yearLabel } from "aulera/state";
+import { state, applyPrefs, loadPrefs, loadYears, emit, on, store, setYear, yearLabel, DEFAULT_TABS } from "aulera/state";
+import { startNotifications, stopNotifications } from "aulera/notify";
 import { html, raw, icon, setHTML, $, $$, openSheet, openMenu, toast, staggerIndex, animateRings, miniMarkdown } from "aulera/ui";
 
 // Le viste si caricano con la stessa versione dell'entry (vedi importmap in index.html).
 const V = new URL(import.meta.url).searchParams.get("v") || "1";
 const view = (name) => () => import(`./views/${name}.js?v=${V}`);
 
-applyTheme();
+applyPrefs();
 if (/Chrome\/|Chromium\//.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent)) {
   document.documentElement.classList.add("engine-chromium");
 }
@@ -25,11 +26,20 @@ export const ROUTES = [
   { path: "/documenti", title: "Documenti", icon: "doc", group: "Comunicazioni", load: view("documenti") },
   { path: "/libri", title: "Libri", icon: "books", group: "Comunicazioni", load: view("libri") },
   { path: "/classifica", title: "Classifica", icon: "trophy", group: "Community", load: view("classifica") },
+  { path: "/amici", title: "Amici", icon: "friends", group: "Community", load: view("amici") },
+  { path: "/notifiche", title: "Notifiche", icon: "bell", group: "Account", load: view("notifiche") },
   { path: "/dispositivi", title: "Dispositivi", icon: "devices", group: "Account", load: view("dispositivi") },
+  { path: "/personalizza", title: "Personalizza", icon: "palette", group: "Account", load: view("personalizza") },
   { path: "/profilo", title: "Profilo", icon: "person", group: "Account", load: view("profilo") },
   { path: "/admin", title: "Admin", icon: "shield", group: "Account", admin: true, load: view("admin") },
 ];
-const TABS = ["/oggi", "/voti", "/agenda", "/bacheca"];
+// Le 4 sezioni della tab bar sono personalizzabili (Personalizza → Barra in basso).
+let TABS = DEFAULT_TABS.slice();
+function currentTabs() {
+  const chosen = (state.prefs?.tabs || []).filter((p) => findRoute(p));
+  const tabs = chosen.length === 4 ? chosen : DEFAULT_TABS;
+  return tabs.slice(0, 4);
+}
 const ALIASES = { "/": "/oggi", "/dashboard": "/oggi", "/collega": "/dispositivi", "/home": "/oggi" };
 
 const app = document.getElementById("app");
@@ -95,7 +105,7 @@ function mountView(route, mod) {
   const root = document.createElement("div");
   root.className = "page view-enter";
   main.append(root);
-  document.title = `${route.title} · Aulera`;
+  document.title = `${route.title} · Skoolio`;
   window.scrollTo({ top: 0 });
   const ctx = {
     route,
@@ -114,11 +124,13 @@ function mountView(route, mod) {
 }
 
 /* ---------------- shell ---------------- */
+const BADGED = { "/bacheca": "bacheca", "/notifiche": "notifiche" };
 function navItem(r) {
   return html`<a class="nav-item" href="${r.path}" data-path="${r.path}">${icon(r.icon)}<span>${r.title}</span>
-    ${r.path === "/bacheca" ? raw('<span class="nav-badge" data-unread="bacheca" hidden></span>') : ""}</a>`;
+    ${BADGED[r.path] ? raw(`<span class="nav-badge" data-unread="${BADGED[r.path]}" hidden></span>`) : ""}</a>`;
 }
 function buildShell() {
+  TABS = currentTabs();
   const groups = [];
   ROUTES.filter((r) => !r.admin || state.session?.is_admin).forEach((r) => {
     let g = groups.find((x) => x.name === r.group);
@@ -127,7 +139,8 @@ function buildShell() {
   });
   setHTML(app, html`
     <aside class="sidebar glass" aria-label="Navigazione">
-      <a class="brand" href="/oggi"><img src="/assets/logo-aulera.png" alt="" /><span class="brand-name">Aulera</span></a>
+      <div class="brand-row"><a class="brand" href="/oggi"><img src="/assets/skoolio-mark.svg" alt="" /><span class="brand-name">Skoolio</span></a>
+        <a class="bell-btn" href="/notifiche" aria-label="Notifiche">${icon("bell")}<span class="bell-badge" data-unread="notifiche" hidden></span></a></div>
       <nav>${groups.map((g) => html`<div class="nav-group"><p class="nav-group-label overline">${g.name}</p>${g.items.map(navItem)}</div>`)}</nav>
       <div class="sidebar-foot">
         <button type="button" class="nav-item" data-action="logout">${icon("logout")}<span>Esci</span></button>
@@ -136,10 +149,11 @@ function buildShell() {
     <header class="topbar glass" aria-hidden="true">
       <div class="topbar-side"></div><div class="topbar-title"></div><div class="topbar-side end" data-topbar-actions></div>
     </header>
+    <a class="bell-float glass" href="/notifiche" aria-label="Notifiche">${icon("bell")}<span class="bell-badge" data-unread="notifiche" hidden></span></a>
     <main class="main" id="view-wrap"><div id="view"></div></main>
     <nav class="tabbar glass glass-liquid" aria-label="Sezioni principali">
       <span class="tab-indicator" aria-hidden="true"></span>
-      ${TABS.map((p) => { const r = findRoute(p); return html`<a class="tab" href="${r.path}" data-path="${r.path}">${icon(r.icon)}<span>${r.title}</span>${p === "/bacheca" ? raw('<span class="tab-badge" data-unread="bacheca" hidden></span>') : ""}</a>`; })}
+      ${TABS.map((p) => { const r = findRoute(p); return html`<a class="tab" href="${r.path}" data-path="${r.path}">${icon(r.icon)}<span>${r.title}</span>${BADGED[p] ? raw(`<span class="tab-badge" data-unread="${BADGED[p]}" hidden></span>`) : ""}</a>`; })}
       <button type="button" class="tab" data-action="more" data-path="more">${icon("more")}<span>Altro</span></button>
     </nav>`);
   $("[data-action='logout']", app).addEventListener("click", logout);
@@ -213,7 +227,7 @@ export { staggerIndex, animateRings };
 /* ---------------- login / logout ---------------- */
 async function showLogin() {
   titleObserver?.disconnect();
-  document.title = "Aulera — Il tuo registro, finalmente chiaro";
+  document.title = "Skoolio — Il tuo registro, finalmente chiaro";
   const mod = (await import(`./views/login.js?v=${V}`)).default;
   app.replaceChildren();
   const root = document.createElement("div");
@@ -222,6 +236,7 @@ async function showLogin() {
 }
 
 export async function logout() {
+  stopNotifications();
   try { await post("/logout"); } catch { /* sessione già chiusa */ }
   clearCache();
   state.session = null;
@@ -232,6 +247,7 @@ export async function logout() {
 
 onUnauthorized(() => {
   if (!state.session) return;
+  stopNotifications();
   state.session = null;
   clearCache();
   toast("Sessione scaduta: accedi di nuovo con SPID o CIE.", { error: true });
@@ -252,7 +268,7 @@ async function boot() {
     }
   }
   if (!state.session) return showLogin();
-  await loadYears();
+  await Promise.all([loadYears(), loadPrefs()]);
   buildShell();
   if (normalizePath(location.pathname) === "/" || location.pathname === "/login") history.replaceState({}, "", "/oggi" + location.search);
   current = null;
@@ -262,6 +278,13 @@ async function boot() {
 
 function afterBoot() {
   refreshUnread();
+  // App Android: permesso per le notifiche di sistema (una sola volta, dopo il primo accesso).
+  const native = window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.SpaggiariLogin?.requestNotifications;
+  if (native && !store.get("notifAsked")) {
+    store.set("notifAsked", true);
+    setTimeout(() => window.Capacitor.Plugins.SpaggiariLogin.requestNotifications().catch(() => {}), 1500);
+  }
+  try { startNotifications(); } catch (err) { console.warn("[notifiche]", err); }
   showAnnouncement();
   syncLeaderboards();
 }
@@ -305,6 +328,17 @@ async function syncLeaderboards() {
     ]);
   } catch { /* non bloccante */ }
 }
+
+// Cambiate le sezioni della tab bar: ricostruisce la shell mantenendo la vista corrente.
+on("prefs", (p) => {
+  if (!state.session || !$(".tabbar", app)) return;
+  const next = currentTabs();
+  if (next.join() === TABS.join()) return;
+  buildShell();
+  current = null;
+  renderRoute();
+  refreshUnread();
+});
 
 boot();
 export { state, emit, on };
