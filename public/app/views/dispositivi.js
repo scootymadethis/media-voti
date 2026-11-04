@@ -153,7 +153,7 @@ export default {
       setHTML(linkBox, html`<div class="dispositivi-done">
         <span class="dispositivi-check" aria-hidden="true">${icon("check")}</span>
         <h2 class="title-2">${label} collegato</h2>
-        <p class="body-2">Sul computer si sta aprendo il tuo spazio Aulera. Puoi scollegarlo quando vuoi da qui sotto.</p>
+        <p class="body-2">Sul computer si sta aprendo il tuo spazio Ardesia. Puoi scollegarlo quando vuoi da qui sotto.</p>
         <button type="button" class="btn" data-again>${icon("plus")}Collega un altro computer</button>
       </div>`);
       $("[data-again]", linkBox).addEventListener("click", () => drawIdle());
@@ -175,7 +175,7 @@ export default {
         const raw = result?.barcodes?.[0]?.rawValue;
         if (!raw) return;
         const code = codeFromScan(raw);
-        if (code.length !== 9) return setMsg("Questo QR non è un codice di Aulera.", "warn");
+        if (code.length !== 9) return setMsg("Questo QR non è un codice di Ardesia.", "warn");
         const input = $("[data-code]", linkBox);
         if (input) input.value = code;
         lookup(code);

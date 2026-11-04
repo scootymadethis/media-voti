@@ -92,7 +92,7 @@ public class SpaggiariLoginActivity extends AppCompatActivity {
 
     /**
      * Appena ClasseViva mostra una pagina successiva al login, copre la WebView e passa il
-     * cookie ad Aulera: lo studente non vede la dashboard di Spaggiari, vede "accesso in corso".
+     * cookie ad Ardesia: lo studente non vede la dashboard di Spaggiari, vede "accesso in corso".
      */
     private void detectSession(String url) {
         if (!isPostLoginPage(url)) return;
@@ -120,13 +120,13 @@ public class SpaggiariLoginActivity extends AppCompatActivity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.parseColor("#070B12"));
+        root.setBackgroundColor(Color.parseColor("#1C1C1E"));
 
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setPadding(dp(16), dp(8), dp(8), dp(8));
-        bar.setBackgroundColor(Color.parseColor("#101722"));
+        bar.setBackgroundColor(Color.parseColor("#2C2C2E"));
 
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
@@ -145,7 +145,7 @@ public class SpaggiariLoginActivity extends AppCompatActivity {
         Button close = new Button(this);
         close.setText("Chiudi");
         close.setAllCaps(false);
-        close.setTextColor(Color.parseColor("#A1D8E2"));
+        close.setTextColor(Color.parseColor("#FF453A"));
         close.setBackgroundColor(Color.TRANSPARENT);
         close.setOnClickListener(v -> finish());
         bar.addView(close);
@@ -162,12 +162,12 @@ public class SpaggiariLoginActivity extends AppCompatActivity {
         LinearLayout cover = new LinearLayout(this);
         cover.setOrientation(LinearLayout.VERTICAL);
         cover.setGravity(Gravity.CENTER);
-        cover.setBackgroundColor(Color.parseColor("#070B12"));
+        cover.setBackgroundColor(Color.parseColor("#1C1C1E"));
         cover.setClickable(true);
         ProgressBar spinner = new ProgressBar(this);
         cover.addView(spinner);
         TextView coverText = new TextView(this);
-        coverText.setText("Accesso ad Aulera in corso…");
+        coverText.setText("Accesso ad Ardesia in corso…");
         coverText.setTextColor(Color.parseColor("#F6F6F7"));
         coverText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         coverText.setPadding(0, dp(16), 0, 0);

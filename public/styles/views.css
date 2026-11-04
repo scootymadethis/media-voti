@@ -323,3 +323,28 @@ a.home-card { color: inherit; }
 .need strong.bad { color: var(--bad); font-size: 1.05rem; }
 .sim-keys, .sim-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .sim-keys .grade { min-width: 42px; height: 36px; }
+
+/* ===================== PERSONALIZZA ===================== */
+.cz-preview { display: grid; gap: 16px; background: linear-gradient(160deg, var(--accent-soft), transparent 60%), var(--card); }
+.cz-preview-top { display: flex; align-items: center; gap: 12px; }
+.cz-preview-top img { width: 44px; height: 44px; }
+.cz-preview-top > div { flex: 1; }
+.cz-preview-btn { pointer-events: none; }
+.cz-grades { display: flex; gap: 10px; flex-wrap: wrap; padding: 6px 2px; }
+.cz-tabs { display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px; border-radius: 26px; background: var(--fill); }
+.cz-tabs span { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; border-radius: 20px; color: var(--text-2); }
+.cz-tabs span.on { color: var(--accent); background: var(--fill-2); }
+.cz-tabs svg { width: 20px; height: 20px; }
+.cz-tabs small { font-size: 0.6rem; font-weight: 650; }
+.cz-swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.cz-swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px; border-radius: var(--r-md); }
+.cz-swatch[aria-checked="true"] { background: var(--fill); }
+.cz-dot { width: 34px; height: 34px; border-radius: 50%; background: var(--sw); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.15); position: relative; }
+.cz-swatch[aria-checked="true"] .cz-dot::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--sw); }
+.cz-move { gap: 2px; }
+.cz-move .btn-icon { width: 34px; min-height: 34px; }
+.cz-move .btn-icon:disabled { opacity: 0.25; }
+.cz-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.cz-chip { min-height: 38px; padding: 0 14px; font-size: 0.86rem; color: var(--text); }
+.cz-chip svg { width: 16px; height: 16px; color: var(--accent); }
+@media (max-width: 380px) { .cz-swatches { grid-template-columns: repeat(4, 1fr); gap: 4px; } }

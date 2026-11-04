@@ -1,8 +1,8 @@
-// Login SPID/CIE nell'app Android di Aulera.
+// Login SPID/CIE nell'app Android di Ardesia.
 //
 // Il plugin nativo "SpaggiariLogin" (android/app/.../SpaggiariLoginPlugin.java) apre la pagina
 // di login UFFICIALE di ClasseViva in una WebView dedicata. Lo studente sceglie "Entra con SPID"
-// o "Entra con CIE" e si autentica con il proprio gestore (o con l'app CieID): Aulera non vede
+// o "Entra con CIE" e si autentica con il proprio gestore (o con l'app CieID): Ardesia non vede
 // mai le credenziali. Dopo il login il plugin legge il cookie PHPSESSID (HttpOnly) dal
 // CookieManager di Android e lo invia qui con l'evento "sessionCandidate"; questo modulo lo fa
 // verificare al backend (POST /api/login/web-session) e, se valido, chiude la WebView.
@@ -43,7 +43,7 @@
   async function start({ onStatus = () => {}, onSuccess = null } = {}) {
     const SpaggiariLogin = plugin();
     if (!isAvailable()) {
-      onStatus("Aggiorna l'app Aulera per accedere con SPID o CIE.");
+      onStatus("Aggiorna l'app Ardesia per accedere con SPID o CIE.");
       return;
     }
     const handles = [];
@@ -105,5 +105,5 @@
     await SpaggiariLogin.open({ url: LOGIN_URL, clearSession: true });
   }
 
-  window.AuleraSpid = { isAvailable, start };
+  window.ArdesiaSpid = { isAvailable, start };
 })();

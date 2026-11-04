@@ -90,6 +90,10 @@ export default {
           <section class="profilo-section">
             <p class="overline profilo-label">Account</p>
             <div class="card list">
+              <a class="row" href="/personalizza"><span class="row-icon">${icon("palette")}</span>
+                <div class="row-main"><p class="row-title">Personalizza</p><p class="row-sub">Colori, barra in basso e schede della home</p></div>${icon("chevronRight", "chev")}</a>
+              <a class="row" href="/notifiche"><span class="row-icon">${icon("bell")}</span>
+                <div class="row-main"><p class="row-title">Notifiche</p><p class="row-sub">Novità dal registro e preferenze</p></div>${icon("chevronRight", "chev")}</a>
               <a class="row" href="/dispositivi"><span class="row-icon">${icon("devices")}</span>
                 <div class="row-main"><p class="row-title">Dispositivi</p><p class="row-sub">Collega un computer, scollega gli accessi</p></div>${icon("chevronRight", "chev")}</a>
               <a class="row" href="/classifica"><span class="row-icon">${icon("trophy")}</span>
@@ -103,13 +107,13 @@ export default {
             <p class="overline profilo-label">Informazioni</p>
             <div class="card list profilo-info">
               <div class="row"><span class="row-icon">${icon("info")}</span><div class="row-main"><p class="row-title">Progetto indipendente</p>
-                <p class="row-sub">Aulera non è affiliato a ClasseViva né a Gruppo Spaggiari Parma.</p></div></div>
+                <p class="row-sub">Ardesia non è affiliato a ClasseViva né a Gruppo Spaggiari Parma.</p></div></div>
               <div class="row"><span class="row-icon">${icon("spid")}</span><div class="row-main"><p class="row-title">Accesso ufficiale</p>
-                <p class="row-sub">Entri dalla pagina ufficiale di ClasseViva con SPID o CIE: le tue credenziali non passano da Aulera.</p></div></div>
+                <p class="row-sub">Entri dalla pagina ufficiale di ClasseViva con SPID o CIE: le tue credenziali non passano da Ardesia.</p></div></div>
               <div class="row"><span class="row-icon">${icon("lock")}</span><div class="row-main"><p class="row-title">Solo la sessione</p>
-                <p class="row-sub">Aulera riceve solo la sessione temporanea di ClasseViva, che scade quando esci o dopo qualche ora.</p></div></div>
+                <p class="row-sub">Ardesia riceve solo la sessione temporanea di ClasseViva, che scade quando esci o dopo qualche ora.</p></div></div>
             </div>
-            <p class="caption profilo-version tnum" data-version>Aulera · versione web ${WEB_VERSION}</p>
+            <p class="caption profilo-version tnum" data-version>Ardesia · versione web ${WEB_VERSION}</p>
           </section>
 
           <button type="button" class="btn btn-danger btn-block btn-lg profilo-logout" data-logout>${icon("logout")}Esci</button>
@@ -191,14 +195,14 @@ export default {
     const appInfo = window.Capacitor?.isNativePlatform?.() ? window.Capacitor?.Plugins?.App?.getInfo : null;
     if (appInfo) {
       appInfo().then((info) => {
-        if (info?.version) $("[data-version]", root).textContent = `Aulera ${info.version}${info.build ? ` (${info.build})` : ""} · web ${WEB_VERSION}`;
+        if (info?.version) $("[data-version]", root).textContent = `Ardesia ${info.version}${info.build ? ` (${info.build})` : ""} · web ${WEB_VERSION}`;
       }).catch(() => {});
     }
 
     /* ---------- esci ---------- */
     $("[data-logout]", root).addEventListener("click", () => {
       const sheet = openSheet({
-        title: "Uscire da Aulera?",
+        title: "Uscire da Ardesia?",
         content: html`<p class="body-2">Per rientrare servirà di nuovo SPID o CIE. I computer collegati restano connessi finché non li scolleghi.</p>
           <div class="profilo-sheet-actions"><button type="button" class="btn" data-no>Annulla</button><button type="button" class="btn btn-danger" data-yes>${icon("logout")}Esci</button></div>`,
       });

@@ -2,10 +2,10 @@ import Capacitor
 import UIKit
 import WebKit
 
-/// Login ClasseViva con SPID/CIE per Aulera (iOS).
+/// Login ClasseViva con SPID/CIE per Ardesia (iOS).
 ///
 /// Apre la pagina di login UFFICIALE di ClasseViva in una WKWebView dedicata. Lo studente si
-/// autentica con il proprio gestore SPID o con la CIE: le credenziali non passano da Aulera.
+/// autentica con il proprio gestore SPID o con la CIE: le credenziali non passano da Ardesia.
 /// Dopo il login il plugin legge il cookie di sessione PHPSESSID (HttpOnly, invisibile a
 /// JavaScript) dal WKHTTPCookieStore e lo invia alla pagina con l'evento "sessionCandidate";
 /// la pagina lo fa verificare al backend e chiama close() (o resume() se non è ancora valido).
@@ -167,7 +167,7 @@ final class SpaggiariLoginViewController: UIViewController, WKNavigationDelegate
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(red: 0.02, green: 0.03, blue: 0.04, alpha: 1)
+        view.backgroundColor = UIColor(red: 0.11, green: 0.11, blue: 0.118, alpha: 1)
         title = "Accesso a ClasseViva"
         navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Chiudi", style: .plain, target: self, action: #selector(closeTapped))
 
@@ -181,7 +181,7 @@ final class SpaggiariLoginViewController: UIViewController, WKNavigationDelegate
         view.addSubview(webView)
 
         progress.translatesAutoresizingMaskIntoConstraints = false
-        progress.tintColor = UIColor(red: 0.25, green: 0.84, blue: 0.78, alpha: 1)
+        progress.tintColor = UIColor(red: 1.0, green: 0.27, blue: 0.23, alpha: 1)
         view.addSubview(progress)
 
         overlay.translatesAutoresizingMaskIntoConstraints = false
@@ -191,7 +191,7 @@ final class SpaggiariLoginViewController: UIViewController, WKNavigationDelegate
         spinner.color = .white
         spinner.startAnimating()
         let label = UILabel()
-        label.text = "Accesso ad Aulera in corso…"
+        label.text = "Accesso ad Ardesia in corso…"
         label.textColor = .white
         label.font = .preferredFont(forTextStyle: .headline)
         let stack = UIStackView(arrangedSubviews: [spinner, label])

@@ -1,6 +1,6 @@
 {
   "appId": "it.federicoscutariu.spaggiari2",
-  "appName": "Aulera",
+  "appName": "Ardesia",
   "webDir": "app-shell",
   "server": {
     "url": "https://spaggiari2.federicoscutariu.it",
@@ -12,16 +12,16 @@
     "allowMixedContent": false,
     "adjustMarginsForEdgeToEdge": "auto"
   },
-  "backgroundColor": "#05070b",
+  "backgroundColor": "#1c1c1e",
   "ios": {
     "contentInset": "never",
-    "backgroundColor": "#05070b",
+    "backgroundColor": "#1c1c1e",
     "scrollEnabled": true
   },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 600,
-      "backgroundColor": "#05070b",
+      "backgroundColor": "#1c1c1e",
       "showSpinner": false
     }
   }

@@ -1,5 +1,5 @@
 // Stato globale: sessione, anno scolastico selezionato, tema, preferenze.
-import { get } from "aulera/api";
+import { get, put } from "aulera/api";
 
 const listeners = new Map();
 export const state = {
@@ -24,17 +24,69 @@ const store = {
 };
 export { store };
 
-/* ---------------- tema ---------------- */
+/* ---------------- preferenze (aspetto e layout) ---------------- */
+// Salvate sul server (sincronizzate tra telefono e PC) e in locale per applicarle subito.
+export const DEFAULT_TABS = ["/oggi", "/voti", "/agenda", "/bacheca"];
+export const HOME_CARDS = [
+  { id: "media", label: "Media generale" },
+  { id: "lezioni", label: "Lezioni di oggi" },
+  { id: "agenda", label: "Prossimi giorni" },
+  { id: "voti", label: "Ultimi voti" },
+  { id: "bacheca", label: "Bacheca" },
+  { id: "assenze", label: "Presenze" },
+];
+export const ACCENTS = [
+  { id: "red", label: "Rosso", color: "#ff453a" },
+  { id: "orange", label: "Arancio", color: "#ff9f0a" },
+  { id: "pink", label: "Rosa", color: "#ff375f" },
+  { id: "purple", label: "Viola", color: "#bf5af2" },
+  { id: "blue", label: "Blu", color: "#0a84ff" },
+  { id: "teal", label: "Turchese", color: "#40c8e0" },
+  { id: "green", label: "Verde", color: "#30d158" },
+  { id: "graphite", label: "Grafite", color: "#98989d" },
+];
+const DEFAULT_PREFS = { theme: "auto", accent: "red", density: "comfortable", background: true, tabs: DEFAULT_TABS, home_order: HOME_CARDS.map((c) => c.id), home_hidden: [] };
+state.prefs = { ...DEFAULT_PREFS, ...store.get("prefs", {}) };
+// Migrazione: tema salvato dalla versione precedente.
+if (store.get("theme") && !store.get("prefs")) state.prefs.theme = store.get("theme");
+
 const media = window.matchMedia("(prefers-color-scheme: light)");
-export function applyTheme(pref = store.get("theme", "auto")) {
+export function applyTheme(pref = state.prefs.theme) {
   state.theme = pref;
   const light = pref === "light" || (pref === "auto" && media.matches);
   document.documentElement.dataset.theme = light ? "light" : "dark";
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = light ? "#f2f3f7" : "#05070b";
+  if (meta) meta.content = light ? "#f2f2f7" : "#1c1c1e";
 }
-export function setTheme(pref) { store.set("theme", pref); applyTheme(pref); emit("theme", pref); }
-media.addEventListener?.("change", () => { if (state.theme === "auto") applyTheme("auto"); });
+export function applyPrefs(p = state.prefs) {
+  applyTheme(p.theme);
+  const root = document.documentElement;
+  if (p.accent && p.accent !== "red") root.dataset.accent = p.accent; else delete root.dataset.accent;
+  root.classList.toggle("density-compact", p.density === "compact");
+  root.classList.toggle("no-aurora", p.background === false);
+}
+let saveTimer = null;
+export function setPrefs(partial, { sync = true } = {}) {
+  state.prefs = { ...state.prefs, ...partial };
+  store.set("prefs", state.prefs);
+  store.set("theme", state.prefs.theme);
+  applyPrefs();
+  emit("prefs", state.prefs);
+  if (sync && state.session) {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => put("/preferenze", partial).catch(() => {}), 400);
+  }
+}
+/** Dopo il login: le preferenze del server (se esistono) vincono su quelle locali. */
+export async function loadPrefs() {
+  try {
+    const { prefs } = await get("/preferenze");
+    if (prefs && Object.keys(prefs).length) setPrefs(prefs, { sync: false });
+    else put("/preferenze", state.prefs).catch(() => {}); // primo accesso: carica quelle locali
+  } catch { /* offline: restano quelle locali */ }
+}
+export function setTheme(pref) { setPrefs({ theme: pref }); emit("theme", pref); }
+media.addEventListener?.("change", () => { if (state.prefs.theme === "auto") applyTheme("auto"); });
 
 /* ---------------- anno scolastico ---------------- */
 export async function loadYears() {

@@ -3,31 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-    <meta name="theme-color" content="#05070b" />
+    <meta name="theme-color" content="#1c1c1e" />
     <meta name="color-scheme" content="dark light" />
-    <meta name="description" content="Aulera: voti, agenda, bacheca e orario del registro ClasseViva in un'unica app, chiara e veloce. Accesso con SPID o CIE." />
+    <meta name="description" content="Ardesia: voti, agenda, bacheca e orario del registro ClasseViva in un'unica app, chiara e veloce. Accesso con SPID o CIE." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="icon" type="image/png" href="/assets/logo-aulera.png" />
-    <link rel="apple-touch-icon" href="/assets/logo-aulera.png" />
-    <title>Aulera</title>
+    <link rel="icon" type="image/svg+xml" href="/assets/ardesia-mark.svg" />
+    <link rel="alternate icon" type="image/png" href="/assets/favicon.png" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+    <title>Ardesia</title>
     <script>
       // Tema prima del primo paint (niente lampo chiaro/scuro).
       (function () {
         try {
-          var p = JSON.parse(localStorage.getItem("aulera:theme") || '"auto"');
+          var prefs = JSON.parse(localStorage.getItem("aulera:prefs") || "{}") || {};
+          var p = prefs.theme || JSON.parse(localStorage.getItem("aulera:theme") || '"auto"');
           var light = p === "light" || (p === "auto" && matchMedia("(prefers-color-scheme: light)").matches);
-          document.documentElement.dataset.theme = light ? "light" : "dark";
+          var d = document.documentElement;
+          d.dataset.theme = light ? "light" : "dark";
+          if (prefs.accent && prefs.accent !== "red") d.dataset.accent = prefs.accent;
+          if (prefs.density === "compact") d.classList.add("density-compact");
+          if (prefs.background === false) d.classList.add("no-aurora");
         } catch (e) {}
       })();
     </script>
-    <link rel="stylesheet" href="/styles/app.css?v=1" />
-    <link rel="stylesheet" href="/styles/views.css?v=1" />
-    <link rel="stylesheet" href="/styles/views-registro.css?v=1" />
-    <link rel="stylesheet" href="/styles/views-comunicazioni.css?v=1" />
-    <link rel="stylesheet" href="/styles/views-account.css?v=1" />
-    <link rel="stylesheet" href="/styles/views-amici.css?v=1" />
-    <link rel="stylesheet" href="/styles/views-notifiche.css?v=1" />
+    <link rel="stylesheet" href="/styles/app.css?v=3" />
+    <link rel="stylesheet" href="/styles/views.css?v=3" />
+    <link rel="stylesheet" href="/styles/views-registro.css?v=3" />
+    <link rel="stylesheet" href="/styles/views-comunicazioni.css?v=3" />
+    <link rel="stylesheet" href="/styles/views-account.css?v=3" />
+    <link rel="stylesheet" href="/styles/views-amici.css?v=3" />
+    <link rel="stylesheet" href="/styles/views-notifiche.css?v=3" />
   </head>
   <body>
     <div class="aurora" aria-hidden="true"></div>
@@ -40,7 +46,7 @@
       </filter>
     </svg>
     <div id="app" class="app"></div>
-    <noscript><p style="padding:24px">Aulera richiede JavaScript.</p></noscript>
+    <noscript><p style="padding:24px">Ardesia richiede JavaScript.</p></noscript>
     <script src="/config.js?v=3"></script>
     <script src="/vendor/qrcode-generator-1.4.4.js" defer></script>
     <script src="/spid-app.js?v=3" defer></script>
@@ -48,12 +54,12 @@
     <script type="importmap">
       {
         "imports": {
-          "aulera/main": "/app/main.js?v=2",
-          "aulera/ui": "/app/ui.js?v=2",
-          "aulera/api": "/app/api.js?v=2",
-          "aulera/state": "/app/state.js?v=2",
-          "aulera/grades": "/app/grades.js?v=2",
-          "aulera/notify": "/app/notify.js?v=2"
+          "aulera/main": "/app/main.js?v=3",
+          "aulera/ui": "/app/ui.js?v=3",
+          "aulera/api": "/app/api.js?v=3",
+          "aulera/state": "/app/state.js?v=3",
+          "aulera/grades": "/app/grades.js?v=3",
+          "aulera/notify": "/app/notify.js?v=3"
         }
       }
     </script>

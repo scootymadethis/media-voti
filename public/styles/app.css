@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Aulera — design system
+   Ardesia — design system
    Motion: regole di Emil Kowalski (emilkowalski/skills): ease-out per entrate/uscite,
    ease-in-out per movimenti sullo schermo, drawer iOS per i pannelli, solo transform/opacity,
    niente animazioni su azioni ripetute, prefers-reduced-motion/transparency rispettati.
@@ -34,86 +34,98 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
-  /* Tema scuro (predefinito) */
-  --bg: #05070b;
-  --bg-elev: #0d1118;
-  --text: #f5f7fa;
-  --text-2: rgb(232 238 245 / 0.66);
-  --text-3: rgb(232 238 245 / 0.42);
+  /* Colore principale (personalizzabile: data-accent su <html>). Predefinito: rosso. */
+  --acc-d: #ff453a;
+  --acc-l: #e0262f;
+
+  /* Tema scuro (predefinito): grigi di sistema iOS, non nero puro */
+  --bg: #1c1c1e;
+  --bg-elev: #2c2c2e;
+  --text: #f5f5f7;
+  --text-2: rgb(235 235 245 / 0.64);
+  --text-3: rgb(235 235 245 / 0.38);
   --hairline: rgb(255 255 255 / 0.08);
   --hairline-strong: rgb(255 255 255 / 0.14);
-  --fill: rgb(255 255 255 / 0.06);
-  --fill-2: rgb(255 255 255 / 0.1);
-  --fill-3: rgb(255 255 255 / 0.16);
-  --card: rgb(255 255 255 / 0.045);
-  --card-hover: rgb(255 255 255 / 0.07);
-  --accent: #3fd6c6;
-  --accent-strong: #19bfae;
-  --accent-ink: #022320;
-  --accent-soft: rgb(63 214 198 / 0.14);
-  --blue: #6b9cff;
-  --violet: #a78bfa;
-  --good: #34d399;
-  --great: #5eead4;
-  --ok: #fbbf24;
-  --bad: #fb7185;
-  --good-soft: rgb(52 211 153 / 0.14);
-  --ok-soft: rgb(251 191 36 / 0.14);
-  --bad-soft: rgb(251 113 133 / 0.14);
+  --fill: rgb(118 118 128 / 0.2);
+  --fill-2: rgb(118 118 128 / 0.28);
+  --fill-3: rgb(118 118 128 / 0.38);
+  --card: #2c2c2e;
+  --card-hover: #333336;
+  --accent: var(--acc-d);
+  --accent-strong: color-mix(in srgb, var(--accent) 82%, white);
+  --accent-ink: #ffffff;
+  --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
+  --blue: #0a84ff;
+  --violet: #bf5af2;
+  --good: #30d158;
+  --great: #30d158;
+  --ok: #ffd60a;
+  --bad: #ff453a;
+  --good-soft: rgb(48 209 88 / 0.16);
+  --ok-soft: rgb(255 214 10 / 0.16);
+  --bad-soft: rgb(255 69 58 / 0.16);
 
-  --glass-bg: rgb(20 26 36 / 0.5);
-  --glass-bg-strong: rgb(16 21 30 / 0.72);
-  --glass-border: rgb(255 255 255 / 0.12);
-  --glass-hi: rgb(255 255 255 / 0.2);
+  --glass-bg: rgb(44 44 46 / 0.55);
+  --glass-bg-strong: rgb(44 44 46 / 0.78);
+  --glass-border: rgb(255 255 255 / 0.1);
+  --glass-hi: rgb(255 255 255 / 0.16);
   --glass-lo: rgb(0 0 0 / 0.25);
-  --glass-shadow: 0 12px 40px rgb(0 0 0 / 0.38), 0 2px 8px rgb(0 0 0 / 0.2);
-  --glass-blur: blur(22px) saturate(180%);
+  --glass-shadow: 0 12px 40px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.22);
+  --glass-blur: blur(24px) saturate(180%);
   --scrim: rgb(0 0 0 / 0.5);
-  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.04) inset;
+  --shadow-card: none;
 
-  --aurora-1: rgb(32 201 182 / 0.3);
-  --aurora-2: rgb(77 122 255 / 0.26);
-  --aurora-3: rgb(147 104 255 / 0.2);
+  --aurora-1: color-mix(in srgb, var(--accent) 22%, transparent);
+  --aurora-2: color-mix(in srgb, var(--accent) 9%, transparent);
+  --aurora-3: rgb(255 159 10 / 0.07);
 }
+
+:root[data-accent="orange"] { --acc-d: #ff9f0a; --acc-l: #d46f00; }
+:root[data-accent="pink"] { --acc-d: #ff375f; --acc-l: #e0244e; }
+:root[data-accent="purple"] { --acc-d: #bf5af2; --acc-l: #9b3fd1; }
+:root[data-accent="blue"] { --acc-d: #0a84ff; --acc-l: #0071e3; }
+:root[data-accent="teal"] { --acc-d: #40c8e0; --acc-l: #0a8fa8; }
+:root[data-accent="green"] { --acc-d: #30d158; --acc-l: #1f9d47; }
+:root[data-accent="graphite"] { --acc-d: #98989d; --acc-l: #5b5b60; }
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #f2f3f7;
+  --bg: #f2f2f7;
   --bg-elev: #ffffff;
-  --text: #0b0d12;
-  --text-2: rgb(11 13 18 / 0.62);
-  --text-3: rgb(11 13 18 / 0.42);
-  --hairline: rgb(0 0 0 / 0.08);
-  --hairline-strong: rgb(0 0 0 / 0.13);
-  --fill: rgb(0 0 0 / 0.045);
-  --fill-2: rgb(0 0 0 / 0.07);
-  --fill-3: rgb(0 0 0 / 0.11);
-  --card: rgb(255 255 255 / 0.72);
-  --card-hover: rgb(255 255 255 / 0.92);
-  --accent: #0a9e90;
-  --accent-strong: #087f74;
+  --text: #1d1d1f;
+  --text-2: rgb(60 60 67 / 0.68);
+  --text-3: rgb(60 60 67 / 0.42);
+  --hairline: rgb(60 60 67 / 0.12);
+  --hairline-strong: rgb(60 60 67 / 0.2);
+  --fill: rgb(118 118 128 / 0.1);
+  --fill-2: rgb(118 118 128 / 0.16);
+  --fill-3: rgb(118 118 128 / 0.24);
+  --card: #ffffff;
+  --card-hover: #fafafa;
+  --accent: var(--acc-l);
+  --accent-strong: color-mix(in srgb, var(--accent) 85%, black);
   --accent-ink: #ffffff;
-  --accent-soft: rgb(10 158 144 / 0.12);
-  --blue: #2f6bff;
-  --violet: #7c5cf0;
-  --good: #0f9d68;
-  --great: #0a9e90;
-  --ok: #c27c00;
-  --bad: #e0344f;
-  --good-soft: rgb(15 157 104 / 0.11);
-  --ok-soft: rgb(194 124 0 / 0.12);
-  --bad-soft: rgb(224 52 79 / 0.1);
-  --glass-bg: rgb(255 255 255 / 0.58);
-  --glass-bg-strong: rgb(255 255 255 / 0.8);
+  --accent-soft: color-mix(in srgb, var(--accent) 11%, transparent);
+  --blue: #0071e3;
+  --violet: #9b3fd1;
+  --good: #1f9d47;
+  --great: #1f9d47;
+  --ok: #b38200;
+  --bad: #e0262f;
+  --good-soft: rgb(31 157 71 / 0.11);
+  --ok-soft: rgb(255 204 0 / 0.2);
+  --bad-soft: rgb(224 38 47 / 0.1);
+  --glass-bg: rgb(255 255 255 / 0.62);
+  --glass-bg-strong: rgb(255 255 255 / 0.84);
   --glass-border: rgb(255 255 255 / 0.75);
   --glass-hi: rgb(255 255 255 / 0.9);
-  --glass-lo: rgb(0 0 0 / 0.06);
-  --glass-shadow: 0 12px 40px rgb(30 40 60 / 0.14), 0 1px 3px rgb(30 40 60 / 0.08);
-  --scrim: rgb(20 24 32 / 0.28);
-  --shadow-card: 0 1px 2px rgb(20 30 50 / 0.05), 0 8px 24px rgb(20 30 50 / 0.05);
-  --aurora-1: rgb(32 201 182 / 0.22);
-  --aurora-2: rgb(77 122 255 / 0.16);
-  --aurora-3: rgb(170 120 255 / 0.12);
+  --glass-lo: rgb(0 0 0 / 0.05);
+  --glass-shadow: 0 12px 40px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.06);
+  --scrim: rgb(0 0 0 / 0.25);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 6px 20px rgb(0 0 0 / 0.04);
+  --aurora-1: color-mix(in srgb, var(--accent) 12%, transparent);
+  --aurora-2: color-mix(in srgb, var(--accent) 5%, transparent);
+  --aurora-3: rgb(255 159 10 / 0.05);
 }
 
 /* ---------- base ---------- */
@@ -180,7 +192,7 @@ a { color: inherit; text-decoration: none; }
 .muted { color: var(--text-2); }
 .faint { color: var(--text-3); }
 .gradient-text {
-  background: linear-gradient(100deg, var(--text) 10%, var(--accent) 55%, var(--blue) 95%);
+  background: linear-gradient(100deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, #ff9f0a) 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 
@@ -218,7 +230,7 @@ a { color: inherit; text-decoration: none; }
 .card {
   position: relative;
   background: var(--card);
-  border: 1px solid var(--hairline);
+  border: 1px solid transparent;
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-card);
 }
@@ -397,6 +409,55 @@ a { color: inherit; text-decoration: none; }
 .g-ok { --g: var(--ok); }
 .g-bad { --g: var(--bad); }
 .g-none { --g: var(--blue); }
+
+/* Voto "rosso fuoco" (sotto il 4): fiamme che lambiscono la pastiglia.
+   Tre strati: lingue di fuoco (::before), bagliore caldo (box-shadow) e la pastiglia (::after).
+   Animazione solo transform/opacity; ferma con prefers-reduced-motion. */
+.grade.g-fire {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  background: transparent;
+  color: #fff;
+  text-shadow: 0 1px 2px rgb(120 0 0 / 0.55);
+}
+.grade.g-fire::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(180deg, #ff7a2f 0%, #ff3b1f 45%, #c9101b 100%);
+  box-shadow: 0 0 0 1px rgb(255 170 80 / 0.55) inset, 0 0 14px rgb(255 90 20 / 0.6), 0 0 28px rgb(255 50 0 / 0.28);
+}
+.grade.g-fire::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  left: -18%;
+  right: -18%;
+  bottom: 30%;
+  height: 135%;
+  background:
+    radial-gradient(16% 46% at 18% 82%, #ffe28a 0%, #ff9b2f 45%, transparent 75%),
+    radial-gradient(15% 62% at 36% 70%, #fff4b8 0%, #ffb23f 40%, #ff5a1f 70%, transparent 82%),
+    radial-gradient(17% 80% at 52% 62%, #fff9d6 0%, #ffc14d 35%, #ff6a21 66%, transparent 82%),
+    radial-gradient(15% 60% at 68% 72%, #fff4b8 0%, #ffb23f 40%, #ff5a1f 70%, transparent 82%),
+    radial-gradient(16% 44% at 84% 84%, #ffe28a 0%, #ff9b2f 45%, transparent 75%);
+  filter: blur(1.6px) saturate(1.2);
+  transform-origin: 50% 100%;
+  animation: g-flame 1.1s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.grade.g-fire > .g-ember { display: none; }
+@keyframes g-flame {
+  0% { transform: scaleY(0.78) scaleX(1.02) skewX(-3deg); opacity: 0.9; }
+  30% { transform: scaleY(1) scaleX(0.97) skewX(2deg); opacity: 1; }
+  65% { transform: scaleY(0.86) scaleX(1.03) skewX(-2deg); opacity: 0.92; }
+  100% { transform: scaleY(1.08) scaleX(0.96) skewX(3deg); opacity: 1; }
+}
+.grade-sm.g-fire::before { height: 140%; bottom: 28%; filter: blur(1.2px) saturate(1.2); }
+@media (prefers-reduced-motion: reduce) { .grade.g-fire::before { animation: none; transform: scaleY(0.95); } }
 
 /* Anello media */
 .ring { position: relative; display: grid; place-items: center; }
@@ -689,3 +750,33 @@ button.row:active, a.row:active { background: var(--fill); }
   .sheet, .menu, .toast, .topbar, .tab-indicator, .seg-indicator, .switch::after, .ring .ring-value { transition-property: opacity !important; transition-duration: 200ms !important; }
   .btn:active, .pressable:active, .tab:active { transform: none; }
 }
+
+/* ---------- campanella notifiche ---------- */
+.brand-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-right: 6px; }
+.brand-row .brand { padding-bottom: 18px; }
+.bell-btn, .bell-float { position: relative; display: grid; place-items: center; color: var(--text-2); transition: transform var(--dur-press) var(--ease-out), color var(--dur-fast) ease; }
+.bell-btn { width: 36px; height: 36px; margin-bottom: 18px; border-radius: 50%; }
+.bell-btn:active, .bell-float:active { transform: scale(0.94); }
+.bell-btn svg, .bell-float svg { width: 21px; height: 21px; }
+@media (hover: hover) and (pointer: fine) { .bell-btn:hover { color: var(--text); background: var(--fill); } }
+.bell-float { position: fixed; z-index: 26; top: calc(var(--safe-top) + 10px); right: 14px; width: 42px; height: 42px; border-radius: 50%; color: var(--text); }
+.bell-badge { position: absolute; top: 3px; right: 2px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--bad); color: #fff; font-size: 0.64rem; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--bg); }
+@media (min-width: 1024px) { .bell-float { display: none; } }
+/* La barra compatta (scroll) occupa la stessa zona: la campanella resta sopra, a destra. */
+.topbar .topbar-side.end { padding-right: 48px; }
+@media (min-width: 1024px) { .topbar .topbar-side.end { padding-right: 0; } }
+
+/* ---------- icone attive: due toni come gli SF Symbols ---------- */
+.tab[aria-current="page"] svg,
+.nav-item[aria-current="page"] svg { fill: currentColor; fill-opacity: 0.2; stroke-width: 1.9; }
+
+/* ---------- personalizzazione ---------- */
+.no-aurora .aurora { display: none; }
+.density-compact { --gutter: clamp(12px, 3vw, 28px); }
+.density-compact .card-pad { padding: 14px; }
+.density-compact .row { min-height: 48px; padding-top: 9px; padding-bottom: 9px; }
+.density-compact .page-header { padding: 18px 0 14px; }
+.density-compact .large-title { font-size: clamp(1.7rem, 1.2rem + 2vw, 2.4rem); }
+.density-compact .grid, .density-compact .stack, .density-compact .home-grid { gap: 10px; }
+/* Mobile: come la barra di navigazione iOS, la campanella sta in una riga sopra il titolo grande. */
+@media (max-width: 1023px) { .main { padding-top: calc(var(--safe-top) + 56px); } .page-header { padding-top: 4px; } }

@@ -315,6 +315,9 @@ def init_db():
         with get_db_connection() as conn:
             conn.execute("PRAGMA journal_mode=WAL;")
             session_store.init_tables(conn)
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS user_prefs (username TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at REAL NOT NULL)"
+            )
             friends.init_tables(conn)
             notifications.init_tables(conn)
             conn.execute(
@@ -4917,6 +4920,71 @@ async def admin_badge_batch(body: BadgeBatchBody, _: Utente = Depends(current_ad
     await broadcast_leaderboard_change("badge", "*")
     await broadcast_average_leaderboard_change("badge", "*")
     return {"ok": True, **result}
+
+
+# ---- PREFERENZE (aspetto e layout, sincronizzati tra i dispositivi) ----
+PREF_ROUTES = {"/oggi", "/voti", "/agenda", "/orario", "/assenze", "/lezioni", "/bacheca", "/note", "/didattica",
+               "/documenti", "/libri", "/classifica", "/amici", "/notifiche", "/dispositivi", "/profilo"}
+PREF_HOME_CARDS = {"media", "lezioni", "agenda", "voti", "bacheca", "assenze", "orario", "compiti", "amici"}
+PREF_ACCENTS = {"red", "orange", "pink", "purple", "blue", "teal", "green", "graphite"}
+
+
+class PrefsBody(BaseModel):
+    theme: Optional[str] = Field(default=None, pattern=r"^(auto|light|dark)$")
+    accent: Optional[str] = Field(default=None, max_length=16)
+    density: Optional[str] = Field(default=None, pattern=r"^(comfortable|compact)$")
+    background: Optional[bool] = None
+    tabs: Optional[list[str]] = Field(default=None, max_length=4)
+    home_order: Optional[list[str]] = Field(default=None, max_length=20)
+    home_hidden: Optional[list[str]] = Field(default=None, max_length=20)
+
+
+def _prefs_key(u: Utente) -> str:
+    return normalize_username(get_session_username(u))
+
+
+def _read_prefs(username: str) -> tuple[dict, float]:
+    with db_lock:
+        with get_db_connection() as conn:
+            row = conn.execute("SELECT data, updated_at FROM user_prefs WHERE username = ?", (username,)).fetchone()
+    if not row:
+        return {}, 0.0
+    try:
+        return json.loads(row["data"]) or {}, float(row["updated_at"] or 0)
+    except ValueError:
+        return {}, 0.0
+
+
+@app.get("/preferenze")
+def get_prefs(u: Utente = Depends(current_user)):
+    prefs, updated = _read_prefs(_prefs_key(u))
+    return {"ok": True, "prefs": prefs, "updated_at": updated}
+
+
+@app.put("/preferenze")
+def put_prefs(body: PrefsBody, u: Utente = Depends(current_user)):
+    username = _prefs_key(u)
+    prefs, _ = _read_prefs(username)
+    incoming = body.model_dump(exclude_none=True)
+    if "accent" in incoming and incoming["accent"] not in PREF_ACCENTS:
+        raise HTTPException(status_code=400, detail="Colore non valido")
+    if "tabs" in incoming:
+        tabs = [t for t in incoming["tabs"] if t in PREF_ROUTES]
+        incoming["tabs"] = list(dict.fromkeys(tabs))[:4]
+    for key in ("home_order", "home_hidden"):
+        if key in incoming:
+            incoming[key] = list(dict.fromkeys(c for c in incoming[key] if c in PREF_HOME_CARDS))
+    prefs.update(incoming)
+    now = time.time()
+    with db_lock:
+        with get_db_connection() as conn:
+            conn.execute(
+                "INSERT INTO user_prefs (username, data, updated_at) VALUES (?, ?, ?) "
+                "ON CONFLICT(username) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
+                (username, json.dumps(prefs), now),
+            )
+            conn.commit()
+    return {"ok": True, "prefs": prefs, "updated_at": now}
 
 
 # ---- moduli: amici e notifiche (importati qui, quando main è già completo) ----
