@@ -560,8 +560,6 @@ a.home-card { color: inherit; }
 .cz-chip svg { width: 16px; height: 16px; color: var(--accent); }
 @media (max-width: 380px) { .cz-swatches { grid-template-columns: repeat(4, 1fr); gap: 4px; } }
 
-/* Oggi → Presenze su PC: solo numero e testo, senza riquadri. */
-@media (min-width: 720px) {
-  .home-abs-stats .stat { padding: 0; background: none; border-radius: 0; }
-  .home-abs-stats .stat-num { font-size: clamp(2rem, 1.5rem + 1.4vw, 2.6rem); }
-}
+/* Oggi → Presenze: solo numero e testo, senza riquadri (telefono e PC). */
+.home-abs-stats .stat { padding: 0; background: none; border-radius: 0; }
+.home-abs-stats .stat-num { font-size: clamp(2rem, 1.5rem + 1.4vw, 2.6rem); }
