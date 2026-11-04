@@ -105,7 +105,7 @@ function mountView(route, mod) {
   const root = document.createElement("div");
   root.className = "page view-enter";
   main.append(root);
-  document.title = `${route.title} · Ardesia`;
+  document.title = `${route.title} · Skoolio`;
   window.scrollTo({ top: 0 });
   const ctx = {
     route,
@@ -139,7 +139,7 @@ function buildShell() {
   });
   setHTML(app, html`
     <aside class="sidebar glass" aria-label="Navigazione">
-      <div class="brand-row"><a class="brand" href="/oggi"><img src="/assets/ardesia-mark.svg" alt="" /><span class="brand-name">Ardesia</span></a>
+      <div class="brand-row"><a class="brand" href="/oggi"><img src="/assets/skoolio-mark.svg" alt="" /><span class="brand-name">Skoolio</span></a>
         <a class="bell-btn" href="/notifiche" aria-label="Notifiche">${icon("bell")}<span class="bell-badge" data-unread="notifiche" hidden></span></a></div>
       <nav>${groups.map((g) => html`<div class="nav-group"><p class="nav-group-label overline">${g.name}</p>${g.items.map(navItem)}</div>`)}</nav>
       <div class="sidebar-foot">
@@ -227,7 +227,7 @@ export { staggerIndex, animateRings };
 /* ---------------- login / logout ---------------- */
 async function showLogin() {
   titleObserver?.disconnect();
-  document.title = "Ardesia — Il tuo registro, finalmente chiaro";
+  document.title = "Skoolio — Il tuo registro, finalmente chiaro";
   const mod = (await import(`./views/login.js?v=${V}`)).default;
   app.replaceChildren();
   const root = document.createElement("div");

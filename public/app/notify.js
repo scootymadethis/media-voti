@@ -55,7 +55,7 @@ function showSystem(item) {
   try {
     const n = new Notification(item.title, {
       body: item.body || "",
-      tag: `ardesia-${item.id}`,
+      tag: `skoolio-${item.id}`,
       icon: "/assets/apple-touch-icon.png",
       lang: "it",
     });

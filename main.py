@@ -318,6 +318,10 @@ def init_db():
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS user_prefs (username TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at REAL NOT NULL)"
             )
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS calendar_feeds (username TEXT PRIMARY KEY, token TEXT NOT NULL UNIQUE, "
+                "created_at REAL NOT NULL, last_ics TEXT, last_built_at REAL)"
+            )
             friends.init_tables(conn)
             notifications.init_tables(conn)
             conn.execute(
@@ -4985,6 +4989,159 @@ def put_prefs(body: PrefsBody, u: Utente = Depends(current_user)):
             )
             conn.commit()
     return {"ok": True, "prefs": prefs, "updated_at": now}
+
+
+# ---- CALENDARIO ABBONABILE (ICS) ----
+# Un link personale e segreto che porta compiti e verifiche dell'agenda nel calendario del telefono.
+ICS_CACHE_TTL = 30 * 60
+_ics_cache: dict[str, tuple[float, str]] = {}
+
+
+def _live_user_for(username: str) -> Optional[WebSessionUtente]:
+    """Una sessione ClasseViva valida dello studente (in memoria o salvata su disco)."""
+    with sessions_lock:
+        u = _shared_user_in_memory(username)
+    if u is not None:
+        return u
+    aliases = {a.upper() for a in username_aliases(username)}
+    for row in _store(session_store.live_cookies, time.time()) or []:
+        if str(row.get("username") or "").upper() in aliases:
+            user = WebSessionUtente(row["phpsessid"])
+            user.ident = row.get("ident") or ""
+            user.uid = row["username"]
+            user.is_logged_in = True
+            return user
+    return None
+
+
+def _ics_escape(text: str) -> str:
+    return (str(text or "").replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,")
+            .replace("\r\n", "\\n").replace("\n", "\\n"))
+
+
+def _ics_fold(line: str) -> str:
+    out, raw = [], line.encode("utf-8")
+    while len(raw) > 74:
+        cut = 74
+        while cut > 0 and (raw[cut] & 0xC0) == 0x80:
+            cut -= 1
+        out.append(raw[:cut].decode("utf-8"))
+        raw = b" " + raw[cut:]
+    out.append(raw.decode("utf-8"))
+    return "\r\n".join(out)
+
+
+def build_agenda_ics(user: WebSessionUtente, display_name: str) -> str:
+    today = date.today()
+    events: list[dict] = []
+    start = today - timedelta(days=7)
+    end = today + timedelta(days=63)
+    cursor = start
+    while cursor <= end:
+        chunk_end = min(cursor + timedelta(days=13), end)
+        try:
+            resp = user.call("GET", f"/agenda/all/{cursor:%Y%m%d}/{chunk_end:%Y%m%d}")
+        except requests.RequestException:
+            raise UpstreamUnavailable("Spaggiari irraggiungibile")
+        if resp.status_code == 401:
+            raise HTTPException(status_code=401, detail="Sessione ClasseViva scaduta")
+        if resp.status_code == 200:
+            try:
+                events.extend((resp.json() or {}).get("agenda") or [])
+            except ValueError:
+                pass
+        cursor = chunk_end + timedelta(days=1)
+
+    stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Skoolio//Agenda//IT", "CALSCALE:GREGORIAN",
+             "METHOD:PUBLISH", f"X-WR-CALNAME:{_ics_escape('Skoolio · ' + display_name)}",
+             "X-WR-TIMEZONE:Europe/Rome", "REFRESH-INTERVAL;VALUE=DURATION:PT2H", "X-PUBLISHED-TTL:PT2H"]
+    seen = set()
+    for ev in events:
+        uid = str(ev.get("evtId") or "")
+        if not uid or uid in seen:
+            continue
+        seen.add(uid)
+        code = str(ev.get("evtCode") or "")
+        subject = str(ev.get("subjectDesc") or "").strip().capitalize()
+        notes = str(ev.get("notes") or "").strip()
+        kind = "Compiti" if code == "AGHW" else "Prenotazione aula" if code == "AGCR" else "Annotazione"
+        title = f"{kind}{' · ' + subject if subject else ''}"
+        if code != "AGHW" and re.search(r"verific|compito in classe|interrogaz|test", notes, re.I):
+            title = f"Verifica{' · ' + subject if subject else ''}"
+        begin = str(ev.get("evtDatetimeBegin") or "")
+        finish = str(ev.get("evtDatetimeEnd") or "")
+        lines += ["BEGIN:VEVENT", f"UID:{uid}@skoolio", f"DTSTAMP:{stamp}"]
+        try:
+            b = datetime.fromisoformat(begin)
+            e = datetime.fromisoformat(finish) if finish else b + timedelta(hours=1)
+            if ev.get("isFullDay") or code == "AGHW":
+                lines += [f"DTSTART;VALUE=DATE:{b:%Y%m%d}", f"DTEND;VALUE=DATE:{(b + timedelta(days=1)):%Y%m%d}"]
+            else:
+                lines += [f"DTSTART;TZID=Europe/Rome:{b:%Y%m%dT%H%M%S}", f"DTEND;TZID=Europe/Rome:{e:%Y%m%dT%H%M%S}"]
+        except ValueError:
+            lines += [f"DTSTART;VALUE=DATE:{begin[:10].replace('-', '')}"]
+        lines.append(_ics_fold(f"SUMMARY:{_ics_escape(title)}"))
+        desc = notes + (f"\n— {str(ev.get('authorName') or '').title()}" if ev.get("authorName") else "")
+        if desc.strip():
+            lines.append(_ics_fold(f"DESCRIPTION:{_ics_escape(desc)}"))
+        lines.append("END:VEVENT")
+    lines.append("END:VCALENDAR")
+    return "\r\n".join(lines) + "\r\n"
+
+
+def _feed_for(username: str, *, regenerate: bool = False) -> str:
+    with db_lock:
+        with get_db_connection() as conn:
+            row = conn.execute("SELECT token FROM calendar_feeds WHERE username = ?", (username,)).fetchone()
+            if row and not regenerate:
+                return row["token"]
+            token = secrets.token_urlsafe(24)
+            conn.execute(
+                "INSERT INTO calendar_feeds (username, token, created_at) VALUES (?, ?, ?) "
+                "ON CONFLICT(username) DO UPDATE SET token = excluded.token, created_at = excluded.created_at, last_ics = NULL",
+                (username, token, time.time()),
+            )
+            conn.commit()
+            return token
+
+
+@app.post("/calendario-feed")
+def calendar_feed(regenerate: bool = Query(default=False), u: Utente = Depends(current_user)):
+    token = _feed_for(normalize_username(get_session_username(u)), regenerate=regenerate)
+    return {"ok": True, "path": f"/api/calendario/{token}.ics"}
+
+
+@app.get("/calendario/{token}.ics")
+def calendar_ics(token: str):
+    if not re.match(r"^[A-Za-z0-9_\-]{20,64}$", token):
+        raise HTTPException(status_code=404, detail="Calendario non trovato")
+    with db_lock:
+        with get_db_connection() as conn:
+            row = conn.execute("SELECT username, last_ics FROM calendar_feeds WHERE token = ?", (token,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Calendario non trovato")
+    username = row["username"]
+    cached = _ics_cache.get(username)
+    ics = cached[1] if cached and cached[0] > time.time() else None
+    if ics is None:
+        user = _live_user_for(username)
+        if user is not None:
+            try:
+                ics = build_agenda_ics(user, f"{user.first_name} {user.last_name}".strip() or username)
+                _ics_cache[username] = (time.time() + ICS_CACHE_TTL, ics)
+                with db_lock:
+                    with get_db_connection() as conn:
+                        conn.execute("UPDATE calendar_feeds SET last_ics = ?, last_built_at = ? WHERE username = ?",
+                                     (ics, time.time(), username))
+                        conn.commit()
+            except HTTPException:
+                ics = None
+        if ics is None:
+            # Nessuna sessione ClasseViva valida: l'ultima versione generata (o un calendario vuoto).
+            ics = row["last_ics"] or "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Skoolio//Agenda//IT\r\nX-WR-CALNAME:Skoolio\r\nEND:VCALENDAR\r\n"
+    return Response(content=ics, media_type="text/calendar; charset=utf-8",
+                    headers={"Cache-Control": "private, max-age=900", "Content-Disposition": 'inline; filename="skoolio.ics"'})
 
 
 # ---- moduli: amici e notifiche (importati qui, quando main è già completo) ----

@@ -1,4 +1,4 @@
-// Documenti: documenti della scuola (scaricabili da Ardesia) e pagelle (sul sito ClasseViva).
+// Documenti: documenti della scuola (scaricabili da Skoolio) e pagelle (sul sito ClasseViva).
 import { get, load, openFile } from "aulera/api";
 import { html, icon, setHTML, $, toast, emptyState, errorState, skeletonList } from "aulera/ui";
 import { pageHeader } from "aulera/main";

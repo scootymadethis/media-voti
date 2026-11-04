@@ -2,10 +2,10 @@ import Capacitor
 import UIKit
 import WebKit
 
-/// Login ClasseViva con SPID/CIE per Ardesia (iOS).
+/// Login ClasseViva con SPID/CIE per Skoolio (iOS).
 ///
 /// Apre la pagina di login UFFICIALE di ClasseViva in una WKWebView dedicata. Lo studente si
-/// autentica con il proprio gestore SPID o con la CIE: le credenziali non passano da Ardesia.
+/// autentica con il proprio gestore SPID o con la CIE: le credenziali non passano da Skoolio.
 /// Dopo il login il plugin legge il cookie di sessione PHPSESSID (HttpOnly, invisibile a
 /// JavaScript) dal WKHTTPCookieStore e lo invia alla pagina con l'evento "sessionCandidate";
 /// la pagina lo fa verificare al backend e chiama close() (o resume() se non è ancora valido).
@@ -191,7 +191,7 @@ final class SpaggiariLoginViewController: UIViewController, WKNavigationDelegate
         spinner.color = .white
         spinner.startAnimating()
         let label = UILabel()
-        label.text = "Accesso ad Ardesia in corso…"
+        label.text = "Accesso a Skoolio in corso…"
         label.textColor = .white
         label.font = .preferredFont(forTextStyle: .headline)
         let stack = UIStackView(arrangedSubviews: [spinner, label])

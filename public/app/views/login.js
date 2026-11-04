@@ -1,22 +1,22 @@
 // Accesso: nell'app "Entra con SPID o CIE"; sul web "Accedi tramite telefono" (QR + codice).
-// Sul PC la pagina è anche una presentazione di Ardesia, con animazioni legate allo scroll.
+// Sul PC la pagina è anche una presentazione di Skoolio, con animazioni legate allo scroll.
 import { get, post } from "aulera/api";
 import { html, raw, icon, setHTML, $, $$, openSheet, toast } from "aulera/ui";
 
 const POLL_MS = 2000;
 
-function inApp() { return !!window.ArdesiaSpid?.isAvailable?.(); }
+function inApp() { return !!window.SkoolioSpid?.isAvailable?.(); }
 
 const PRIVACY = html`<div class="md">
-  <p>Ardesia è un'app indipendente, <strong>non affiliata</strong> a Gruppo Spaggiari Parma né a ClasseViva.</p>
-  <p style="margin-top:10px">L'accesso avviene sulla pagina <strong>ufficiale</strong> di ClasseViva, con SPID o CIE: Ardesia non vede e non conserva mai le tue credenziali.
+  <p>Skoolio è un'app indipendente, <strong>non affiliata</strong> a Gruppo Spaggiari Parma né a ClasseViva.</p>
+  <p style="margin-top:10px">L'accesso avviene sulla pagina <strong>ufficiale</strong> di ClasseViva, con SPID o CIE: Skoolio non vede e non conserva mai le tue credenziali.
   Riceve solo la sessione temporanea che ClasseViva crea dopo l'accesso, la usa per leggere i tuoi dati del registro e la dimentica quando esci o quando scade.</p>
-  <p style="margin-top:10px">I dati letti dal registro servono solo a mostrarti voti, agenda, bacheca e le altre sezioni. Se partecipi alle classifiche, Ardesia salva nome, classe, media e ore di assenza; puoi nasconderti quando vuoi dal tuo profilo.</p>
+  <p style="margin-top:10px">I dati letti dal registro servono solo a mostrarti voti, agenda, bacheca e le altre sezioni. Se partecipi alle classifiche, Skoolio salva nome, classe, media e ore di assenza; puoi nasconderti quando vuoi dal tuo profilo.</p>
   <p style="margin-top:10px">Nessun dato viene venduto o ceduto a terzi.</p>
 </div>`;
 
 function brandMark() {
-  return html`<div class="login-brand"><img src="/assets/ardesia-mark.svg" alt="" /><span>Ardesia</span></div>`;
+  return html`<div class="login-brand"><img src="/assets/skoolio-mark.svg" alt="" /><span>Skoolio</span></div>`;
 }
 
 /* ---------------- abbinamento PC/browser ---------------- */
@@ -25,7 +25,7 @@ function pairCard({ compact = false } = {}) {
     <div class="pair-top">
       <span class="row-icon">${icon("phone")}</span>
       <div><h2 id="pair-title" class="title-3">Accedi tramite telefono</h2>
-        <p class="caption">Entra con SPID o CIE dall'app Ardesia, poi collega questo dispositivo.</p></div>
+        <p class="caption">Entra con SPID o CIE dall'app Skoolio, poi collega questo dispositivo.</p></div>
     </div>
     <div class="pair-body">
       <div class="pair-qr" data-qr role="img" aria-label="Codice QR per collegare questo dispositivo"><div class="skeleton" style="width:100%;height:100%"></div></div>
@@ -36,7 +36,7 @@ function pairCard({ compact = false } = {}) {
       </div>
     </div>
     <ol class="pair-steps${compact ? " is-compact" : ""}">
-      <li><span>1</span><p>Apri l'app Ardesia ed entra con <strong>SPID o CIE</strong>.</p></li>
+      <li><span>1</span><p>Apri l'app Skoolio ed entra con <strong>SPID o CIE</strong>.</p></li>
       <li><span>2</span><p>Vai in <strong>Dispositivi</strong> e tocca <strong>Collega</strong>.</p></li>
       <li><span>3</span><p>Inquadra il QR o scrivi il codice.</p></li>
     </ol>
@@ -137,7 +137,7 @@ function startPairing(root, onLoggedIn) {
 function renderApp(root, onLoggedIn) {
   setHTML(root, html`<div class="login-app">
     <div class="login-app-hero">
-      <div class="app-icon glass">${raw('<img src="/assets/ardesia-mark.svg" alt="" />')}</div>
+      <div class="app-icon glass">${raw('<img src="/assets/skoolio-mark.svg" alt="" />')}</div>
       <h1 class="large-title">La scuola,<br /><span class="gradient-text">finalmente chiara.</span></h1>
       <p class="body-2">Voti, agenda, bacheca e orario del tuo registro, in un'unica app.</p>
     </div>
@@ -149,7 +149,7 @@ function renderApp(root, onLoggedIn) {
   </div>`);
   const msg = $("[data-msg]", root);
   $("[data-spid]", root).addEventListener("click", () => {
-    window.ArdesiaSpid.start({
+    window.SkoolioSpid.start({
       onStatus: (text) => { msg.textContent = text; },
       onSuccess: onLoggedIn,
     });
@@ -201,7 +201,7 @@ function renderWeb(root, onLoggedIn) {
         <p class="caption faint" style="text-align:center;margin-top:14px">Continuando accetti l'<button type="button" class="link" data-privacy>informativa</button>.</p></div>
     </section>
 
-    <section class="story" aria-label="Cosa puoi fare con Ardesia">
+    <section class="story" aria-label="Cosa puoi fare con Skoolio">
       <div class="story-phone-wrap"><div class="story-phone glass" aria-hidden="true">
         <div class="phone-notch"></div>
         ${SCREENS.map((s, i) => html`<div class="phone-screen${i === 0 ? " is-active" : ""}" data-screen="${s.key}">${raw(phoneScreen(s.key))}</div>`)}
@@ -229,12 +229,12 @@ function renderWeb(root, onLoggedIn) {
       <h2 class="section-title reveal">Perché si entra<br />dal telefono?</h2>
       <div class="how-grid">
         <article class="card card-pad reveal"><p class="overline">La legge</p><p class="title-3" style="margin-top:6px">Dal 2026 il registro si apre solo con SPID o CIE.</p><p class="body-2" style="margin-top:8px">Username e password di ClasseViva non funzionano più per la maggior parte delle scuole.</p></article>
-        <article class="card card-pad reveal"><p class="overline">La sicurezza</p><p class="title-3" style="margin-top:6px">Le credenziali restano tue.</p><p class="body-2" style="margin-top:8px">Entri sulla pagina ufficiale di ClasseViva dall'app. Ardesia riceve solo la sessione, mai SPID o CIE.</p></article>
+        <article class="card card-pad reveal"><p class="overline">La sicurezza</p><p class="title-3" style="margin-top:6px">Le credenziali restano tue.</p><p class="body-2" style="margin-top:8px">Entri sulla pagina ufficiale di ClasseViva dall'app. Skoolio riceve solo la sessione, mai SPID o CIE.</p></article>
         <article class="card card-pad reveal"><p class="overline">Il PC</p><p class="title-3" style="margin-top:6px">Collega il computer in due secondi.</p><p class="body-2" style="margin-top:8px">Inquadra il QR con l'app e il PC si apre sul tuo spazio. Lo scolleghi quando vuoi.</p></article>
       </div>
     </section>
 
-    <footer class="landing-foot"><span>Ardesia non è affiliato a ClasseViva né a Gruppo Spaggiari Parma.</span>
+    <footer class="landing-foot"><span>Skoolio non è affiliato a ClasseViva né a Gruppo Spaggiari Parma.</span>
       <button type="button" class="link" data-privacy>Informativa</button></footer>
   </div>`);
 

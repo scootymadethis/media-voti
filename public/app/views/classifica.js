@@ -101,7 +101,7 @@ export default {
     const cleanups = [];
 
     setHTML(root, html`
-      ${pageHeader({ eyebrow: "Community", title: "Classifica", subtitle: "Confrontati con la tua classe o con tutti gli studenti di Ardesia.", actions: yearButton() })}
+      ${pageHeader({ eyebrow: "Community", title: "Classifica", subtitle: "Confrontati con la tua classe o con tutti gli studenti di Skoolio.", actions: yearButton() })}
       <div class="classifica-toolbar">
         ${segmented("lb-board", [{ value: "media", label: "Media" }, { value: "assenze", label: "Assenze" }], board)}
         ${cls ? segmented("lb-scope", [{ value: "class", label: `Classe ${cls}` }, { value: "global", label: "Globale" }], scope) : ""}
@@ -245,7 +245,7 @@ export default {
             <div class="classifica-empty-cta"><button type="button" class="btn" data-go-global>${icon("trophy")}Vedi la classifica globale</button></div></div>`);
           $("[data-go-global]", listBox)?.addEventListener("click", () => switchScope("global"));
         } else {
-          setHTML(listBox, html`<div class="card">${emptyState({ iconName: "trophy", title: "Classifica vuota", text: scope === "class" ? "Nessuno della tua classe è ancora in classifica. Invita i compagni a provare Ardesia." : "Nessuno studente è ancora in classifica per quest'anno." })}</div>`);
+          setHTML(listBox, html`<div class="card">${emptyState({ iconName: "trophy", title: "Classifica vuota", text: scope === "class" ? "Nessuno della tua classe è ancora in classifica. Invita i compagni a provare Skoolio." : "Nessuno studente è ancora in classifica per quest'anno." })}</div>`);
         }
         updateSticky();
         return;

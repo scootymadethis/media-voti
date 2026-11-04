@@ -10,7 +10,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import java.lang.ref.WeakReference;
 
 /**
- * Login ClasseViva con SPID/CIE per Ardesia.
+ * Login ClasseViva con SPID/CIE per Skoolio.
  *
  * Apre la pagina di login UFFICIALE di ClasseViva in una WebView dedicata
  * ({@link SpaggiariLoginActivity}). Lo studente si autentica con il proprio gestore SPID o

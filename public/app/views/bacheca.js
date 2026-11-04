@@ -221,7 +221,7 @@ export default {
           <span class="com-ic c-ok">${icon("info")}</span>
           <div class="stack-sm">
             <p class="title-3">Richiede ${listText(acts.map((a) => a.label))}</p>
-            <p class="body-2" data-callout-text>Ardesia non può ancora farlo al posto tuo: completa dal sito ufficiale ClasseViva, nella sezione Bacheca.</p>
+            <p class="body-2" data-callout-text>Skoolio non può ancora farlo al posto tuo: completa dal sito ufficiale ClasseViva, nella sezione Bacheca.</p>
             <a class="btn bacheca-cv-btn" href="${CLASSEVIVA_URL}" target="_blank" rel="noopener">${icon("link")}Apri ClasseViva</a>
           </div>
         </div>` : ""}

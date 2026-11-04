@@ -80,7 +80,7 @@ export default {
     let draft = null; // annuncio in modifica
     let badgeForm = { label: "", ...fromBase(PRESETS[0]), base: PRESETS[0] };
 
-    setHTML(root, html`${pageHeader({ eyebrow: "Account", title: "Admin", subtitle: "Gestisci classifiche, badge e annunci di Ardesia.", actions: html`<span data-head-actions></span>` })}<div data-body></div>`);
+    setHTML(root, html`${pageHeader({ eyebrow: "Account", title: "Admin", subtitle: "Gestisci classifiche, badge e annunci di Skoolio.", actions: html`<span data-head-actions></span>` })}<div data-body></div>`);
     const body = $("[data-body]", root);
     const headActions = $("[data-head-actions]", root);
 
@@ -204,7 +204,7 @@ export default {
       if (!c) return "";
       const ended = (c.items || []).filter((i) => i.ended_at).slice(0, 8);
       return html`<section class="section">
-        <div class="section-head"><p class="overline">Durata sessioni ClasseViva</p><span class="caption">controllo ogni ${Math.round((c.keepalive_seconds || 0) / 60)} min · sessione Ardesia ${fmtNum(c.session_ttl_days, 0)} giorni</span></div>
+        <div class="section-head"><p class="overline">Durata sessioni ClasseViva</p><span class="caption">controllo ogni ${Math.round((c.keepalive_seconds || 0) / 60)} min · sessione Skoolio ${fmtNum(c.session_ttl_days, 0)} giorni</span></div>
         <div class="stats-row admin-stats">
           <div class="stat"><span class="stat-num">${hours(c.median_hours)}</span><span class="stat-label">durata mediana (${c.expired_count || 0} scadute)</span></div>
           <div class="stat"><span class="stat-num">${hours(c.max_hours)}</span><span class="stat-label">durata massima osservata</span></div>
@@ -550,7 +550,7 @@ export default {
         <form class="card card-pad admin-news-form" data-news>
           <div class="row admin-news-toggle"><div class="row-main"><p class="row-title">Mostra l'annuncio</p><p class="row-sub">Compare una volta a ogni utente, all'apertura dell'app.</p></div>
             <button type="button" class="switch" role="switch" aria-label="Mostra l'annuncio" aria-checked="${String(draft.enabled)}" data-enabled></button></div>
-          <label class="stack-sm"><span class="caption">Titolo</span><input class="field" data-nf="title" value="${draft.title}" maxlength="120" placeholder="Novità di Ardesia" /></label>
+          <label class="stack-sm"><span class="caption">Titolo</span><input class="field" data-nf="title" value="${draft.title}" maxlength="120" placeholder="Novità di Skoolio" /></label>
           <label class="stack-sm"><span class="caption">Testo</span><textarea class="field admin-textarea" data-nf="body_markdown" rows="10" placeholder="Scrivi qui il messaggio…">${draft.body_markdown}</textarea></label>
           <p class="caption">Formattazione: **grassetto**, *corsivo*, [testo](https://…), # titolo, - elenco.</p>
           <div class="admin-news-foot">

@@ -92,7 +92,7 @@ public class SpaggiariLoginActivity extends AppCompatActivity {
 
     /**
      * Appena ClasseViva mostra una pagina successiva al login, copre la WebView e passa il
-     * cookie ad Ardesia: lo studente non vede la dashboard di Spaggiari, vede "accesso in corso".
+     * cookie a Skoolio: lo studente non vede la dashboard di Spaggiari, vede "accesso in corso".
      */
     private void detectSession(String url) {
         if (!isPostLoginPage(url)) return;
@@ -167,7 +167,7 @@ public class SpaggiariLoginActivity extends AppCompatActivity {
         ProgressBar spinner = new ProgressBar(this);
         cover.addView(spinner);
         TextView coverText = new TextView(this);
-        coverText.setText("Accesso ad Ardesia in corso…");
+        coverText.setText("Accesso a Skoolio in corso…");
         coverText.setTextColor(Color.parseColor("#F6F6F7"));
         coverText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         coverText.setPadding(0, dp(16), 0, 0);

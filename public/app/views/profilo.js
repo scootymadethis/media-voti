@@ -107,13 +107,13 @@ export default {
             <p class="overline profilo-label">Informazioni</p>
             <div class="card list profilo-info">
               <div class="row"><span class="row-icon">${icon("info")}</span><div class="row-main"><p class="row-title">Progetto indipendente</p>
-                <p class="row-sub">Ardesia non è affiliato a ClasseViva né a Gruppo Spaggiari Parma.</p></div></div>
+                <p class="row-sub">Skoolio non è affiliato a ClasseViva né a Gruppo Spaggiari Parma.</p></div></div>
               <div class="row"><span class="row-icon">${icon("spid")}</span><div class="row-main"><p class="row-title">Accesso ufficiale</p>
-                <p class="row-sub">Entri dalla pagina ufficiale di ClasseViva con SPID o CIE: le tue credenziali non passano da Ardesia.</p></div></div>
+                <p class="row-sub">Entri dalla pagina ufficiale di ClasseViva con SPID o CIE: le tue credenziali non passano da Skoolio.</p></div></div>
               <div class="row"><span class="row-icon">${icon("lock")}</span><div class="row-main"><p class="row-title">Solo la sessione</p>
-                <p class="row-sub">Ardesia riceve solo la sessione temporanea di ClasseViva, che scade quando esci o dopo qualche ora.</p></div></div>
+                <p class="row-sub">Skoolio riceve solo la sessione temporanea di ClasseViva, che scade quando esci o dopo qualche ora.</p></div></div>
             </div>
-            <p class="caption profilo-version tnum" data-version>Ardesia · versione web ${WEB_VERSION}</p>
+            <p class="caption profilo-version tnum" data-version>Skoolio · versione web ${WEB_VERSION}</p>
           </section>
 
           <button type="button" class="btn btn-danger btn-block btn-lg profilo-logout" data-logout>${icon("logout")}Esci</button>
@@ -195,14 +195,14 @@ export default {
     const appInfo = window.Capacitor?.isNativePlatform?.() ? window.Capacitor?.Plugins?.App?.getInfo : null;
     if (appInfo) {
       appInfo().then((info) => {
-        if (info?.version) $("[data-version]", root).textContent = `Ardesia ${info.version}${info.build ? ` (${info.build})` : ""} · web ${WEB_VERSION}`;
+        if (info?.version) $("[data-version]", root).textContent = `Skoolio ${info.version}${info.build ? ` (${info.build})` : ""} · web ${WEB_VERSION}`;
       }).catch(() => {});
     }
 
     /* ---------- esci ---------- */
     $("[data-logout]", root).addEventListener("click", () => {
       const sheet = openSheet({
-        title: "Uscire da Ardesia?",
+        title: "Uscire da Skoolio?",
         content: html`<p class="body-2">Per rientrare servirà di nuovo SPID o CIE. I computer collegati restano connessi finché non li scolleghi.</p>
           <div class="profilo-sheet-actions"><button type="button" class="btn" data-no>Annulla</button><button type="button" class="btn btn-danger" data-yes>${icon("logout")}Esci</button></div>`,
       });

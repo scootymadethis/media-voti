@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Ardesia — design system
+   Skoolio — design system
    Motion: regole di Emil Kowalski (emilkowalski/skills): ease-out per entrate/uscite,
    ease-in-out per movimenti sullo schermo, drawer iOS per i pannelli, solo transform/opacity,
    niente animazioni su azioni ripetute, prefers-reduced-motion/transparency rispettati.
@@ -410,16 +410,17 @@ a { color: inherit; text-decoration: none; }
 .g-bad { --g: var(--bad); }
 .g-none { --g: var(--blue); }
 
-/* Voto "rosso fuoco" (sotto il 4): fiamme che lambiscono la pastiglia.
-   Tre strati: lingue di fuoco (::before), bagliore caldo (box-shadow) e la pastiglia (::after).
-   Animazione solo transform/opacity; ferma con prefers-reduced-motion. */
+/* Voto "rosso fuoco" (sotto il 4): un contorno di fiamme in stile cartoon (illustrazione piatta,
+   tre strati rosso/arancio/giallo) che sale dalla pastiglia. Il disegno è un SVG generato
+   (scripts/generate_fire.py); il tremolio è a scatti (steps) per un effetto da cartone animato.
+   Solo transform; fermo con prefers-reduced-motion. */
 .grade.g-fire {
   position: relative;
   isolation: isolate;
   overflow: visible;
   background: transparent;
   color: #fff;
-  text-shadow: 0 1px 2px rgb(120 0 0 / 0.55);
+  text-shadow: 0 1px 0 rgb(140 20 0 / 0.6);
 }
 .grade.g-fire::after {
   content: "";
@@ -427,37 +428,29 @@ a { color: inherit; text-decoration: none; }
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  background: linear-gradient(180deg, #ff7a2f 0%, #ff3b1f 45%, #c9101b 100%);
-  box-shadow: 0 0 0 1px rgb(255 170 80 / 0.55) inset, 0 0 14px rgb(255 90 20 / 0.6), 0 0 28px rgb(255 50 0 / 0.28);
+  background: linear-gradient(180deg, #ff5a2a 0%, #e8261c 100%);
+  box-shadow: inset 0 0 0 2px #ffd23f;
 }
 .grade.g-fire::before {
   content: "";
   position: absolute;
   z-index: -2;
-  left: -18%;
-  right: -18%;
-  bottom: 30%;
-  height: 135%;
-  background:
-    radial-gradient(16% 46% at 18% 82%, #ffe28a 0%, #ff9b2f 45%, transparent 75%),
-    radial-gradient(15% 62% at 36% 70%, #fff4b8 0%, #ffb23f 40%, #ff5a1f 70%, transparent 82%),
-    radial-gradient(17% 80% at 52% 62%, #fff9d6 0%, #ffc14d 35%, #ff6a21 66%, transparent 82%),
-    radial-gradient(15% 60% at 68% 72%, #fff4b8 0%, #ffb23f 40%, #ff5a1f 70%, transparent 82%),
-    radial-gradient(16% 44% at 84% 84%, #ffe28a 0%, #ff9b2f 45%, transparent 75%);
-  filter: blur(1.6px) saturate(1.2);
-  transform-origin: 50% 100%;
-  animation: g-flame 1.1s ease-in-out infinite alternate;
+  left: -32%;
+  right: -32%;
+  top: -64.5%;
+  bottom: -26.4%;
+  background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 140%22%3E%3Crect x=%2220.0%22 y=%2244.0%22 width=%2280.0%22 height=%2280.0%22 rx=%2215%22 fill=%22%23E5370E%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M92.8 102.0C94.7 93.5 106.0 91.7 106.3 86.7C109.6 96.7 113.7 107.9 106.1 112.6Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M89.1 112.5C88.9 107.5 96.7 110.8 106.2 118.8C100.2 115.7 105.2 124.9 100.5 125.1Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M28.7 126.2C24.7 126.4 31.5 122.8 43.0 118.3C37.2 121.1 47.2 118.6 44.8 120.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M19.5 125.1C14.6 125.9 17.2 117.9 14.0 119.0C21.7 113.9 30.4 108.0 30.9 112.5Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M13.9 112.6C7.5 110.8 9.7 101.3 17.5 91.4C15.1 98.5 25.7 95.4 27.2 102.0Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M13.2 65.7C3.5 58.6 3.1 43.7 -2.8 40.5C9.6 42.2 23.5 43.6 27.9 55.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M14.8 52.7C4.8 38.8 8.2 18.3 20.4 4.9C16.6 19.1 33.3 27.1 35.6 45.6Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M24.7 45.2C18.8 33.9 28.9 20.6 24.4 14.8C37.4 22.6 52.2 31.0 48.7 43.9Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M71.3 43.9C67.0 24.1 78.8 3.0 96.7 -6.4C87.0 7.6 100.6 23.8 95.3 45.2Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M84.4 45.6C84.8 29.3 99.8 16.2 98.8 7.2C106.0 21.8 114.4 37.7 105.2 52.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M92.1 55.7C92.7 47.5 103.8 45.5 116.6 49.6C108.1 50.2 113.9 60.9 106.8 65.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M49.5 46.0C43.9 28.3 55.1 8.8 73.2 -0.5C63.9 12.5 78.9 26.5 74.5 46.0Z%22/%3E%3Crect x=%2221.5%22 y=%2245.5%22 width=%2277.0%22 height=%2277.0%22 rx=%2214%22 fill=%22%23FF8A00%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M92.6 102.9C94.2 96.1 103.4 94.5 103.7 90.5C106.2 98.6 109.4 107.6 103.1 111.5Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M87.9 113.4C86.6 110.4 91.6 114.2 98.6 121.1C94.6 117.9 99.5 124.4 97.1 123.4Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M19.2 118.9C15.5 119.5 18.2 113.5 15.7 114.4C21.9 110.5 28.9 106.0 28.9 109.3Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M16.0 88.0C9.6 84.4 10.0 74.8 15.8 66.1C14.7 73.1 24.4 72.5 27.0 80.0Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M16.9 57.5C9.3 50.5 11.0 37.7 6.2 34.4C17.0 37.0 29.0 39.5 31.3 50.3Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M23.5 48.1C18.3 41.0 25.8 31.7 39.0 26.1C32.6 32.5 44.6 37.1 42.3 45.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M68.1 45.5C64.0 32.5 72.9 18.4 69.7 11.5C79.6 21.2 90.9 31.6 87.2 45.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M83.9 47.1C83.1 35.4 94.2 26.0 108.4 24.1C99.6 29.9 107.6 41.3 101.1 52.1Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M91.9 56.8C91.8 51.0 100.2 50.2 99.5 46.7C103.8 53.8 108.9 61.8 103.9 64.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M52.0 47.5C47.5 35.7 56.5 22.7 71.0 16.5C63.5 25.2 75.5 34.5 72.0 47.5Z%22/%3E%3Crect x=%2222.8%22 y=%2246.8%22 width=%2274.4%22 height=%2274.4%22 rx=%2213%22 fill=%22%23FFD23F%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M92.5 104.0C92.0 101.0 97.0 102.3 96.2 100.3C99.4 104.9 103.1 110.0 100.4 110.5Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M19.6 110.5C16.0 109.7 17.5 104.3 15.1 104.3C20.6 102.5 26.8 100.4 27.5 104.0Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M19.0 63.7C14.5 61.3 15.9 54.5 21.2 48.2C19.6 53.2 27.0 52.6 28.1 57.8Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M23.2 51.4C19.3 48.2 24.3 42.5 21.5 41.0C29.2 42.3 38.0 43.4 36.6 48.3Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M52.8 46.8C49.6 39.8 56.0 32.1 66.5 28.4C61.1 33.5 69.7 39.1 67.2 46.8Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M83.4 48.3C81.8 41.3 89.4 35.9 87.8 32.0C93.8 38.3 100.8 45.1 96.8 51.4Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M91.9 57.8C91.3 54.2 97.0 54.4 104.4 57.5C99.9 57.0 104.2 62.3 101.0 63.7Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M54.5 48.8C51.1 42.3 57.9 35.2 68.8 31.7C63.1 36.5 72.1 41.6 69.5 48.8Z%22/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  transform-origin: 50% 85%;
+  animation: g-flame 0.9s steps(1, end) infinite;
   pointer-events: none;
 }
-.grade.g-fire > .g-ember { display: none; }
 @keyframes g-flame {
-  0% { transform: scaleY(0.78) scaleX(1.02) skewX(-3deg); opacity: 0.9; }
-  30% { transform: scaleY(1) scaleX(0.97) skewX(2deg); opacity: 1; }
-  65% { transform: scaleY(0.86) scaleX(1.03) skewX(-2deg); opacity: 0.92; }
-  100% { transform: scaleY(1.08) scaleX(0.96) skewX(3deg); opacity: 1; }
+  0% { transform: none; }
+  25% { transform: scaleY(1.06) skewX(-4deg); }
+  50% { transform: scaleY(0.97) scaleX(1.03) skewX(3deg); }
+  75% { transform: scaleY(1.04) skewX(-2deg) scaleX(0.98); }
 }
-.grade-sm.g-fire::before { height: 140%; bottom: 28%; filter: blur(1.2px) saturate(1.2); }
-@media (prefers-reduced-motion: reduce) { .grade.g-fire::before { animation: none; transform: scaleY(0.95); } }
+@media (prefers-reduced-motion: reduce) { .grade.g-fire::before { animation: none; } }
 
 /* Anello media */
 .ring { position: relative; display: grid; place-items: center; }
