@@ -20,26 +20,32 @@ function brandMark() {
 }
 
 /* ---------------- abbinamento PC/browser ---------------- */
-function pairCard({ compact = false } = {}) {
+function pairCard() {
   return html`<section class="pair-card glass" aria-labelledby="pair-title">
-    <div class="pair-top">
-      <span class="row-icon">${icon("phone")}</span>
-      <div><h2 id="pair-title" class="title-3">Accedi tramite telefono</h2>
-        <p class="caption">Entra con SPID o CIE dall'app Skoolio, poi collega questo dispositivo.</p></div>
-    </div>
-    <div class="pair-body">
-      <div class="pair-qr" data-qr role="img" aria-label="Codice QR per collegare questo dispositivo"><div class="skeleton" style="width:100%;height:100%"></div></div>
-      <div class="pair-code-wrap">
-        <span class="overline">Codice</span>
-        <output class="pair-code tnum" data-code>····-····</output>
-        <span class="caption tnum" data-expiry>&nbsp;</span>
+    <header class="pair-head">
+      <img class="pair-app-icon" src="/assets/skoolio-mark.svg" alt="" />
+      <div class="pair-head-text">
+        <p class="overline pair-kicker">Accesso da computer</p>
+        <h2 id="pair-title" class="pair-title">Inquadra questo QR con l'app <span class="pair-brand">Skoolio</span> sul telefono</h2>
       </div>
+    </header>
+    <p class="pair-warn">${icon("alert")}<span><strong>Non con l'app CieID, l'app ClasseViva o la fotocamera del telefono:</strong> solo l'app Skoolio può collegare questo computer.</span></p>
+    <div class="pair-main">
+      <div class="pair-body">
+        <div class="pair-qr" data-qr role="img" aria-label="Codice QR da inquadrare con l'app Skoolio"><div class="skeleton" style="width:100%;height:100%"></div></div>
+        <div class="pair-code-wrap">
+          <span class="overline">Oppure scrivi il codice</span>
+          <output class="pair-code tnum" data-code>····-····</output>
+          <span class="caption tnum" data-expiry>&nbsp;</span>
+        </div>
+      </div>
+      <ol class="pair-steps">
+        <li><span>1</span><p>Apri l'app <strong>Skoolio</strong> sul telefono <em>(Android o iPhone)</em>.</p></li>
+        <li><span>2</span><p>Entra con <strong>SPID o CIE</strong>: lo fai una volta sola, dentro l'app Skoolio.</p></li>
+        <li><span>3</span><p>Nell'app tocca <strong>Altro → Dispositivi</strong>, poi <strong>Inquadra il QR</strong>.</p></li>
+        <li><span>4</span><p>Inquadra il QR di questa pagina (o scrivi il codice) e conferma: il PC si apre da solo.</p></li>
+      </ol>
     </div>
-    <ol class="pair-steps${compact ? " is-compact" : ""}">
-      <li><span>1</span><p>Apri l'app Skoolio ed entra con <strong>SPID o CIE</strong>.</p></li>
-      <li><span>2</span><p>Vai in <strong>Dispositivi</strong> e tocca <strong>Collega</strong>.</p></li>
-      <li><span>3</span><p>Inquadra il QR o scrivi il codice.</p></li>
-    </ol>
     <p class="pair-status caption" data-status role="status" aria-live="polite"></p>
     <button type="button" class="btn btn-block" data-renew hidden>${icon("refresh")}Genera un nuovo codice</button>
     <details class="dev-session" data-dev hidden><summary class="caption">Sviluppo: accedi con un cookie di sessione</summary>
@@ -202,7 +208,6 @@ function iphone() {
 }
 
 function renderWeb(root, onLoggedIn) {
-  const mobile = matchMedia("(max-width: 719px)").matches;
   setHTML(root, html`<div class="landing">
     <header class="landing-nav glass">
       ${brandMark()}
@@ -212,11 +217,10 @@ function renderWeb(root, onLoggedIn) {
     <section class="hero" id="accedi">
       <div class="hero-copy">
         <p class="overline hero-kicker">Il tuo registro ClasseViva</p>
-        <h1 class="hero-title">La scuola,<br /><span class="gradient-text">finalmente chiara.</span></h1>
-        <p class="hero-sub">Voti, agenda, bacheca, didattica e orario in un'unica app. Veloce, ordinata e pensata per il telefono. Si accede con SPID o CIE.</p>
-        <div class="hero-badges"><span class="chip">${icon("lock")}SPID e CIE</span><span class="chip">${icon("phone")}Android e iPhone</span><span class="chip">${icon("devices")}Anche su PC</span></div>
+        <h1 class="hero-title">La scuola, <span class="gradient-text">finalmente chiara.</span></h1>
+        <p class="hero-sub">Voti, agenda, bacheca, didattica e orario in un'unica app. Si entra con SPID o CIE dall'app sul telefono.</p>
       </div>
-      <div class="hero-login">${pairCard({ compact: mobile })}
+      <div class="hero-login">${pairCard()}
         <p class="caption faint" style="text-align:center;margin-top:14px">Continuando accetti l'<button type="button" class="link" data-privacy>informativa</button>.</p></div>
     </section>
 
