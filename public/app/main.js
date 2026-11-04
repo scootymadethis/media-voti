@@ -278,6 +278,12 @@ async function boot() {
 
 function afterBoot() {
   refreshUnread();
+  // App Android: permesso per le notifiche di sistema (una sola volta, dopo il primo accesso).
+  const native = window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.SpaggiariLogin?.requestNotifications;
+  if (native && !store.get("notifAsked")) {
+    store.set("notifAsked", true);
+    setTimeout(() => window.Capacitor.Plugins.SpaggiariLogin.requestNotifications().catch(() => {}), 1500);
+  }
   try { startNotifications(); } catch (err) { console.warn("[notifiche]", err); }
   showAnnouncement();
   syncLeaderboards();

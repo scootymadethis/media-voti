@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icona monocromatica delle notifiche: la "S" di Skoolio con il puntino. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <path
+        android:pathData="M676,330 C632,268 568,250 508,250 C420,250 352,300 352,372 C352,452 428,476 512,500 C600,524 676,552 676,640 C676,718 604,774 506,774 C430,774 366,746 330,690"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="112"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M746,262 m-54,0 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0"
+        android:fillColor="#FFFFFFFF" />
+</vector>

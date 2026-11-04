@@ -773,3 +773,4 @@ button.row:active, a.row:active { background: var(--fill); }
 .density-compact .grid, .density-compact .stack, .density-compact .home-grid { gap: 10px; }
 /* Mobile: come la barra di navigazione iOS, la campanella sta in una riga sopra il titolo grande. */
 @media (max-width: 1023px) { .main { padding-top: calc(var(--safe-top) + 56px); } .page-header { padding-top: 4px; } }
+.toast.is-clickable { cursor: pointer; }

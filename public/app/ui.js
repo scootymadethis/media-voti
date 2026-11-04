@@ -359,32 +359,42 @@ export function openMenu(anchor, items, onPick) {
 /* ---------------- toast (stile Sonner) ---------------- */
 let toaster = null;
 const toasts = [];
-export function toast(message, { error = false, duration = 4000 } = {}) {
+export function toast(message, { error = false, duration = 4000, onClick = null } = {}) {
   if (!toaster) {
     toaster = document.createElement("div");
     toaster.className = "toaster";
     toaster.setAttribute("aria-live", "polite");
     document.body.append(toaster);
   }
+  let remaining = duration, started = Date.now(), timer = null;
   const el = document.createElement("div");
   el.className = `toast glass glass-strong${error ? " is-error" : ""}`;
   el.dataset.mounted = "false";
   setHTML(el, html`<span class="dot"></span><span>${message}</span>`);
+  if (typeof onClick === "function") {
+    el.classList.add("is-clickable");
+    el.setAttribute("role", "button");
+    el.tabIndex = 0;
+    el.addEventListener("click", () => { onClick(); remove(); });
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") { onClick(); remove(); } });
+  }
   toaster.append(el);
   toasts.unshift(el);
   layoutToasts();
   requestAnimationFrame(() => requestAnimationFrame(() => { el.dataset.mounted = "true"; layoutToasts(); }));
-  let remaining = duration, started = Date.now(), timer = null;
-  const remove = () => {
+  function remove() {
+    if (el.dataset.removed === "true") return;
+    clearTimeout(timer);
     el.dataset.removed = "true";
     toasts.splice(toasts.indexOf(el), 1);
     layoutToasts();
     setTimeout(() => el.remove(), 400);
-  };
+  }
   const run = () => { started = Date.now(); timer = setTimeout(remove, remaining); };
   el.addEventListener("pointerenter", () => { clearTimeout(timer); remaining -= Date.now() - started; });
   el.addEventListener("pointerleave", run);
   run();
+  return el;
 }
 function layoutToasts() {
   toasts.forEach((t, i) => {

@@ -6,6 +6,10 @@
 /* ---------- layout ---------- */
 .amici-layout { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); }
 .amici-main { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+/* Su mobile, con amici o richieste, prima l'elenco e poi il codice. */
+@media (max-width: 1023px) {
+  .amici-layout.has-friends .amici-main { order: -1; }
+}
 .amici-section .section-head, .amici-privacy .section-head { align-items: center; }
 @media (min-width: 1024px) {
   .amici-layout {

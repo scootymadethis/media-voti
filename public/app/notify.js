@@ -65,12 +65,9 @@ function showSystem(item) {
 
 /* ---------------- toast cliccabile ---------------- */
 function showToast(item) {
-  toast(item.title, { duration: 6000 });
-  const el = $(".toaster")?.lastElementChild;
+  const el = toast(item.title, { duration: 6000, onClick: () => openNotification(item) });
   if (!el) return;
   el.classList.add("notif-toast");
-  el.setAttribute("role", "button");
-  el.tabIndex = 0;
   const text = el.querySelector("span:not(.dot)");
   if (text) {
     text.className = "notif-toast-text";
@@ -84,9 +81,6 @@ function showToast(item) {
       text.append(b);
     }
   }
-  const open = () => { el.dataset.removed = "true"; openNotification(item); };
-  el.addEventListener("click", open);
-  el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
 }
 
 /** Segna letta e apre la sezione collegata. */

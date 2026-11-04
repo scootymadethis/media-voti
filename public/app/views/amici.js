@@ -151,7 +151,7 @@ export default {
       const { me, friends, incoming, outgoing, blocked, limits } = data;
       const level = levelOf(me.privacy);
       setHTML(body, html`
-        <div class="amici-layout">
+        <div class="amici-layout ${friends.length || incoming.length ? "has-friends" : ""}">
           <section class="card amici-hero">
             <div class="amici-hero-top">
               <div class="row-main">
@@ -239,7 +239,7 @@ export default {
 
     /* ---------- eventi ---------- */
     const bind = (body) => {
-      const { me, friends, incoming } = data;
+      const { me } = data;
       $$("[data-qr]", body).forEach((b) => b.addEventListener("click", () => openQrSheet(me)));
       $("[data-share]", body)?.addEventListener("click", () => shareCode(me));
       $("[data-add-empty]", body)?.addEventListener("click", () => openAddSheet());
@@ -265,33 +265,6 @@ export default {
         }
       });
 
-      body.addEventListener("click", async (e) => {
-        const fr = e.target.closest("[data-friend]");
-        if (fr) return openFriend(friends[Number(fr.dataset.friend)].code);
-        const req = e.target.closest("[data-req]");
-        if (req) {
-          const r = incoming.find((x) => String(x.id) === req.dataset.req);
-          if (e.target.closest("[data-accept]")) return act(() => post(`/friends/requests/${r.id}/accept`), `Tu e ${firstOf(r)} ora siete amici`);
-          if (e.target.closest("[data-decline]")) return act(() => post(`/friends/requests/${r.id}/decline`), "Richiesta rifiutata");
-          const more = e.target.closest("[data-req-more]");
-          if (more) {
-            return openMenu(more, [{ value: "block", label: `Blocca ${firstOf(r)}` }], async () => {
-              if (await confirmSheet({ title: `Bloccare ${firstOf(r)}?`, text: "Non potrà più trovarti né inviarti richieste. Puoi sbloccarlo quando vuoi.", confirm: "Blocca" })) {
-                act(() => post("/friends/blocks", { code: r.code }), `${firstOf(r)} è bloccato`);
-              }
-            });
-          }
-          return;
-        }
-        const out = e.target.closest("[data-out]");
-        if (out && e.target.closest("[data-cancel]")) {
-          return act(() => del(`/friends/requests/${out.dataset.out}`), "Richiesta annullata");
-        }
-        const bl = e.target.closest("[data-blocked]");
-        if (bl && e.target.closest("[data-unblock]")) {
-          return act(() => del(`/friends/blocks/${encodeURIComponent(bl.dataset.blocked)}`), "Sbloccato");
-        }
-      });
     };
 
     const act = async (fn, okMsg) => {
@@ -624,6 +597,37 @@ export default {
       });
       reload();
     };
+
+    // Delega una sola volta sul contenitore: legge sempre i dati correnti.
+    $("[data-body]", root).addEventListener("click", async (e) => {
+      if (!data) return;
+      const { friends, incoming } = data;
+      const fr = e.target.closest("[data-friend]");
+      if (fr) return openFriend(friends[Number(fr.dataset.friend)].code);
+      const req = e.target.closest("[data-req]");
+      if (req) {
+        const r = incoming.find((x) => String(x.id) === req.dataset.req);
+        if (e.target.closest("[data-accept]")) return act(() => post(`/friends/requests/${r.id}/accept`), `Tu e ${firstOf(r)} ora siete amici`);
+        if (e.target.closest("[data-decline]")) return act(() => post(`/friends/requests/${r.id}/decline`), "Richiesta rifiutata");
+        const more = e.target.closest("[data-req-more]");
+        if (more) {
+          return openMenu(more, [{ value: "block", label: `Blocca ${firstOf(r)}` }], async () => {
+            if (await confirmSheet({ title: `Bloccare ${firstOf(r)}?`, text: "Non potrà più trovarti né inviarti richieste. Puoi sbloccarlo quando vuoi.", confirm: "Blocca" })) {
+              act(() => post("/friends/blocks", { code: r.code }), `${firstOf(r)} è bloccato`);
+            }
+          });
+        }
+        return;
+      }
+      const out = e.target.closest("[data-out]");
+      if (out && e.target.closest("[data-cancel]")) {
+        return act(() => del(`/friends/requests/${out.dataset.out}`), "Richiesta annullata");
+      }
+      const bl = e.target.closest("[data-blocked]");
+      if (bl && e.target.closest("[data-unblock]")) {
+        return act(() => del(`/friends/blocks/${encodeURIComponent(bl.dataset.blocked)}`), "Sbloccato");
+      }
+    });
 
     /* ---------- avvio ---------- */
     await fetchData();

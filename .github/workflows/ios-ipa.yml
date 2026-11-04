@@ -1,0 +1,62 @@
+# Compila l'app iPhone su un Mac di GitHub e produce un .ipa NON firmato
+# (da installare con AltStore o Sideloadly usando un Apple ID gratuito: vedi docs/iphone.md).
+name: iOS IPA (non firmato)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - "capacitor.config.json"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/ios-ipa.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Dipendenze JavaScript
+        run: npm ci
+
+      - name: Sincronizza il progetto iOS (pod install)
+        run: npx cap sync ios
+
+      - name: Compila (senza firma)
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | tee xcodebuild.log | grep -E "error:|warning: .*Swift|BUILD (SUCCEEDED|FAILED)" || true
+          test -d build/Build/Products/Release-iphoneos/App.app
+
+      - name: Crea il file .ipa
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qry Skoolio-non-firmato.ipa Payload
+          ls -la Skoolio-non-firmato.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Skoolio-iOS
+          path: Skoolio-non-firmato.ipa
+          retention-days: 30
+
+      - name: Log di compilazione (se fallisce)
+        if: failure()
+        run: tail -n 200 xcodebuild.log || true

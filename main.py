@@ -1801,6 +1801,11 @@ def keepalive_pass() -> dict:
             user = _shared_user_in_memory(row["username"], phpsessid)
         if user is None:
             user = WebSessionUtente(phpsessid)
+            user.ident = row.get("ident") or ""
+            user.uid = row["username"]
+            user.first_name = row.get("first_name") or ""
+            user.last_name = row.get("last_name") or ""
+            user.is_logged_in = True
         alive = notifications.sync_session(user, row["username"])
         if alive is True:
             _store(session_store.stats_ok, row["cookie_key"], time.time())
