@@ -223,10 +223,14 @@ a { color: inherit; text-decoration: none; }
 }
 :root[data-theme="light"] .glass::before { opacity: 1; }
 .glass-strong { background: var(--glass-bg-strong); }
-/* Rifrazione "liquida": solo Chromium (anche la WebView Android), solo su piccoli elementi. */
-.engine-chromium .glass-liquid {
-  -webkit-backdrop-filter: url(#liquid-glass) blur(14px) saturate(190%);
-  backdrop-filter: url(#liquid-glass) blur(14px) saturate(190%);
+/* Rifrazione "liquida" (filtro SVG di distorsione): solo Chromium su computer. Sui telefoni il filtro va
+   ricalcolato a ogni frame in cui sotto la tab bar si muove qualcosa (scorrimento, apertura di una
+   sezione) e su schermi ad alta densità fa perdere frame: lì resta il vetro sfocato normale. */
+@media (hover: hover) and (pointer: fine) {
+  .engine-chromium .glass-liquid {
+    -webkit-backdrop-filter: url(#liquid-glass) blur(14px) saturate(190%);
+    backdrop-filter: url(#liquid-glass) blur(14px) saturate(190%);
+  }
 }
 
 .card {
