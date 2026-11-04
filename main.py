@@ -594,6 +594,32 @@ def save_user_year_snapshot(*, username: str, school_year: str, kind: str, paylo
                 (normalized_username, year, kind_norm, body, time.time()),
             )
             conn.commit()
+    if kind_norm == "voti":
+        _publish_shared_grades(normalized_username, body)
+
+
+_last_grades_digest: dict[str, str] = {}
+
+
+def _publish_shared_grades(username: str, body: str) -> None:
+    """Voti salvati cambiati → gli amici con la pagina aperta li vedono subito aggiornati."""
+    try:
+        import hashlib
+        import friends
+        import realtime
+        digest = hashlib.sha1(body.encode("utf-8")).hexdigest()
+        key = friends.user_key(username)
+        if _last_grades_digest.get(key) == digest:
+            return
+        _last_grades_digest[key] = digest
+        with get_db_connection() as conn:
+            friend_keys = [k for k, _ in friends._friend_keys(conn, key)]
+            row = conn.execute("SELECT code FROM friend_users WHERE user_key = ?", (key,)).fetchone()
+        if friend_keys:
+            realtime.publish(friend_keys, {"type": "friends", "action": "grades",
+                                           "code": friends.format_code(row["code"]) if row else None})
+    except Exception:
+        pass
 
 
 def get_user_year_snapshot(*, username: str, school_year: str, kind: str) -> Optional[Any]:
@@ -1635,6 +1661,15 @@ async def broadcast_average_leaderboard_change(action: str, username: str):
 
 
 
+def _live_user(u, event: dict) -> None:
+    """Evento in tempo reale per gli altri dispositivi dello stesso studente (realtime.py)."""
+    try:
+        import realtime
+        realtime.publish_user(get_session_username(u), event)
+    except Exception:
+        pass
+
+
 def run_async_from_sync(fn, *args) -> None:
     """Esegue una coroutine (es. broadcast WebSocket) da una route sincrona."""
     try:
@@ -2592,6 +2627,7 @@ def login_web_session(
     sid = create_session(user, username, device_label=describe_device(request))
     background_tasks.add_task(broadcast_admin_login, username)
     set_session_cookie(response, sid)
+    _live_user(user, {"type": "devices", "action": "login"})
     return {"ok": True, "user": username}
 
 
@@ -2742,6 +2778,7 @@ def pair_confirm(
             raise HTTPException(status_code=404, detail="Codice non valido o scaduto. Genera un nuovo codice sul PC.")
         pairing["status"] = "approved"
         pairing["approved_session"] = session_id
+    _live_user(get_session_user(session_id), {"type": "devices", "action": "paired"})
     return {"ok": True, "device_label": pairing["device_label"]}
 
 
@@ -2806,6 +2843,7 @@ def revoke_device(body: DeviceRevokeBody, session_id: Optional[str] = Cookie(def
     removed = _store(session_store.delete_device, body.device_id, aliases) or 0
     if target is None and not removed:
         raise HTTPException(status_code=404, detail="Dispositivo non trovato")
+    _live_user(current["user"], {"type": "devices", "action": "revoked"})
     return {"ok": True}
 
 
@@ -3589,6 +3627,7 @@ def compiti_fatto(evt_id: str, body: HomeworkDoneBody, u: Utente = Depends(curre
     raise_for_upstream_http_status(resp.status_code, context="compiti")
     with upstream_cache_lock:
         upstream_cache.pop(_cache_key(["cvv-w1", _cache_user_key(u), "GET", "/homeworks/index"]), None)
+    _live_user(u, {"type": "compiti", "id": evt_id, "done": body.done})
     return {"ok": True, "done": body.done}
 
 
@@ -4993,6 +5032,7 @@ def put_prefs(body: PrefsBody, u: Utente = Depends(current_user)):
                 (username, json.dumps(prefs), now),
             )
             conn.commit()
+    _live_user(u, {"type": "prefs", "updated_at": now})
     return {"ok": True, "prefs": prefs, "updated_at": now}
 
 
@@ -5152,9 +5192,11 @@ def calendar_ics(token: str):
 # ---- moduli: amici e notifiche (importati qui, quando main è già completo) ----
 import friends  # noqa: E402
 import notifications  # noqa: E402
+import realtime  # noqa: E402
 
 app.include_router(friends.router)
 app.include_router(notifications.router)
+app.include_router(realtime.router)
 
 
 if DEV_MODE and os.path.isdir(PUBLIC_DIR):

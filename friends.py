@@ -130,6 +130,17 @@ def init_tables(conn) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_friend_request_log ON friend_request_log(user_key, at)")
 
 
+# ---------------------------------------------------------------- tempo reale
+
+def _live(keys, action: str, **extra) -> None:
+    """Avvisa subito i dispositivi aperti degli studenti coinvolti (realtime.py)."""
+    try:
+        import realtime
+        realtime.publish(keys, {"type": "friends", "action": action, **extra})
+    except Exception:
+        pass  # mai bloccare la richiesta per un avviso
+
+
 # ---------------------------------------------------------------- identità
 
 def user_key(username: Any) -> str:
@@ -738,6 +749,8 @@ def friends_request(body: CodeBody, me: dict = Depends(_me)):
                 # Ti aveva già chiesto l'amicizia: inviarla vale come accettare.
                 _make_friends(conn, key, tkey)
                 conn.commit()
+                _live([tkey], "accepted", name=me.get("full_name") or "")
+                _live([key], "accepted_by_me")
                 return {"ok": True, "status": "friend", "person": _public_person(target)}
             out_pending = conn.execute(
                 "SELECT COUNT(*) FROM friend_requests WHERE from_key = ? AND status = 'pending'", (key,)
@@ -763,6 +776,8 @@ def friends_request(body: CodeBody, me: dict = Depends(_me)):
             )
             conn.execute("INSERT INTO friend_request_log (user_key, at) VALUES (?, ?)", (key, now))
             conn.commit()
+            _live([tkey], "request", name=me.get("full_name") or "")
+            _live([key], "sent")
             return {"ok": True, "status": "outgoing", "id": cur.lastrowid, "person": _public_person(target)}
 
 
@@ -789,6 +804,8 @@ def friends_accept(request_id: int, me: dict = Depends(_me)):
                 raise HTTPException(status_code=409, detail="Questo studente ha già il numero massimo di amici.")
             _make_friends(conn, key, row["from_key"])
             conn.commit()
+    _live([row["from_key"]], "accepted", name=me.get("full_name") or "")
+    _live([key], "accepted_by_me")
     return {"ok": True}
 
 
@@ -798,11 +815,12 @@ def friends_decline(request_id: int, me: dict = Depends(_me)):
 
     with core.db_lock:
         with core.get_db_connection() as conn:
-            _incoming_request(conn, me["user_key"], request_id)
+            row = _incoming_request(conn, me["user_key"], request_id)
             conn.execute(
                 "UPDATE friend_requests SET status = 'declined', responded_at = ? WHERE id = ?", (time.time(), request_id)
             )
             conn.commit()
+    _live([me["user_key"], row["from_key"]], "declined")
     return {"ok": True}
 
 
@@ -813,12 +831,16 @@ def friends_cancel(request_id: int, me: dict = Depends(_me)):
 
     with core.db_lock:
         with core.get_db_connection() as conn:
+            req = conn.execute(
+                "SELECT to_key FROM friend_requests WHERE id = ? AND from_key = ? AND status = 'pending'", (request_id, me["user_key"])
+            ).fetchone()
             cur = conn.execute(
                 "DELETE FROM friend_requests WHERE id = ? AND from_key = ? AND status = 'pending'", (request_id, me["user_key"])
             )
             conn.commit()
     if not cur.rowcount:
         raise HTTPException(status_code=404, detail="Richiesta non trovata.")
+    _live([me["user_key"], req["to_key"] if req else None], "cancelled")
     return {"ok": True}
 
 
@@ -831,6 +853,8 @@ def friends_set_privacy(body: LevelBody, me: dict = Depends(_me)):
         with core.get_db_connection() as conn:
             conn.execute("UPDATE friend_users SET privacy = ? WHERE user_key = ?", (level, me["user_key"]))
             conn.commit()
+            friend_keys = [k for k, _ in _friend_keys(conn, me["user_key"])]
+    _live([me["user_key"], *friend_keys], "shared", code=format_code(me["code"]))
     return {"ok": True, "privacy": level}
 
 
@@ -856,6 +880,7 @@ def friends_block(body: CodeBody, me: dict = Depends(_me)):
                 (key, tkey, time.time()),
             )
             conn.commit()
+    _live([key, tkey], "removed")
     return {"ok": True}
 
 
@@ -875,6 +900,7 @@ def friends_unblock(code: str, me: dict = Depends(_me)):
                 "DELETE FROM friend_blocks WHERE blocker_key = ? AND blocked_key = ?", (me["user_key"], target["user_key"])
             )
             conn.commit()
+    _live([me["user_key"]], "unblocked")
     return {"ok": True}
 
 
@@ -943,6 +969,7 @@ def friends_set_override(code: str, body: LevelBody, me: dict = Depends(_me)):
                     (me["user_key"], friend["user_key"], level, time.time()),
                 )
             conn.commit()
+    _live([me["user_key"], friend["user_key"]], "shared", code=format_code(me["code"]))
     return {"ok": True, "my_override": level}
 
 
@@ -955,4 +982,5 @@ def friends_remove(code: str, me: dict = Depends(_me)):
             friend, _ = _friend_by_code(conn, me, code)
             _unfriend(conn, me["user_key"], friend["user_key"])
             conn.commit()
+    _live([me["user_key"], friend["user_key"]], "removed")
     return {"ok": True}
