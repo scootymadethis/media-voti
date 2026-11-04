@@ -169,7 +169,7 @@ function phoneScreen(key) {
   const g = (v, c) => `<span class="grade grade-sm ${c}">${v}</span>`;
   const screens = {
     voti: `<div class="mock-title">Voti</div><div class="mock-hero"><div class="mock-ring"><span>7,62</span></div><div><b>Media generale</b><small>Primo periodo · 24 voti</small></div></div>
-      ${[["Matematica", "8", "g-great", "7,9"], ["Informatica", "9", "g-great", "8,4"], ["Italiano", "6½", "g-good", "6,8"], ["Inglese", "7+", "g-good", "7,2"], ["Storia", "5½", "g-bad", "5,8"], ["Fisica", "3", "g-bad g-fire", "4,9"]]
+      ${[["Informatica", "9", "g-good g-top", "8,4"], ["Italiano", "6", "g-ok", "6,3"], ["Storia", "5½", "g-bad", "5,8"], ["Fisica", "3", "g-bad g-fire", "4,9"]]
         .map(([s, v, c, m]) => `<div class="mock-row">${g(v, c)}<div><b>${s}</b><small>Media ${m}</small></div></div>`).join("")}`,
     agenda: `<div class="mock-title">Agenda</div><div class="mock-days">${["L", "M", "M", "G", "V"].map((d, i) => `<span class="${i === 2 ? "on" : ""}">${d}<b>${10 + i}</b></span>`).join("")}</div>
       ${[["08:00", "Verifica di matematica", "Studio di funzione", "bad"], ["10:50", "Inglese", "Essay da consegnare", "accent"], ["12:00", "Informatica", "Schema ER biblioteca", "accent"], ["—", "Uscita didattica", "Museo di storia naturale", "ok"]]
@@ -182,12 +182,31 @@ function phoneScreen(key) {
   return screens[key];
 }
 
+const TAB_ICONS = { voti: "grades", agenda: "calendar", bacheca: "megaphone", orario: "clock" };
+const STATUS_ICONS = `<svg viewBox="0 0 18 12" width="17" height="11"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+  <svg viewBox="0 0 16 12" width="15" height="11"><path d="M8 2.6c2.3 0 4.4.9 5.9 2.4l1.3-1.3A10.1 10.1 0 0 0 8 .7 10.1 10.1 0 0 0 .8 3.7L2.1 5A8.3 8.3 0 0 1 8 2.6Zm0 3.7c1.3 0 2.5.5 3.4 1.4l1.3-1.3A6.6 6.6 0 0 0 8 4.4c-1.8 0-3.5.7-4.7 2l1.3 1.3c.9-.9 2.1-1.4 3.4-1.4Zm0 3.6c-.5 0-.9.2-1.2.5L8 11.6l1.2-1.2c-.3-.3-.7-.5-1.2-.5Z"/></svg>
+  <svg viewBox="0 0 27 12" width="25" height="12"><rect x="0.5" y="0.5" width="22" height="11" rx="3.4" fill="none" stroke="currentColor" opacity="0.4"/><rect x="2" y="2" width="16" height="8" rx="2"/><path d="M24.2 4v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2Z" opacity="0.4"/></svg>`;
+
+/** iPhone finto: cornice in titanio, tasti laterali, Dynamic Island, barra di stato e tab bar.
+ *  Lo schermo ritaglia tutto (clip-path con gli angoli arrotondati): niente esce dai bordi. */
+function iphone() {
+  return `<div class="iphone" aria-hidden="true">
+    <span class="iphone-key k-action"></span><span class="iphone-key k-up"></span><span class="iphone-key k-down"></span><span class="iphone-key k-side"></span>
+    <div class="iphone-body"><div class="iphone-screen" style="--tab:0">
+      ${SCREENS.map((s, i) => `<div class="phone-screen${i === 0 ? " is-active" : ""}" data-screen="${s.key}">${phoneScreen(s.key)}</div>`).join("")}
+      <div class="iphone-status"><span class="iphone-time">9:41</span><span class="iphone-island"></span><span class="iphone-icons">${STATUS_ICONS}</span></div>
+      <nav class="iphone-tabs"><span class="iphone-tab-pill"></span>${SCREENS.map((s, i) => `<span class="iphone-tab${i === 0 ? " is-on" : ""}" data-tab="${s.key}">${icon(TAB_ICONS[s.key])}<small>${s.key.charAt(0).toUpperCase() + s.key.slice(1)}</small></span>`).join("")}</nav>
+      <span class="iphone-home"></span>
+    </div></div>
+  </div>`;
+}
+
 function renderWeb(root, onLoggedIn) {
   const mobile = matchMedia("(max-width: 719px)").matches;
   setHTML(root, html`<div class="landing">
     <header class="landing-nav glass">
       ${brandMark()}
-      <a class="btn btn-primary" href="#accedi">Accedi</a>
+      <button type="button" class="btn btn-primary" data-goto-login>Accedi</button>
     </header>
 
     <section class="hero" id="accedi">
@@ -202,10 +221,7 @@ function renderWeb(root, onLoggedIn) {
     </section>
 
     <section class="story" aria-label="Cosa puoi fare con Skoolio">
-      <div class="story-phone-wrap"><div class="story-phone glass" aria-hidden="true">
-        <div class="phone-notch"></div>
-        ${SCREENS.map((s, i) => html`<div class="phone-screen${i === 0 ? " is-active" : ""}" data-screen="${s.key}">${raw(phoneScreen(s.key))}</div>`)}
-      </div></div>
+      <div class="story-phone-wrap">${raw(iphone())}</div>
       <div class="story-steps">
         ${SCREENS.map((s, i) => html`<article class="story-step" data-step="${s.key}"><p class="overline">${String(i + 1).padStart(2, "0")}</p>
           <h2 class="story-title">${s.title}</h2><p class="body-2">${s.text}</p></article>`)}
@@ -241,17 +257,47 @@ function renderWeb(root, onLoggedIn) {
   $$("[data-privacy]", root).forEach((b) => b.addEventListener("click", () => openSheet({ title: "Informativa", content: PRIVACY })));
   const stopPair = startPairing(root, onLoggedIn);
 
-  // Racconto a scorrimento: la schermata del telefono segue il paragrafo in vista.
+  // "Accedi": torna su in modo morbido fino al riquadro di accesso e lo fa "pulsare".
+  const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  $("[data-goto-login]", root).addEventListener("click", () => {
+    const card = $(".hero-login", root);
+    const narrow = matchMedia("(max-width: 960px)").matches;
+    const navH = $(".landing-nav", root).offsetHeight;
+    const top = narrow ? Math.max(0, card.getBoundingClientRect().top + scrollY - navH - 20) : 0;
+    const pulse = () => {
+      const pair = $(".pair-card", root);
+      if (!pair) return;
+      pair.classList.remove("is-attention");
+      void pair.offsetWidth; // riavvia l'animazione
+      pair.classList.add("is-attention");
+    };
+    if (Math.abs(scrollY - top) < 4) { pulse(); return; }
+    scrollTo({ top, behavior: reduced() ? "auto" : "smooth" });
+    let done = false;
+    const finish = () => { if (done) return; done = true; pulse(); };
+    addEventListener("scrollend", finish, { once: true });
+    setTimeout(finish, 900); // browser senza "scrollend"
+  });
+
+  // Racconto a scorrimento: la schermata del telefono segue il paragrafo in vista. Su schermi stretti
+  // i paragrafi diventano un carosello orizzontale sotto il telefono (niente testo sopra lo schermo).
+  const screenBox = $(".iphone-screen", root);
   const screens = $$(".phone-screen", root);
+  const tabs = $$(".iphone-tab", root);
+  const steps = $$(".story-step", root);
+  const show = (key) => {
+    const idx = SCREENS.findIndex((s) => s.key === key);
+    screenBox.style.setProperty("--tab", idx);
+    screens.forEach((s) => s.classList.toggle("is-active", s.dataset.screen === key));
+    tabs.forEach((t) => t.classList.toggle("is-on", t.dataset.tab === key));
+    steps.forEach((s) => s.classList.toggle("is-active", s.dataset.step === key));
+  };
+  const carousel = matchMedia("(max-width: 960px)").matches;
   const stepObs = new IntersectionObserver((entries) => {
-    entries.forEach((e) => {
-      if (!e.isIntersecting) return;
-      const key = e.target.dataset.step;
-      screens.forEach((s) => s.classList.toggle("is-active", s.dataset.screen === key));
-      $$(".story-step", root).forEach((s) => s.classList.toggle("is-active", s === e.target));
-    });
-  }, { rootMargin: "-45% 0px -45% 0px" });
-  $$(".story-step", root).forEach((s) => stepObs.observe(s));
+    entries.forEach((e) => { if (e.isIntersecting) show(e.target.dataset.step); });
+  }, carousel ? { root: $(".story-steps", root), threshold: 0.6 } : { rootMargin: "-45% 0px -45% 0px" });
+  steps.forEach((s) => stepObs.observe(s));
+  show(SCREENS[0].key);
 
   // Rivelazioni allo scroll: CSS scroll-driven dove c'è, altrimenti IntersectionObserver (una volta).
   let revealObs = null;

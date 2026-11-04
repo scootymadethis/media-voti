@@ -4,6 +4,7 @@ import { state, yearQuery, isCurrentYear, on } from "aulera/state";
 import { html, icon, setHTML, $, $$, ring, animateRings, gradeClass, gradeColor, fmtDate, titleCase, subjectName, emptyState, errorState, segmented, bindSegmented, openSheet, fmtNum, esc } from "aulera/ui";
 import { extractGrades, rawAverage, subjectsOf, periodsOf, trend, gradeValue, excludedFromAverage, neededGrade, gradeLabel, componentLabel, average } from "aulera/grades";
 import { pageHeader, yearButton, bindYearPicker } from "aulera/main";
+import { openGradeDetail } from "aulera/gradedetail";
 
 function sparkline(points, { w = 260, h = 64 } = {}) {
   if (points.length < 2) return "";
@@ -67,16 +68,17 @@ function subjectSheet(subject, allGrades) {
       </section>
 
       <p class="overline" style="margin:24px 4px 8px">Tutti i voti</p>
-      <ul class="card list">${grades.map((g) => html`<li class="row">${gradeChip(g)}
+      <div class="card list">${grades.map((g, i) => html`<button type="button" class="row" data-g="${i}">${gradeChip(g)}
         <div class="row-main"><p class="row-title">${fmtDate(g.evtDate, { weekday: true })}</p>
           <p class="row-sub">${[componentLabel(g), titleCase(g.periodDesc || ""), excludedFromAverage(g) ? "non fa media" : ""].filter(Boolean).join(" · ")}</p>
-          ${g.notesForFamily ? html`<p class="row-sub" style="color:var(--text)">${g.notesForFamily}</p>` : ""}</div></li>`)}</ul>`);
+          ${g.notesForFamily ? html`<p class="row-sub" style="color:var(--text)">${g.notesForFamily}</p>` : ""}</div>${icon("chevronRight", "chev")}</button>`)}</div>`);
     animateRings(body);
   };
   draw();
   body.addEventListener("click", (e) => {
     const b = e.target.closest("button");
     if (!b) return;
+    if (b.dataset.g) { openGradeDetail(grades[Number(b.dataset.g)], grades); return; }
     if (b.dataset.t) target = Math.min(10, Math.max(1, target + (b.dataset.t === "+" ? 0.25 : -0.25)));
     else if (b.dataset.n) next = Math.min(10, Math.max(1, next + (b.dataset.n === "+" ? 1 : -1)));
     else if (b.dataset.add) hypothetical.push(Number(b.dataset.add));
@@ -142,10 +144,10 @@ export default {
           ${s.average !== null ? html`<div class="bar"><span style="width:${Math.max(4, s.average * 10)}%;background:${gradeColor(s.average)}"></span></div>` : ""}
         </button>`)}</div>`);
         $$(".stagger", list).forEach((g) => [...g.children].forEach((c, i) => c.style.setProperty("--i", i)));
-        list.addEventListener("click", (e) => {
+        list.onclick = (e) => {
           const b = e.target.closest("[data-subject]");
           if (b) subjectSheet(subjects[Number(b.dataset.subject)], grades);
-        });
+        };
       } else {
         const byMonth = new Map();
         scoped.forEach((g) => {
@@ -154,8 +156,14 @@ export default {
           byMonth.get(k).push(g);
         });
         setHTML(list, html`${[...byMonth.entries()].map(([k, gs]) => html`<p class="overline" style="margin:18px 4px 8px">${new Date(k + "-01").toLocaleDateString("it-IT", { month: "long", year: "numeric" })}</p>
-          <ul class="card list">${gs.map((g) => html`<li class="row">${gradeChip(g)}<div class="row-main"><p class="row-title">${subjectName(g.subjectDesc)}</p>
-            <p class="row-sub">${fmtDate(g.evtDate, { weekday: true })}${componentLabel(g) ? ` · ${componentLabel(g)}` : ""}${g.notesForFamily ? ` · ${g.notesForFamily}` : ""}</p></div></li>`)}</ul>`)}`);
+          <div class="card list">${gs.map((g) => html`<button type="button" class="row" data-g="${scoped.indexOf(g)}">${gradeChip(g)}<div class="row-main"><p class="row-title">${subjectName(g.subjectDesc)}</p>
+            <p class="row-sub">${fmtDate(g.evtDate, { weekday: true })}${componentLabel(g) ? ` · ${componentLabel(g)}` : ""}${g.notesForFamily ? ` · ${g.notesForFamily}` : ""}</p></div>${icon("chevronRight", "chev")}</button>`)}</div>`)}`);
+        list.onclick = (e) => {
+          const b = e.target.closest("[data-g]");
+          if (!b) return;
+          const g = scoped[Number(b.dataset.g)];
+          openGradeDetail(g, scoped.filter((x) => x.subjectDesc === g.subjectDesc));
+        };
       }
       bindSegmented(body, "period", (v) => { period = v; draw(); });
       bindSegmented(body, "mode", (v) => { mode = v; draw(); });

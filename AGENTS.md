@@ -63,7 +63,9 @@ needed. See `README.md` / `scripts/dev-windows.ps1` for the split-server alterna
   `import main as core` inside functions. Synced user preferences: `GET/PUT /preferenze` (`state.setPrefs`).
   Agenda ICS feed: `POST /calendario-feed`, `GET /calendario/{token}.ics`. The Android app also has a WorkManager
   `NotificationWorker` polling `/api/notifiche` every 15 min. `.github/workflows/ios-ipa.yml` builds an unsigned IPA.
-- Grade colors: green ≥ 6.5, yellow 6–6.49, red < 6, `g-fire` (cartoon flames, `scripts/generate_fire.py`) < 4.
+- Grade colors: green ≥ 6.5 (`g-top` filled + shine ≥ 9), yellow 6–6.49, red < 6, `g-fire` (animated cartoon flames,
+  two SVG frames from `scripts/generate_fire.py`) < 4, plus `g-devil` horns < 3. Tapping a grade opens
+  `public/app/grade-detail.js` (`aulera/gradedetail`): confetti/rays celebration ≥ 9, "how to get back to 6" when low.
 - Username/password login was removed (ClasseViva is SPID/CIE-only); the admin panel relies on the
   SPID session plus optional `ADMIN_PANEL_PASSWORD`.
 - SPID/CIE support (see `docs/spid-cie.md`): `WebSessionUtente` authenticates with the

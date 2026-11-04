@@ -65,6 +65,13 @@ document.addEventListener("click", (e) => {
   const url = new URL(a.href, location.href);
   if (url.origin !== location.origin || url.pathname.startsWith("/api/")) return;
   e.preventDefault();
+  // Ancora nella stessa pagina (#sezione): scorrimento morbido, senza passare dal router.
+  if (url.hash && url.pathname === location.pathname && url.search === location.search) {
+    const target = document.getElementById(decodeURIComponent(url.hash.slice(1)));
+    const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (target) target.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+    return;
+  }
   navigate(url.pathname + url.search);
 });
 

@@ -3,6 +3,7 @@ import { get, post, load } from "aulera/api";
 import { state, firstName, yearQuery } from "aulera/state";
 import { html, icon, setHTML, $, ring, animateRings, gradeClass, fmtDate, relativeDay, fmtTime, ymd, addDays, titleCase, subjectName, emptyState, fmtNum } from "aulera/ui";
 import { extractGrades, rawAverage, gradeValue, excludedFromAverage, componentLabel } from "aulera/grades";
+import { openGradeDetail } from "aulera/gradedetail";
 import { pageHeader } from "aulera/main";
 
 function greeting() {
@@ -54,12 +55,19 @@ export default {
       const latest = grades.slice(0, 6);
       fill("voti", html`<section class="card card-pad home-card">
         <div class="spread"><p class="overline">Ultimi voti</p><a class="tile-link" href="/voti">Tutti ${icon("chevronRight")}</a></div>
-        ${latest.length ? html`<ul class="home-grade-list">${latest.map((g) => {
+        ${latest.length ? html`<ul class="home-grade-list">${latest.map((g, i) => {
           const v = gradeValue(g);
-          return html`<li><span class="grade ${excludedFromAverage(g) ? "g-none" : gradeClass(v)}">${g.displayValue || "—"}</span>
-            <div class="row-main"><p class="row-title">${subjectName(g.subjectDesc)}</p><p class="row-sub">${relativeDay(g.evtDate)}${componentLabel(g) ? ` · ${componentLabel(g)}` : ""}</p></div></li>`;
+          return html`<li><button type="button" class="home-grade pressable" data-g="${i}"><span class="grade ${excludedFromAverage(g) ? "g-none" : gradeClass(v)}">${g.displayValue || "—"}</span>
+            <div class="row-main"><p class="row-title">${subjectName(g.subjectDesc)}</p><p class="row-sub">${relativeDay(g.evtDate)}${componentLabel(g) ? ` · ${componentLabel(g)}` : ""}</p></div></button></li>`;
         })}</ul>` : emptyState({ iconName: "grades", title: "Ancora nessun voto" })}
       </section>`);
+      const gradeList = root.querySelector(".home-grade-list");
+      if (gradeList) gradeList.onclick = (e) => {
+        const b = e.target.closest("[data-g]");
+        if (!b) return;
+        const g = latest[Number(b.dataset.g)];
+        openGradeDetail(g, grades.filter((x) => x.subjectDesc === g.subjectDesc));
+      };
     }, { maxAge: 120_000 }).catch((e) => { fail("media", "Media")(e); fail("voti", "Ultimi voti")(e); });
 
     // Lezioni di oggi
