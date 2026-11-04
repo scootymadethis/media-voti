@@ -1,88 +1,47 @@
-"""Genera il contorno di fiamme cartoon usato dai voti sotto il 4 (.grade.g-fire)."""
-import math, sys
-# Anello di fiamme cartoon (stile illustrazione piatta) attorno alla pastiglia del voto.
-# viewBox 120: la pastiglia occupa il centro (mezzo lato ~36); le fiamme salgono verso l'alto.
-CX, CY = 60, 84
+"""Genera le fiamme dei voti "rosso fuoco" (sotto il 4) come SVG animato da usare in CSS.
 
-def perimeter(a, b, rad, count):
-    """Punti equidistanti sul bordo di un rettangolo arrotondato, con normale uscente."""
-    pts = []
-    for k in range(count):
-        t = 2 * math.pi * (k + 0.5) / count
-        c, s = math.cos(t), math.sin(t)
-        n = 5.0
-        x = a * math.copysign(abs(c) ** (2 / n), c)
-        y = b * math.copysign(abs(s) ** (2 / n), s)
-        gx = (abs(x / a) ** (n - 1)) * math.copysign(1, x) / a if x else 0.0
-        gy = (abs(y / b) ** (n - 1)) * math.copysign(1, y) / b if y else 0.0
-        L = math.hypot(gx, gy) or 1
-        pts.append((CX + x, CY + y, gx / L, gy / L))
-    return pts
+Fiamme piccole, larghe esattamente quanto la pastiglia del voto: escono da DIETRO il bordo
+superiore (la base è nascosta dalla faccia del voto) e ogni lingua ondeggia per conto suo con
+un'animazione CSS interna all'SVG (transform su ogni path: composta dalla GPU, 60 fps).
+Con l'argomento "devil" aggiunge le corna da demone (voti sotto il 3).
 
-def tongue(x, y, nx, ny, h, w, curl):
-    # fiamma "a goccia" cartoon: base larga, pancia tonda, punta arricciata di lato
-    dx, dy = nx, ny - 1.35
-    L = math.hypot(dx, dy) or 1
-    ux, uy = dx / L, dy / L
-    px, py = -uy, ux
-    P = lambda a, b: (x + px * a + ux * b, y + py * a + uy * b)
-    f = lambda p: f"{p[0]:.1f} {p[1]:.1f}"
-    bl, br = P(-w, 0), P(w, 0)
-    tip = P(curl * w * 0.9, h)
-    return (f"M{f(bl)}C{f(P(-w * 1.45, h * 0.38))} {f(P(-w * 0.55, h * 0.8))} {f(tip)}"
-            f"C{f(P(w * 0.15, h * 0.72))} {f(P(w * 1.35, h * 0.42))} {f(br)}Z")
+Uso: python scripts/generate_fire.py [devil]  → stampa l'url("data:...") per app.css
+"""
+import sys
+from urllib.parse import quote
 
-def layer(color, half, rad, count, hbase, w, seed):
-    a = b = half
-    base = (f'<rect x="{CX-a:.1f}" y="{CY-b:.1f}" width="{2*a:.1f}" height="{2*b:.1f}" rx="{rad}" fill="{color}"/>')
-    tongues = []
-    for k, (x, y, nx, ny) in enumerate(perimeter(a, b, rad, count)):
-        up = max(0.0, -ny)
-        side = 1 - abs(ny)
-        down = max(0.0, ny)
-        wob = 0.7 + 0.6 * ((math.sin(k * 2.17 + seed) + 1) / 2)
-        h = hbase * wob * (0.35 + 1.1 * up + 0.45 * side) * (1 - 0.75 * down)
-        if h < 2.5:
-            continue
-        tongues.append(f'<path fill="{color}" d="{tongue(x, y, nx, ny, h, w * (0.85 + 0.35 * up), 1 if k % 2 else -1)}"/>')
-    # fiamma centrale più alta: la sagoma classica del fuoco
-    tongues.append(f'<path fill="{color}" d="{tongue(CX + 2, CY - b + 2, 0, -1, hbase * 1.55, w * 1.25, 1)}"/>')
-    return base + "".join(tongues)
+FLAMES = [
+    ("l", "M1 27 C0 21 2 18 6 12 C6 16 9 17 9 20 C12 16 11 14 11 12 C17 19 17 23 15 27 Z"),
+    ("r", "M25 27 C23 23 24 19 29 14 C29 18 31 19 32 20 C34 17 34 15 34 12 C39 19 40 23 39 27 Z"),
+    ("m", "M12 27 C9 22 12 17 17 11 C20 7 20 4 20 2 C28 10 26 16 25 19 C29 15 29 13 28 10 C36 19 32 24 29 27 Z"),
+    ("i", "M17 27 C15 23 17 20 20 16 C21 19 21 21 22 22 C24 19 24 17 24 16 C29 22 27 26 26 27 Z"),
+]
 
-# Uso: python3 scripts/generate_fire.py <variante 0|1> [devil]
-#   variante: due fotogrammi diversi delle fiamme (si alternano in dissolvenza nel CSS)
-#   devil:    aggiunge le corna da demone sopra la pastiglia (voti sotto il 3)
-# Il centro (la pastiglia del voto, mezzo lato ~36,7 unità, raggio ~23) è forato: la pastiglia è lo
-# sfondo dell'elemento e le fiamme le stanno attorno. Incorporato come data URI in app.css.
-variant = int(sys.argv[1]) if len(sys.argv) > 1 else 0
-devil = len(sys.argv) > 2 and sys.argv[2] == "devil"
-seed = 1.3 + 2.6 * variant
-SCALE = 0.85  # fiamme un po' più basse della prima versione
+STYLE = (
+    ".f{transform-box:fill-box;transform-origin:50% 100%;animation:k 1.6s ease-in-out infinite alternate}"
+    ".l{fill:#ff913d;animation-duration:1.3s;animation-delay:-.7s}"
+    ".r{fill:#ff8535;animation-duration:1.5s;animation-delay:-.3s}"
+    ".m{fill:#ffb044;animation-duration:1.75s;animation-delay:-.9s}"
+    ".i{fill:#ffdc78;animation-duration:1.2s;animation-delay:-.4s}"
+    "@keyframes k{0%{transform:scaleY(.91) skewX(-2deg)}50%{transform:scaleY(1.03) skewX(1deg)}"
+    "100%{transform:scaleY(.96) skewX(2deg)}}"
+    "@media (prefers-reduced-motion:reduce){.f{animation:none}}"
+)
 
-HOLE = 36.4
-hole = f'<rect x="{CX-HOLE:.1f}" y="{CY-HOLE:.1f}" width="{2*HOLE:.1f}" height="{2*HOLE:.1f}" rx="23" fill="#000"/>'
-flames = (layer("#E5370E", 40, 15, 12, 30 * SCALE, 10, seed)
-          + layer("#FF8A00", 38.5, 14, 11, 20 * SCALE, 8, seed + 2.1)
-          + layer("#FFD23F", 37.2, 13, 10, 11 * SCALE, 6, seed + 4.2))
+# Corna: base nascosta dietro la faccia del voto (y > 21), punta che curva verso l'esterno.
+HORNS = (
+    '<path d="M6 26 C5 19 4 12 1 6 C7 9 11 15 13 26 Z" fill="#c8161f" stroke="#4a0309" stroke-width="1.1" stroke-linejoin="round"/>'
+    '<path d="M34 26 C35 19 36 12 39 6 C33 9 29 15 27 26 Z" fill="#c8161f" stroke="#4a0309" stroke-width="1.1" stroke-linejoin="round"/>'
+    '<path d="M7.5 21 C7 16 5.5 12 3.5 9" fill="none" stroke="#ff7a6b" stroke-width="1" stroke-linecap="round"/>'
+    '<path d="M32.5 21 C33 16 34.5 12 36.5 9" fill="none" stroke="#ff7a6b" stroke-width="1" stroke-linecap="round"/>'
+)
 
-horns = ""
-if devil:
-    # Corna cartoon: base sul bordo alto della pastiglia, curva verso l'esterno e punta in su.
-    def horn(side):
-        # mezzaluna: base larga sul bordo, curva verso l'esterno, punta sottile rivolta in alto
-        bx = CX + side * 17
-        by = CY - HOLE + 4
-        f = lambda x, y: f"{x:.1f} {y:.1f}"
-        body = (f'M{f(bx - side*8, by)}'
-                f' C{f(bx - side*9, by-16)} {f(bx + side*4, by-27)} {f(bx + side*17, by-33)}'
-                f' C{f(bx + side*10, by-25)} {f(bx + side*9, by-13)} {f(bx + side*10, by)} Z')
-        shine = (f'M{f(bx - side*3, by-5)} C{f(bx - side*2, by-15)} {f(bx + side*6, by-23)} {f(bx + side*12, by-28)}')
-        return (f'<path d="{body}" fill="#C8161F" stroke="#4A0309" stroke-width="2.4" stroke-linejoin="round"/>'
-                f'<path d="{shine}" fill="none" stroke="#FF7A6B" stroke-width="2" stroke-linecap="round" opacity="0.9"/>')
-    horns = horn(-1) + horn(1)
 
-svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140">'
-       f'<defs><mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="120" height="140">'
-       f'<rect width="120" height="140" fill="#fff"/>{hole}</mask></defs>'
-       f'<g mask="url(#m)">{flames}</g>{horns}</svg>')
-print(svg)
+def svg(devil=False):
+    paths = "".join(f'<path class="f {c}" d="{d}"/>' for c, d in FLAMES)
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 27"><style>{STYLE}</style>'
+            f'{paths}{HORNS if devil else ""}</svg>')
+
+
+if __name__ == "__main__":
+    print(f'url("data:image/svg+xml,{quote(svg("devil" in sys.argv[1:]), safe=" /=:,.-()")}")')

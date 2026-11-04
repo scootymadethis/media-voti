@@ -128,7 +128,7 @@ export default {
     const value = (it) => (board === "media" ? it?.average : it?.hours);
     const valueText = (it) => (board === "media" ? fmtAvg(it?.average) : fmtHours(it?.hours));
     const valuePill = (it) => board === "media"
-      ? html`<span class="grade grade-sm ${gradeClass(Number(it?.average))} classifica-value">${fmtAvg(it?.average)}</span>`
+      ? html`<span class="grade grade-sm grade-avg ${gradeClass(Number(it?.average))} classifica-value">${fmtAvg(it?.average)}</span>`
       : html`<span class="classifica-hours tnum">${fmtHours(it?.hours)}</span>`;
     const scopeLabel = () => (scope === "class" ? `Classe ${cls}` : "Globale");
 
@@ -167,7 +167,7 @@ export default {
           <p class="overline">La tua posizione · ${scopeLabel()}</p>
           <div class="classifica-me-top">
             <p class="classifica-me-rank tnum">${ordinal(me.rank)}<span> su ${me.total}</span></p>
-            <div class="classifica-me-value"><span class="${board === "media" ? `grade ${gradeClass(Number(mine))}` : "classifica-hours lg tnum"}">${valueText(me.entry)}</span>
+            <div class="classifica-me-value"><span class="${board === "media" ? `grade grade-avg ${gradeClass(Number(mine))}` : "classifica-hours lg tnum"}">${valueText(me.entry)}</span>
               <span class="caption">${board === "media" ? "media generale" : "di assenza"}</span></div>
           </div>
           ${hint ? html`<p class="body-2 classifica-me-hint">${hint}</p>` : ""}

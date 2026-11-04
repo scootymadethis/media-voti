@@ -184,7 +184,7 @@ export function gradeClass(value) {
 export function gradeColor(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "var(--blue)";
   if (value >= 6.5) return "var(--good)";
-  if (value >= 6) return "var(--ok)";
+  if (value >= 6) return "var(--six)";
   return "var(--bad)";
 }
 

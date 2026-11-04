@@ -60,6 +60,7 @@
   --good: #30d158;
   --great: #30d158;
   --ok: #ffd60a;
+  --six: #c5d93a;
   --bad: #ff453a;
   --good-soft: rgb(48 209 88 / 0.16);
   --ok-soft: rgb(255 214 10 / 0.16);
@@ -111,6 +112,7 @@
   --good: #1f9d47;
   --great: #1f9d47;
   --ok: #b38200;
+  --six: #7c8f00;
   --bad: #e0262f;
   --good-soft: rgb(31 157 71 / 0.11);
   --ok-soft: rgb(255 204 0 / 0.2);
@@ -392,9 +394,10 @@ a { color: inherit; text-decoration: none; }
   --g: var(--text-2);
   display: inline-grid;
   place-items: center;
-  min-width: 44px;
+  width: 44px;
   height: 44px;
-  padding: 0 8px;
+  padding: 0;
+  white-space: nowrap;
   border-radius: 14px;
   background: color-mix(in srgb, var(--g) 16%, transparent);
   color: var(--g);
@@ -403,65 +406,51 @@ a { color: inherit; text-decoration: none; }
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
-.grade-sm { min-width: 34px; height: 30px; border-radius: 10px; font-size: 0.9rem; }
+.grade-sm { width: 34px; height: 30px; border-radius: 10px; font-size: 0.9rem; }
+/* Medie (7,62): larghezza secondo il contenuto, minimo quella di un voto. */
+.grade.grade-avg { width: auto; min-width: 44px; padding: 0 8px; }
+.grade.grade-sm.grade-avg { min-width: 34px; padding: 0 6px; }
 .g-great { --g: var(--great); }
 .g-good { --g: var(--good); }
-.g-ok { --g: var(--ok); }
+.g-ok { --g: var(--six); }
 .g-bad { --g: var(--bad); }
 .g-none { --g: var(--blue); }
 
-/* Voto "rosso fuoco" (sotto il 4): contorno di fiamme cartoon (tre strati piatti rosso/arancio/giallo).
-   La pastiglia è lo sfondo dell'elemento; attorno due fotogrammi di fiamme (SVG con il centro forato,
-   scripts/generate_fire.py) si alternano in dissolvenza mentre ondeggiano: solo transform/opacity,
-   quindi composti dalla GPU a 60 fps. Sotto il 3 (.g-devil) le fiamme hanno anche le corna da demone. */
+/* Voto "rosso fuoco" (sotto il 4): piccole fiamme che escono da DIETRO il bordo superiore, larghe
+   esattamente quanto la pastiglia. Ogni lingua ondeggia per conto suo (animazione CSS dentro l'SVG,
+   scripts/generate_fire.py). Ordine dei livelli nel contesto isolato del voto:
+   ::after fiamme (z -2) → ::before faccia piena (z -1, ne copre la base) → numero.
+   Sotto il 3 (.g-devil) spuntano anche le corna da demone. */
 .grade.g-fire {
-  --fire-a: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 140%22%3E%3Cdefs%3E%3Cmask id=%22m%22 maskUnits=%22userSpaceOnUse%22 x=%220%22 y=%220%22 width=%22120%22 height=%22140%22%3E%3Crect width=%22120%22 height=%22140%22 fill=%22%23fff%22/%3E%3Crect x=%2223.6%22 y=%2247.6%22 width=%2272.8%22 height=%2272.8%22 rx=%2223%22 fill=%22%23000%22/%3E%3C/mask%3E%3C/defs%3E%3Cg mask=%22url%28%23m%29%22%3E%3Crect x=%2220.0%22 y=%2244.0%22 width=%2280.0%22 height=%2280.0%22 rx=%2215%22 fill=%22%23E5370E%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M92.8 102.0C95.2 93.0 107.0 90.5 107.5 85.1C110.5 95.6 114.3 107.2 106.1 112.6Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M89.1 112.5C88.0 108.4 94.8 112.6 103.8 121.0C98.5 117.2 104.2 125.8 100.5 125.1Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M28.7 126.2C24.7 126.3 31.5 122.7 43.0 118.2C37.2 121.0 47.2 118.6 44.8 120.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M19.5 125.1C15.5 126.7 19.2 119.7 16.4 121.2C23.4 115.5 31.4 109.0 30.9 112.5Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M13.9 112.6C7.3 110.5 9.3 100.8 17.0 90.7C14.7 98.0 25.5 95.1 27.2 102.0Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M13.2 65.7C3.7 58.8 3.5 44.2 -2.3 41.2C10.0 42.6 23.7 43.9 27.9 55.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M14.8 52.7C7.0 45.2 12.9 32.0 26.3 22.0C20.8 31.4 35.7 34.3 35.6 45.6Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M24.7 45.2C18.7 32.2 28.7 17.1 24.2 10.4C37.2 19.5 52.1 29.1 48.7 43.9Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M71.3 43.9C66.9 25.8 78.7 6.7 96.5 -1.8C86.8 10.9 100.5 25.7 95.3 45.2Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M84.4 45.6C82.7 35.4 95.3 29.1 93.3 23.3C102.0 33.4 112.1 44.5 105.2 52.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M92.1 55.7C93.5 46.3 105.5 42.9 118.8 46.4C109.7 47.9 114.8 59.6 106.8 65.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M49.5 46.0C43.9 31.0 55.1 14.4 73.2 6.5C63.9 17.5 78.9 29.4 74.5 46.0Z%22/%3E%3Crect x=%2221.5%22 y=%2245.5%22 width=%2277.0%22 height=%2277.0%22 rx=%2214%22 fill=%22%23FF8A00%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M92.6 102.9C92.7 97.9 100.2 98.4 99.7 95.3C103.4 102.1 107.7 109.6 103.1 111.5Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M87.9 113.4C86.6 110.5 91.5 114.3 98.5 121.2C94.5 117.9 99.5 124.5 97.1 123.4Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M19.2 118.9C15.5 119.4 18.1 113.4 15.6 114.2C21.8 110.4 28.9 105.9 28.9 109.3Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M16.0 88.0C9.6 84.5 10.1 74.9 15.9 66.2C14.8 73.2 24.5 72.6 27.0 80.0Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M16.9 57.5C11.1 54.1 14.8 45.2 11.0 43.8C20.4 43.8 31.0 43.5 31.3 50.3Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M23.5 48.1C18.2 40.1 25.6 29.8 38.8 23.7C32.4 30.8 44.5 36.1 42.3 45.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M68.1 45.5C64.0 33.4 72.9 20.3 69.6 13.9C79.5 22.9 90.9 32.6 87.2 45.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M83.9 47.1C81.8 39.8 91.5 35.2 105.0 35.7C97.2 38.3 106.1 46.2 101.1 52.1Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M91.9 56.8C92.3 50.3 101.2 48.6 100.8 44.7C104.7 52.4 109.4 60.9 103.9 64.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M52.0 47.5C47.5 37.5 56.5 26.4 71.0 21.1C63.5 28.5 75.5 36.4 72.0 47.5Z%22/%3E%3Crect x=%2222.8%22 y=%2246.8%22 width=%2274.4%22 height=%2274.4%22 rx=%2213%22 fill=%22%23FFD23F%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M92.5 104.0C91.9 101.2 96.7 102.6 95.9 100.7C99.2 105.1 103.0 110.1 100.4 110.5Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M19.6 110.5C16.0 109.7 17.4 104.3 15.1 104.2C20.6 102.5 26.8 100.4 27.5 104.0Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M19.0 63.7C15.5 62.8 18.0 57.7 23.8 52.2C21.5 56.1 28.1 54.3 28.1 57.8Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M23.2 51.4C19.2 47.9 24.1 41.8 21.3 40.1C29.1 41.6 37.9 43.0 36.6 48.3Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M52.8 46.8C49.6 40.2 56.0 32.8 66.5 29.3C61.1 34.2 69.7 39.5 67.2 46.8Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M83.4 48.3C81.2 43.9 88.2 41.3 86.2 38.9C92.7 43.2 100.1 47.9 96.8 51.4Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M91.9 57.8C91.6 53.8 97.5 53.6 105.0 56.5C100.4 56.2 104.5 61.9 101.0 63.7Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M54.5 48.8C51.1 43.3 57.9 37.2 68.8 34.3C63.1 38.4 72.1 42.7 69.5 48.8Z%22/%3E%3C/g%3E%3C/svg%3E");
-  --fire-b: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 140%22%3E%3Cdefs%3E%3Cmask id=%22m%22 maskUnits=%22userSpaceOnUse%22 x=%220%22 y=%220%22 width=%22120%22 height=%22140%22%3E%3Crect width=%22120%22 height=%22140%22 fill=%22%23fff%22/%3E%3Crect x=%2223.6%22 y=%2247.6%22 width=%2272.8%22 height=%2272.8%22 rx=%2223%22 fill=%22%23000%22/%3E%3C/mask%3E%3C/defs%3E%3Cg mask=%22url%28%23m%29%22%3E%3Crect x=%2220.0%22 y=%2244.0%22 width=%2280.0%22 height=%2280.0%22 rx=%2215%22 fill=%22%23E5370E%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M92.8 102.0C93.1 95.5 102.7 95.8 102.1 91.8C106.6 100.4 112.0 110.0 106.1 112.6Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M89.1 112.5C88.1 108.3 94.9 112.5 104.0 120.8C98.6 117.1 104.2 125.8 100.5 125.1Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M75.2 120.7C72.0 118.4 79.6 119.7 77.0 118.2C85.2 121.9 94.6 126.0 91.3 126.2Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M19.5 125.1C15.3 126.5 18.6 119.2 15.7 120.6C22.9 115.1 31.1 108.7 30.9 112.5Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M13.9 112.6C5.8 108.7 6.1 96.8 13.0 85.7C11.8 94.4 23.8 93.0 27.2 102.0Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M13.2 65.7C6.4 62.9 9.3 52.8 4.9 51.8C15.2 50.3 26.7 48.4 27.9 55.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M14.8 52.7C5.9 42.0 10.5 25.1 23.3 13.4C18.7 25.2 34.5 30.7 35.6 45.6Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M24.7 45.2C18.5 28.7 28.3 9.5 23.7 0.9C36.9 12.7 51.9 25.2 48.7 43.9Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M71.3 43.9C66.5 33.8 77.8 23.5 95.4 19.2C86.0 26.0 100.0 34.5 95.3 45.2Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M84.4 45.6C84.3 30.9 98.6 19.6 97.3 11.5C104.9 24.9 113.8 39.5 105.2 52.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M92.1 55.7C94.2 45.4 106.9 41.0 120.5 43.9C110.9 46.1 115.5 58.5 106.8 65.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M49.5 46.0C43.9 31.0 55.1 14.4 73.2 6.5C63.9 17.5 78.9 29.4 74.5 46.0Z%22/%3E%3Crect x=%2221.5%22 y=%2245.5%22 width=%2277.0%22 height=%2277.0%22 rx=%2214%22 fill=%22%23FF8A00%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M92.6 102.9C92.7 97.9 100.2 98.5 99.6 95.4C103.3 102.1 107.7 109.7 103.1 111.5Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M87.9 113.4C87.0 110.1 92.4 113.5 99.6 120.2C95.3 117.2 99.9 124.1 97.1 123.4Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M19.2 118.9C14.8 118.7 16.6 111.8 13.7 112.3C20.5 109.0 28.1 105.1 28.9 109.3Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M16.0 88.0C11.3 86.8 13.8 79.9 20.5 72.4C18.1 77.7 26.4 75.2 27.0 80.0Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M16.9 57.5C10.3 52.5 13.2 42.0 8.9 39.8C18.9 40.8 30.1 41.7 31.3 50.3Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M23.5 48.1C17.9 37.4 24.9 24.2 37.9 16.7C31.8 25.7 44.2 33.1 42.3 45.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M68.1 45.5C63.9 38.8 72.6 31.6 69.3 28.1C79.3 33.2 90.7 38.6 87.2 45.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M83.9 47.1C82.6 36.9 93.3 29.1 107.2 28.0C98.8 32.8 107.1 43.0 101.1 52.1Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M91.9 56.8C92.9 49.5 102.4 46.9 102.2 42.6C105.8 50.8 110.0 60.0 103.9 64.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M52.0 47.5C47.5 37.5 56.5 26.4 71.0 21.1C63.5 28.5 75.5 36.4 72.0 47.5Z%22/%3E%3Crect x=%2222.8%22 y=%2246.8%22 width=%2274.4%22 height=%2274.4%22 rx=%2213%22 fill=%22%23FFD23F%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M92.5 104.0C92.6 100.3 98.2 100.7 97.9 98.4C100.6 103.5 103.8 109.2 100.4 110.5Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M19.6 110.5C16.8 110.7 19.1 106.3 17.2 106.8C22.1 104.3 27.7 101.4 27.5 104.0Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M19.0 63.7C15.1 62.3 17.2 56.5 22.9 50.8C20.8 55.0 27.7 53.7 28.1 57.8Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M23.2 51.4C18.8 46.3 23.4 38.5 20.3 36.0C28.4 38.6 37.5 41.3 36.6 48.3Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M52.8 46.8C49.6 43.1 56.0 39.1 66.5 37.2C61.1 39.9 69.7 42.8 67.2 46.8Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M83.4 48.3C81.5 42.4 88.9 38.1 87.2 34.9C93.4 40.3 100.5 46.2 96.8 51.4Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M91.9 57.8C91.9 53.3 98.3 52.4 106.0 55.0C101.1 55.2 104.9 61.2 101.0 63.7Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M54.5 48.8C51.1 43.3 57.9 37.2 68.8 34.3C63.1 38.4 72.1 42.7 69.5 48.8Z%22/%3E%3C/g%3E%3C/svg%3E");
+  --fire: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 27%22%3E%3Cstyle%3E.f%7Btransform-box:fill-box%3Btransform-origin:50%25 100%25%3Banimation:k 1.6s ease-in-out infinite alternate%7D.l%7Bfill:%23ff913d%3Banimation-duration:1.3s%3Banimation-delay:-.7s%7D.r%7Bfill:%23ff8535%3Banimation-duration:1.5s%3Banimation-delay:-.3s%7D.m%7Bfill:%23ffb044%3Banimation-duration:1.75s%3Banimation-delay:-.9s%7D.i%7Bfill:%23ffdc78%3Banimation-duration:1.2s%3Banimation-delay:-.4s%7D%40keyframes k%7B0%25%7Btransform:scaleY(.91) skewX(-2deg)%7D50%25%7Btransform:scaleY(1.03) skewX(1deg)%7D100%25%7Btransform:scaleY(.96) skewX(2deg)%7D%7D%40media (prefers-reduced-motion:reduce)%7B.f%7Banimation:none%7D%7D%3C/style%3E%3Cpath class=%22f l%22 d=%22M1 27 C0 21 2 18 6 12 C6 16 9 17 9 20 C12 16 11 14 11 12 C17 19 17 23 15 27 Z%22/%3E%3Cpath class=%22f r%22 d=%22M25 27 C23 23 24 19 29 14 C29 18 31 19 32 20 C34 17 34 15 34 12 C39 19 40 23 39 27 Z%22/%3E%3Cpath class=%22f m%22 d=%22M12 27 C9 22 12 17 17 11 C20 7 20 4 20 2 C28 10 26 16 25 19 C29 15 29 13 28 10 C36 19 32 24 29 27 Z%22/%3E%3Cpath class=%22f i%22 d=%22M17 27 C15 23 17 20 20 16 C21 19 21 21 22 22 C24 19 24 17 24 16 C29 22 27 26 26 27 Z%22/%3E%3C/svg%3E");
   position: relative;
   isolation: isolate;
   overflow: visible;
+  background: none;
   color: #fff;
-  text-shadow: 0 1px 0 rgb(140 20 0 / 0.6);
-  background: linear-gradient(180deg, #ff5a2a 0%, #e8261c 100%);
-  box-shadow: inset 0 0 0 2px #ffd23f, 0 6px 18px -6px rgb(255 70 20 / 0.7);
+  font-weight: 800;
 }
-.grade.g-devil {
-  --fire-a: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 140%22%3E%3Cdefs%3E%3Cmask id=%22m%22 maskUnits=%22userSpaceOnUse%22 x=%220%22 y=%220%22 width=%22120%22 height=%22140%22%3E%3Crect width=%22120%22 height=%22140%22 fill=%22%23fff%22/%3E%3Crect x=%2223.6%22 y=%2247.6%22 width=%2272.8%22 height=%2272.8%22 rx=%2223%22 fill=%22%23000%22/%3E%3C/mask%3E%3C/defs%3E%3Cg mask=%22url%28%23m%29%22%3E%3Crect x=%2220.0%22 y=%2244.0%22 width=%2280.0%22 height=%2280.0%22 rx=%2215%22 fill=%22%23E5370E%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M92.8 102.0C95.2 93.0 107.0 90.5 107.5 85.1C110.5 95.6 114.3 107.2 106.1 112.6Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M89.1 112.5C88.0 108.4 94.8 112.6 103.8 121.0C98.5 117.2 104.2 125.8 100.5 125.1Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M28.7 126.2C24.7 126.3 31.5 122.7 43.0 118.2C37.2 121.0 47.2 118.6 44.8 120.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M19.5 125.1C15.5 126.7 19.2 119.7 16.4 121.2C23.4 115.5 31.4 109.0 30.9 112.5Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M13.9 112.6C7.3 110.5 9.3 100.8 17.0 90.7C14.7 98.0 25.5 95.1 27.2 102.0Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M13.2 65.7C3.7 58.8 3.5 44.2 -2.3 41.2C10.0 42.6 23.7 43.9 27.9 55.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M14.8 52.7C7.0 45.2 12.9 32.0 26.3 22.0C20.8 31.4 35.7 34.3 35.6 45.6Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M24.7 45.2C18.7 32.2 28.7 17.1 24.2 10.4C37.2 19.5 52.1 29.1 48.7 43.9Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M71.3 43.9C66.9 25.8 78.7 6.7 96.5 -1.8C86.8 10.9 100.5 25.7 95.3 45.2Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M84.4 45.6C82.7 35.4 95.3 29.1 93.3 23.3C102.0 33.4 112.1 44.5 105.2 52.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M92.1 55.7C93.5 46.3 105.5 42.9 118.8 46.4C109.7 47.9 114.8 59.6 106.8 65.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M49.5 46.0C43.9 31.0 55.1 14.4 73.2 6.5C63.9 17.5 78.9 29.4 74.5 46.0Z%22/%3E%3Crect x=%2221.5%22 y=%2245.5%22 width=%2277.0%22 height=%2277.0%22 rx=%2214%22 fill=%22%23FF8A00%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M92.6 102.9C92.7 97.9 100.2 98.4 99.7 95.3C103.4 102.1 107.7 109.6 103.1 111.5Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M87.9 113.4C86.6 110.5 91.5 114.3 98.5 121.2C94.5 117.9 99.5 124.5 97.1 123.4Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M19.2 118.9C15.5 119.4 18.1 113.4 15.6 114.2C21.8 110.4 28.9 105.9 28.9 109.3Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M16.0 88.0C9.6 84.5 10.1 74.9 15.9 66.2C14.8 73.2 24.5 72.6 27.0 80.0Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M16.9 57.5C11.1 54.1 14.8 45.2 11.0 43.8C20.4 43.8 31.0 43.5 31.3 50.3Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M23.5 48.1C18.2 40.1 25.6 29.8 38.8 23.7C32.4 30.8 44.5 36.1 42.3 45.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M68.1 45.5C64.0 33.4 72.9 20.3 69.6 13.9C79.5 22.9 90.9 32.6 87.2 45.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M83.9 47.1C81.8 39.8 91.5 35.2 105.0 35.7C97.2 38.3 106.1 46.2 101.1 52.1Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M91.9 56.8C92.3 50.3 101.2 48.6 100.8 44.7C104.7 52.4 109.4 60.9 103.9 64.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M52.0 47.5C47.5 37.5 56.5 26.4 71.0 21.1C63.5 28.5 75.5 36.4 72.0 47.5Z%22/%3E%3Crect x=%2222.8%22 y=%2246.8%22 width=%2274.4%22 height=%2274.4%22 rx=%2213%22 fill=%22%23FFD23F%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M92.5 104.0C91.9 101.2 96.7 102.6 95.9 100.7C99.2 105.1 103.0 110.1 100.4 110.5Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M19.6 110.5C16.0 109.7 17.4 104.3 15.1 104.2C20.6 102.5 26.8 100.4 27.5 104.0Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M19.0 63.7C15.5 62.8 18.0 57.7 23.8 52.2C21.5 56.1 28.1 54.3 28.1 57.8Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M23.2 51.4C19.2 47.9 24.1 41.8 21.3 40.1C29.1 41.6 37.9 43.0 36.6 48.3Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M52.8 46.8C49.6 40.2 56.0 32.8 66.5 29.3C61.1 34.2 69.7 39.5 67.2 46.8Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M83.4 48.3C81.2 43.9 88.2 41.3 86.2 38.9C92.7 43.2 100.1 47.9 96.8 51.4Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M91.9 57.8C91.6 53.8 97.5 53.6 105.0 56.5C100.4 56.2 104.5 61.9 101.0 63.7Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M54.5 48.8C51.1 43.3 57.9 37.2 68.8 34.3C63.1 38.4 72.1 42.7 69.5 48.8Z%22/%3E%3C/g%3E%3Cpath d=%22M51.0 51.6 C52.0 35.6 39.0 24.6 26.0 18.6 C33.0 26.6 34.0 38.6 33.0 51.6 Z%22 fill=%22%23C8161F%22 stroke=%22%234A0309%22 stroke-width=%222.4%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M46.0 46.6 C45.0 36.6 37.0 28.6 31.0 23.6%22 fill=%22none%22 stroke=%22%23FF7A6B%22 stroke-width=%222%22 stroke-linecap=%22round%22 opacity=%220.9%22/%3E%3Cpath d=%22M69.0 51.6 C68.0 35.6 81.0 24.6 94.0 18.6 C87.0 26.6 86.0 38.6 87.0 51.6 Z%22 fill=%22%23C8161F%22 stroke=%22%234A0309%22 stroke-width=%222.4%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M74.0 46.6 C75.0 36.6 83.0 28.6 89.0 23.6%22 fill=%22none%22 stroke=%22%23FF7A6B%22 stroke-width=%222%22 stroke-linecap=%22round%22 opacity=%220.9%22/%3E%3C/svg%3E");
-  --fire-b: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 120 140%22%3E%3Cdefs%3E%3Cmask id=%22m%22 maskUnits=%22userSpaceOnUse%22 x=%220%22 y=%220%22 width=%22120%22 height=%22140%22%3E%3Crect width=%22120%22 height=%22140%22 fill=%22%23fff%22/%3E%3Crect x=%2223.6%22 y=%2247.6%22 width=%2272.8%22 height=%2272.8%22 rx=%2223%22 fill=%22%23000%22/%3E%3C/mask%3E%3C/defs%3E%3Cg mask=%22url%28%23m%29%22%3E%3Crect x=%2220.0%22 y=%2244.0%22 width=%2280.0%22 height=%2280.0%22 rx=%2215%22 fill=%22%23E5370E%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M92.8 102.0C93.1 95.5 102.7 95.8 102.1 91.8C106.6 100.4 112.0 110.0 106.1 112.6Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M89.1 112.5C88.1 108.3 94.9 112.5 104.0 120.8C98.6 117.1 104.2 125.8 100.5 125.1Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M75.2 120.7C72.0 118.4 79.6 119.7 77.0 118.2C85.2 121.9 94.6 126.0 91.3 126.2Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M19.5 125.1C15.3 126.5 18.6 119.2 15.7 120.6C22.9 115.1 31.1 108.7 30.9 112.5Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M13.9 112.6C5.8 108.7 6.1 96.8 13.0 85.7C11.8 94.4 23.8 93.0 27.2 102.0Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M13.2 65.7C6.4 62.9 9.3 52.8 4.9 51.8C15.2 50.3 26.7 48.4 27.9 55.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M14.8 52.7C5.9 42.0 10.5 25.1 23.3 13.4C18.7 25.2 34.5 30.7 35.6 45.6Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M24.7 45.2C18.5 28.7 28.3 9.5 23.7 0.9C36.9 12.7 51.9 25.2 48.7 43.9Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M71.3 43.9C66.5 33.8 77.8 23.5 95.4 19.2C86.0 26.0 100.0 34.5 95.3 45.2Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M84.4 45.6C84.3 30.9 98.6 19.6 97.3 11.5C104.9 24.9 113.8 39.5 105.2 52.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M92.1 55.7C94.2 45.4 106.9 41.0 120.5 43.9C110.9 46.1 115.5 58.5 106.8 65.7Z%22/%3E%3Cpath fill=%22%23E5370E%22 d=%22M49.5 46.0C43.9 31.0 55.1 14.4 73.2 6.5C63.9 17.5 78.9 29.4 74.5 46.0Z%22/%3E%3Crect x=%2221.5%22 y=%2245.5%22 width=%2277.0%22 height=%2277.0%22 rx=%2214%22 fill=%22%23FF8A00%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M92.6 102.9C92.7 97.9 100.2 98.5 99.6 95.4C103.3 102.1 107.7 109.7 103.1 111.5Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M87.9 113.4C87.0 110.1 92.4 113.5 99.6 120.2C95.3 117.2 99.9 124.1 97.1 123.4Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M19.2 118.9C14.8 118.7 16.6 111.8 13.7 112.3C20.5 109.0 28.1 105.1 28.9 109.3Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M16.0 88.0C11.3 86.8 13.8 79.9 20.5 72.4C18.1 77.7 26.4 75.2 27.0 80.0Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M16.9 57.5C10.3 52.5 13.2 42.0 8.9 39.8C18.9 40.8 30.1 41.7 31.3 50.3Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M23.5 48.1C17.9 37.4 24.9 24.2 37.9 16.7C31.8 25.7 44.2 33.1 42.3 45.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M68.1 45.5C63.9 38.8 72.6 31.6 69.3 28.1C79.3 33.2 90.7 38.6 87.2 45.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M83.9 47.1C82.6 36.9 93.3 29.1 107.2 28.0C98.8 32.8 107.1 43.0 101.1 52.1Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M91.9 56.8C92.9 49.5 102.4 46.9 102.2 42.6C105.8 50.8 110.0 60.0 103.9 64.8Z%22/%3E%3Cpath fill=%22%23FF8A00%22 d=%22M52.0 47.5C47.5 37.5 56.5 26.4 71.0 21.1C63.5 28.5 75.5 36.4 72.0 47.5Z%22/%3E%3Crect x=%2222.8%22 y=%2246.8%22 width=%2274.4%22 height=%2274.4%22 rx=%2213%22 fill=%22%23FFD23F%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M92.5 104.0C92.6 100.3 98.2 100.7 97.9 98.4C100.6 103.5 103.8 109.2 100.4 110.5Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M19.6 110.5C16.8 110.7 19.1 106.3 17.2 106.8C22.1 104.3 27.7 101.4 27.5 104.0Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M19.0 63.7C15.1 62.3 17.2 56.5 22.9 50.8C20.8 55.0 27.7 53.7 28.1 57.8Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M23.2 51.4C18.8 46.3 23.4 38.5 20.3 36.0C28.4 38.6 37.5 41.3 36.6 48.3Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M52.8 46.8C49.6 43.1 56.0 39.1 66.5 37.2C61.1 39.9 69.7 42.8 67.2 46.8Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M83.4 48.3C81.5 42.4 88.9 38.1 87.2 34.9C93.4 40.3 100.5 46.2 96.8 51.4Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M91.9 57.8C91.9 53.3 98.3 52.4 106.0 55.0C101.1 55.2 104.9 61.2 101.0 63.7Z%22/%3E%3Cpath fill=%22%23FFD23F%22 d=%22M54.5 48.8C51.1 43.3 57.9 37.2 68.8 34.3C63.1 38.4 72.1 42.7 69.5 48.8Z%22/%3E%3C/g%3E%3Cpath d=%22M51.0 51.6 C52.0 35.6 39.0 24.6 26.0 18.6 C33.0 26.6 34.0 38.6 33.0 51.6 Z%22 fill=%22%23C8161F%22 stroke=%22%234A0309%22 stroke-width=%222.4%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M46.0 46.6 C45.0 36.6 37.0 28.6 31.0 23.6%22 fill=%22none%22 stroke=%22%23FF7A6B%22 stroke-width=%222%22 stroke-linecap=%22round%22 opacity=%220.9%22/%3E%3Cpath d=%22M69.0 51.6 C68.0 35.6 81.0 24.6 94.0 18.6 C87.0 26.6 86.0 38.6 87.0 51.6 Z%22 fill=%22%23C8161F%22 stroke=%22%234A0309%22 stroke-width=%222.4%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M74.0 46.6 C75.0 36.6 83.0 28.6 89.0 23.6%22 fill=%22none%22 stroke=%22%23FF7A6B%22 stroke-width=%222%22 stroke-linecap=%22round%22 opacity=%220.9%22/%3E%3C/svg%3E");
-  background: linear-gradient(180deg, #e02a2a 0%, #9c0f17 100%);
-}
-.grade.g-fire::before,
-.grade.g-fire::after {
+.grade.g-devil { --fire: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 27%22%3E%3Cstyle%3E.f%7Btransform-box:fill-box%3Btransform-origin:50%25 100%25%3Banimation:k 1.6s ease-in-out infinite alternate%7D.l%7Bfill:%23ff913d%3Banimation-duration:1.3s%3Banimation-delay:-.7s%7D.r%7Bfill:%23ff8535%3Banimation-duration:1.5s%3Banimation-delay:-.3s%7D.m%7Bfill:%23ffb044%3Banimation-duration:1.75s%3Banimation-delay:-.9s%7D.i%7Bfill:%23ffdc78%3Banimation-duration:1.2s%3Banimation-delay:-.4s%7D%40keyframes k%7B0%25%7Btransform:scaleY(.91) skewX(-2deg)%7D50%25%7Btransform:scaleY(1.03) skewX(1deg)%7D100%25%7Btransform:scaleY(.96) skewX(2deg)%7D%7D%40media (prefers-reduced-motion:reduce)%7B.f%7Banimation:none%7D%7D%3C/style%3E%3Cpath class=%22f l%22 d=%22M1 27 C0 21 2 18 6 12 C6 16 9 17 9 20 C12 16 11 14 11 12 C17 19 17 23 15 27 Z%22/%3E%3Cpath class=%22f r%22 d=%22M25 27 C23 23 24 19 29 14 C29 18 31 19 32 20 C34 17 34 15 34 12 C39 19 40 23 39 27 Z%22/%3E%3Cpath class=%22f m%22 d=%22M12 27 C9 22 12 17 17 11 C20 7 20 4 20 2 C28 10 26 16 25 19 C29 15 29 13 28 10 C36 19 32 24 29 27 Z%22/%3E%3Cpath class=%22f i%22 d=%22M17 27 C15 23 17 20 20 16 C21 19 21 21 22 22 C24 19 24 17 24 16 C29 22 27 26 26 27 Z%22/%3E%3Cpath d=%22M6 26 C5 19 4 12 1 6 C7 9 11 15 13 26 Z%22 fill=%22%23c8161f%22 stroke=%22%234a0309%22 stroke-width=%221.1%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M34 26 C35 19 36 12 39 6 C33 9 29 15 27 26 Z%22 fill=%22%23c8161f%22 stroke=%22%234a0309%22 stroke-width=%221.1%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M7.5 21 C7 16 5.5 12 3.5 9%22 fill=%22none%22 stroke=%22%23ff7a6b%22 stroke-width=%221%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M32.5 21 C33 16 34.5 12 36.5 9%22 fill=%22none%22 stroke=%22%23ff7a6b%22 stroke-width=%221%22 stroke-linecap=%22round%22/%3E%3C/svg%3E"); }
+.grade.g-fire::before {
   content: "";
   position: absolute;
   z-index: -1;
-  left: -32%;
-  right: -32%;
-  top: -64.5%;
-  bottom: -26.4%;
-  background: var(--fire-a) center / 100% 100% no-repeat;
-  transform-origin: 50% 80%;
-  will-change: transform, opacity;
-  pointer-events: none;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(160deg, #d74b35, #b92f25);
+  box-shadow: 0 3px 10px rgb(181 48 35 / 0.15);
 }
-.grade.g-fire::before { animation: g-flame-sway 1.7s ease-in-out infinite alternate; }
+.grade.g-devil::before { background: linear-gradient(160deg, #cf2b2b, #9c111a); }
 .grade.g-fire::after {
-  background-image: var(--fire-b);
-  animation: g-flame-sway 1.3s ease-in-out -0.6s infinite alternate-reverse, g-flame-swap 0.85s ease-in-out infinite alternate;
-}
-@keyframes g-flame-sway {
-  0% { transform: scale(0.97, 0.93) skewX(-2.5deg); }
-  50% { transform: scale(1.01, 1.03) skewX(1deg); }
-  100% { transform: scale(0.99, 1.06) skewX(2.5deg); }
-}
-@keyframes g-flame-swap {
-  0%, 15% { opacity: 0; }
-  85%, 100% { opacity: 1; }
-}
-/* Con "riduci movimento": niente ondeggiamento, resta solo la dissolvenza tra i fotogrammi. */
-@media (prefers-reduced-motion: reduce) {
-  .grade.g-fire::before { animation: none !important; }
-  .grade.g-fire::after { animation: g-flame-swap 1.2s ease-in-out infinite alternate !important; }
+  content: "";
+  position: absolute;
+  z-index: -2;
+  left: 0;
+  right: 0;
+  bottom: 86%;
+  aspect-ratio: 40 / 27;
+  background: var(--fire) center bottom / 100% 100% no-repeat;
+  pointer-events: none;
 }
 
 /* Dal 9 in su: pastiglia piena con un riflesso che la attraversa ogni tanto (solo transform). */
@@ -503,15 +492,15 @@ a { color: inherit; text-decoration: none; }
   isolation: isolate;
 }
 .gd-hero .gd-big {
-  min-width: 96px;
+  width: 96px;
   height: 96px;
-  padding: 0 18px;
+  padding: 0;
   border-radius: 30px;
   font-size: 2.6rem;
   letter-spacing: -0.04em;
   animation: gd-in 520ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
-.gd-hero.is-low .gd-big.g-fire { margin-top: 44px; }
+.gd-hero.is-low .gd-big.g-fire { margin-top: 40px; }
 .gd-copy { display: grid; gap: 4px; animation: gd-copy-in 480ms cubic-bezier(0.23, 1, 0.32, 1) 90ms both; }
 .gd-copy .body-2 { color: var(--text-2); }
 .gd-glow {
@@ -536,7 +525,7 @@ a { color: inherit; text-decoration: none; }
 /* Celebrazione (≥ 9): il voto cade dall'alto e rimbalza, raggi che ruotano, alone che pulsa, coriandoli. */
 .gd-hero.is-top { padding-top: 46px; padding-bottom: 28px; }
 .gd-hero.is-top .gd-big {
-  min-width: 112px;
+  width: 112px;
   height: 112px;
   border-radius: 34px;
   font-size: 3.1rem;

@@ -302,7 +302,7 @@ export default {
       if (!rows.length) return setHTML(box, html`<div class="card">${emptyState({ iconName: lbFilter ? "search" : "trophy", title: lbFilter ? "Nessun risultato" : "Classifica vuota" })}</div>`);
       setHTML(box, html`<p class="caption admin-count tnum">${rows.length} ${rows.length === 1 ? "voce" : "voci"}${hidden ? ` · ${hidden} nascoste` : ""}</p>
         <ul class="card list admin-lb">${rows.slice(0, lbLimit).map((it) => html`<li class="row admin-lb-row${it.visible_in_leaderboard ? "" : " is-hidden"}" data-key="${lbKey(it)}">
-          <span class="${lbKind === "media" ? "grade grade-sm g-none" : "admin-hours"} tnum">${lbKind === "media" ? fmtNum(Number(it.average) || 0, 2) : `${fmtNum(Number(it.hours) || 0, 1)} h`}</span>
+          <span class="${lbKind === "media" ? "grade grade-sm grade-avg g-none" : "admin-hours"} tnum">${lbKind === "media" ? fmtNum(Number(it.average) || 0, 2) : `${fmtNum(Number(it.hours) || 0, 1)} h`}</span>
           <div class="row-main">
             <p class="row-title">${nameOf(it)} ${badgeChips(it.badges)}</p>
             <p class="row-sub tnum">${[it.username, it.class_code, it.school_code, it.school_year, lbKind === "media" && it.entries_count ? `${it.entries_count} medie` : ""].filter(Boolean).join(" · ")}</p>
