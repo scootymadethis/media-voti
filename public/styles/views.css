@@ -359,7 +359,6 @@ body.is-login { background: var(--bg); }
   background: var(--text);
   opacity: 0.85;
 }
-.phone-screen .grade.g-fire { margin: 0 6px; }
 .phone-screen .mock-row { padding-block: 9px; }
 .mock-title { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 4px; }
 .mock-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: var(--fill); }

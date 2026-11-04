@@ -139,7 +139,7 @@ export default {
       if (mode === "materie") {
         setHTML(list, html`<div class="subject-grid stagger">${subjects.map((s, i) => html`<button type="button" class="card subject-card pressable" data-subject="${i}">
           <div class="spread"><div class="row-main"><p class="title-3 clamp-2">${subjectName(s.name)}</p><p class="caption">${titleCase(s.teacher)}</p></div>
-            <span class="grade ${s.average === null ? "g-none" : gradeClass(s.average)}">${s.average === null ? "—" : fmtNum(s.average, 2)}</span></div>
+            <span class="grade grade-avg ${s.average === null ? "g-none" : gradeClass(s.average)}">${s.average === null ? "—" : fmtNum(s.average, 2)}</span></div>
           <div class="subject-chips">${s.grades.slice(0, 8).map((g) => gradeChip(g, "grade-sm"))}</div>
           ${s.average !== null ? html`<div class="bar"><span style="width:${Math.max(4, s.average * 10)}%;background:${gradeColor(s.average)}"></span></div>` : ""}
         </button>`)}</div>`);

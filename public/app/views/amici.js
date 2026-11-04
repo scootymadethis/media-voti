@@ -45,7 +45,7 @@ function badgeChips(list) {
 const nameOf = (p) => personName(p?.name || "") || "Studente";
 const firstOf = (p) => nameOf(p).split(" ")[0];
 const avatar = (p, cls = "") => html`<span class="amici-avatar ${cls}" aria-hidden="true">${initials(nameOf(p))}</span>`;
-const avgPill = (v, cls = "") => html`<span class="grade ${cls} ${gradeClass(v)}">${v === null || v === undefined ? "—" : fmtNum(v, 2)}</span>`;
+const avgPill = (v, cls = "") => html`<span class="grade grade-avg ${cls} ${gradeClass(v)}">${v === null || v === undefined ? "—" : fmtNum(v, 2)}</span>`;
 
 function trendChip(t) {
   if (t === null || t === undefined || Math.abs(t) < 0.05) return "";
