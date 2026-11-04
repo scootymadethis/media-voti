@@ -106,17 +106,42 @@ public class SpaggiariLoginPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     /// Ritorno dall'app CieID: aulera://<url https> → riapre l'URL nella WebView di login.
+    /// Accetta anche le varianti viste in giro: "aulera:<url>", URL percent-encoded, "?url=<url>".
+    /// Se l'URL non si capisce, ricarica la pagina corrente invece di lasciare la WebView ferma.
     @discardableResult
     static func handleReturnURL(_ url: URL) -> Bool {
         guard url.scheme?.lowercased() == returnScheme else { return false }
-        var rest = url.absoluteString
-        if let range = rest.range(of: "\(returnScheme)://", options: [.caseInsensitive, .anchored]) {
-            rest.removeSubrange(range)
+        if let next = continuationURL(from: url) {
+            shared?.loginController?.load(next)
+        } else {
+            shared?.loginController?.reloadCurrent()
         }
-        if !rest.lowercased().hasPrefix("http") { rest = "https://" + rest }
-        guard let next = URL(string: rest), next.scheme == "https" else { return false }
-        shared?.loginController?.load(next)
         return true
+    }
+
+    static func continuationURL(from url: URL) -> URL? {
+        // Prima l'URL intero dopo lo schema (il formato documentato), poi eventuali parametri.
+        var rest = url.absoluteString
+        for prefix in ["\(returnScheme)://", "\(returnScheme):"] {
+            if let range = rest.range(of: prefix, options: [.caseInsensitive, .anchored]) {
+                rest.removeSubrange(range)
+                break
+            }
+        }
+        var candidates: [String] = [rest]
+        if let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems {
+            for name in ["url", "redirect", "next", "return"] {
+                if let v = items.first(where: { $0.name.lowercased() == name })?.value { candidates.append(v) }
+            }
+        }
+        for raw in candidates {
+            var text = raw
+            if !text.lowercased().hasPrefix("http"), let decoded = text.removingPercentEncoding { text = decoded }
+            if text.lowercased().hasPrefix("https//") { text = "https://" + text.dropFirst(7) }
+            if !text.lowercased().hasPrefix("http") { text = "https://" + text }
+            if let next = URL(string: text), next.scheme == "https", next.host != nil { return next }
+        }
+        return nil
     }
 
     static func clearSpaggiariCookies(_ done: @escaping () -> Void) {
@@ -133,10 +158,24 @@ public class SpaggiariLoginPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    static func readPhpSessId(_ done: @escaping (String?) -> Void) {
+    /// PHPSESSID che il sito invierebbe alla pagina indicata: dominio e percorso più specifici
+    /// (come CookieManager.getCookie(url) su Android). Con più cookie PHPSESSID (es. uno vecchio
+    /// rimasto da prima del login CIE) prendere il primo a caso dava una sessione non valida.
+    static func readPhpSessId(for url: URL?, _ done: @escaping (String?) -> Void) {
         WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
-            let value = cookies.first { $0.name == "PHPSESSID" && $0.domain.hasSuffix("spaggiari.eu") && !$0.value.isEmpty }?.value
-            DispatchQueue.main.async { done(value) }
+            let host = url?.host?.lowercased() ?? "web.spaggiari.eu"
+            let path = url?.path.isEmpty == false ? url!.path : "/"
+            let all = cookies.filter { $0.name == "PHPSESSID" && $0.domain.lowercased().hasSuffix("spaggiari.eu") && !$0.value.isEmpty }
+            let matching = all.filter { c in
+                let d = c.domain.lowercased()
+                let domainOK = d.hasPrefix(".") ? (host == String(d.dropFirst()) || host.hasSuffix(d)) : host == d
+                return domainOK && path.hasPrefix(c.path)
+            }
+            let best = matching.sorted { a, b in
+                if a.path.count != b.path.count { return a.path.count > b.path.count }
+                return !a.domain.hasPrefix(".") && b.domain.hasPrefix(".")
+            }.first ?? all.first
+            DispatchQueue.main.async { done(best?.value) }
         }
     }
 }
@@ -241,6 +280,10 @@ final class SpaggiariLoginViewController: UIViewController, WKNavigationDelegate
         webView.load(URLRequest(url: url))
     }
 
+    func reloadCurrent() {
+        webView.reload()
+    }
+
     func resumeAfterFailedCheck() {
         timeoutWork?.cancel()
         verifying = false
@@ -264,7 +307,7 @@ final class SpaggiariLoginViewController: UIViewController, WKNavigationDelegate
         if urlString != lastPostLoginURL { retries = 0 }
         lastPostLoginURL = urlString
         guard !verifying else { return }
-        SpaggiariLoginPlugin.readPhpSessId { [weak self] value in
+        SpaggiariLoginPlugin.readPhpSessId(for: url) { [weak self] value in
             guard let self = self, let value = value, !self.verifying else { return }
             self.verifying = true
             self.overlay.isHidden = false
@@ -301,12 +344,14 @@ final class SpaggiariLoginViewController: UIViewController, WKNavigationDelegate
         decisionHandler(.cancel)
     }
 
-    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
-        detectSession(webView.url?.absoluteString)
-    }
-
+    // Solo a pagina caricata, e con un attimo di margine: WKHTTPCookieStore riceve i cookie della
+    // risposta in modo asincrono e subito dopo il commit può ancora restituire quelli vecchi.
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        detectSession(webView.url?.absoluteString)
+        let current = webView.url?.absoluteString
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self = self, self.webView.url?.absoluteString == current else { return }
+            self.detectSession(current)
+        }
     }
 
     // Link con target=_blank: aprili nella stessa WebView.

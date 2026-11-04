@@ -362,6 +362,12 @@ class WebSessionUtente(Utente):
             if card_resp.status_code == 200:
                 card = (card_resp.json() or {}).get("card") or {}
                 username = str(card.get("ident") or "").strip()
+            elif card_resp.status_code == 401:
+                # whoami risponde già, ma i dati dello studente no: accesso a metà (es. dopo la CIE
+                # ClasseViva chiede ancora di scegliere il profilo). La WebView di login resta aperta
+                # e il cookie viene ricontrollato alla pagina successiva.
+                self.is_logged_in = False
+                raise InvalidCredentials(MSG_WEB_SESSION_INVALID, upstream_status=401, upstream_detail="card non accessibile")
         except (requests.RequestException, ValueError):
             username = ""
         self.uid = username or f"S{self.ident}"
