@@ -18,6 +18,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import BaseModel, Field
 import classeviva_client
+import session_store
+import threading
 from classeviva_client import Utente, RequestURLs, ClasseVivaLoginError, WebSessionUtente
 import os
 import re
@@ -128,7 +130,10 @@ app.add_middleware(
 )
 
 DATABASE_PATH = os.getenv("DATABASE_PATH", os.path.join("data", "spaggiari2.db"))
-SESSION_TTL = 60 * 30  # 30 minuti
+# Sessione Aulera: 30 giorni dall'ultimo utilizzo (come l'app ufficiale), salvata su SQLite.
+SESSION_TTL = int(float(os.getenv("SESSION_TTL_DAYS", "30")) * 86400)
+# Ogni quanto il server "tocca" le sessioni ClasseViva attive perché non scadano per inattività.
+KEEPALIVE_INTERVAL = int(os.getenv("CLASSEVIVA_KEEPALIVE_SECONDS", "600"))
 # Cache per-sessione della risposta /session/me: entro questa finestra non si tocca Spaggiari.
 SESSION_ME_CACHE_TTL = int(os.getenv("SESSION_ME_CACHE_TTL", "60"))
 # Cache per-sessione della student card (condivisa tra /session/me e /card).
@@ -309,6 +314,7 @@ def init_db():
     with db_lock:
         with get_db_connection() as conn:
             conn.execute("PRAGMA journal_mode=WAL;")
+            session_store.init_tables(conn)
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS leaderboard_entries (
@@ -764,6 +770,7 @@ def _dedup_average_leaderboard(conn: sqlite3.Connection):
 @app.on_event("startup")
 def on_startup():
     init_db()
+    start_keepalive()
     with db_lock:
         with get_db_connection() as conn:
             n1 = _dedup_leaderboard(conn)
@@ -1657,8 +1664,175 @@ def check_login_rate_limit(client_ip: str, *, bucket: str = "login", max_attempt
         login_attempts[key] = attempts
 
 
-def purge_expired_sessions():
+# ---- persistenza sessioni (session_store) ----
+_session_store_ready = False
+_last_db_purge = 0.0
+SESSION_TOUCH_INTERVAL = 300  # scrive last_seen su disco al massimo ogni 5 minuti per sessione
+
+
+def _store(fn, *args, **kwargs):
+    """Esegue una funzione di session_store in una transazione; errori → log, mai crash."""
+    global _session_store_ready
+    try:
+        if not _session_store_ready:
+            session_store.configure(DATABASE_PATH)
+            _session_store_ready = True
+        with db_lock:
+            with get_db_connection() as conn:
+                result = fn(conn, *args, **kwargs)
+                conn.commit()
+                return result
+    except (sqlite3.Error, OSError, RuntimeError) as exc:
+        print(f"[sessioni] persistenza non disponibile: {exc}")
+        return None
+
+
+def _persist_session(sid: str, sess: dict) -> None:
+    u = sess.get("user")
+    if not isinstance(u, WebSessionUtente) or not u.phpsessid:
+        return
+    _store(
+        session_store.save_session, sid,
+        username=sess["username"], ident=str(u.ident or ""), first_name=u.first_name or "", last_name=u.last_name or "",
+        phpsessid=u.phpsessid, device_id=sess["device_id"], device_label=sess.get("device_label") or "",
+        linked_via=sess.get("linked_via"), created_at=sess["created_at"], last_seen=sess["last_seen"],
+        expires=sess["expires"],
+    )
+    sess["_persisted_at"] = time.time()
+
+
+def _new_session_record(u: Utente, username: str, *, device_id: str, device_label: str, linked_via: Optional[str],
+                        created_at: float, last_seen: float, expires: float) -> dict:
+    return {
+        "user": u,
+        "username": username,
+        "created_at": created_at,
+        "expires": expires,
+        # Identificativo pubblico del dispositivo (mai il session id) per elenco/revoca.
+        "device_id": device_id,
+        "device_label": device_label or "Dispositivo sconosciuto",
+        "linked_via": linked_via,  # None = login diretto, "pairing" = collegato dal telefono
+        "last_seen": last_seen,
+        "me_lock": Lock(),  # anti-burst: serializza /session/me della stessa sessione
+        "me_cache": None,   # (scadenza_epoch, risposta)
+        "card_lock": Lock(),
+        "card_cache": None,  # (scadenza_epoch, card_json) condivisa con /session/me
+    }
+
+
+def _shared_user_in_memory(username: str, phpsessid: Optional[str] = None) -> Optional[WebSessionUtente]:
+    aliases = username_aliases(username)
+    for sess in sessions.values():
+        u = sess.get("user")
+        if isinstance(u, WebSessionUtente) and username_aliases(getattr(u, "uid", None), getattr(u, "ident", None)) & aliases:
+            if phpsessid is None or u.phpsessid == phpsessid:
+                return u
+    return None
+
+
+def _restore_session(session_id: str) -> Optional[dict]:
+    """Ricarica dal DB una sessione non presente in memoria (es. dopo un riavvio)."""
+    row = _store(session_store.load_session, session_id)
+    if not row:
+        return None
     now = time.time()
+    if row["expires"] < now or not row.get("phpsessid"):
+        _store(session_store.delete_session, session_id)
+        return None
+    with sessions_lock:
+        if session_id in sessions:
+            return sessions[session_id]
+        user = _shared_user_in_memory(row["username"], row["phpsessid"])
+        if user is None:
+            user = WebSessionUtente(row["phpsessid"])
+            user.ident = row.get("ident") or ""
+            user.first_name = row.get("first_name") or ""
+            user.last_name = row.get("last_name") or ""
+            user.uid = row["username"]
+            user._app_username = row["username"]
+            user.is_logged_in = True
+        sess = _new_session_record(
+            user, row["username"], device_id=row["device_id"], device_label=row.get("device_label") or "",
+            linked_via=row.get("linked_via"), created_at=row["created_at"], last_seen=row["last_seen"],
+            expires=row["expires"],
+        )
+        sess["_persisted_at"] = now
+        sessions[session_id] = sess
+        return sess
+
+
+def end_classeviva_session(phpsessid: Optional[str], reason: str = "scaduta") -> None:
+    """ClasseViva ha rifiutato la sessione: chiude tutti i dispositivi che la usano e lo registra."""
+    if not phpsessid:
+        return
+    key = None
+    try:
+        if not _session_store_ready:
+            session_store.configure(DATABASE_PATH)
+        key = session_store.cookie_key(phpsessid)
+    except (OSError, RuntimeError):
+        key = None
+    if key:
+        _store(session_store.stats_ended, key, time.time(), reason)
+        _store(session_store.delete_by_cookie, key)
+    with sessions_lock:
+        for sid in [sid for sid, sess in sessions.items()
+                    if isinstance(sess.get("user"), WebSessionUtente) and sess["user"].phpsessid == phpsessid]:
+            sessions.pop(sid, None)
+    print(f"[sessioni] sessione ClasseViva terminata ({reason})")
+
+
+def keepalive_pass() -> dict:
+    """Tocca ogni sessione ClasseViva in uso: la tiene viva e ne misura la durata."""
+    result = {"ok": 0, "expired": 0, "unknown": 0}
+    rows = _store(session_store.live_cookies, time.time()) or []
+    for row in rows:
+        phpsessid = row["phpsessid"]
+        with sessions_lock:
+            user = _shared_user_in_memory(row["username"], phpsessid)
+        if user is None:
+            user = WebSessionUtente(phpsessid)
+        alive = user.ping()
+        if alive is True:
+            _store(session_store.stats_ok, row["cookie_key"], time.time())
+            result["ok"] += 1
+        elif alive is False:
+            end_classeviva_session(phpsessid, "scaduta")
+            result["expired"] += 1
+        else:
+            result["unknown"] += 1
+        time.sleep(0.2)  # niente raffiche verso ClasseViva
+    return result
+
+
+def _keepalive_loop() -> None:
+    while True:
+        time.sleep(KEEPALIVE_INTERVAL)
+        try:
+            outcome = keepalive_pass()
+            if outcome["expired"] or outcome["unknown"]:
+                print(f"[keep-alive] {outcome}")
+        except Exception as exc:  # il thread non deve mai morire
+            print(f"[keep-alive] errore: {exc}")
+
+
+_keepalive_started = False
+
+
+def start_keepalive() -> None:
+    global _keepalive_started
+    if _keepalive_started or KEEPALIVE_INTERVAL <= 0:
+        return
+    _keepalive_started = True
+    threading.Thread(target=_keepalive_loop, name="classeviva-keepalive", daemon=True).start()
+
+
+def purge_expired_sessions():
+    global _last_db_purge
+    now = time.time()
+    if now - _last_db_purge > 600:
+        _last_db_purge = now
+        _store(session_store.purge_expired, now)
     with sessions_lock:
         expired = [sid for sid, sess in sessions.items() if sess.get("expires", 0) < now]
         for sid in expired:
@@ -1674,6 +1848,7 @@ def destroy_session(session_id: Optional[str], admin_session_id: Optional[str] =
     if session_id:
         with sessions_lock:
             sessions.pop(session_id, None)
+        _store(session_store.delete_session, session_id)
     if admin_session_id:
         with sessions_lock:
             admin_sessions.pop(admin_session_id, None)
@@ -1795,18 +1970,29 @@ def get_session_record(session_id: Optional[str]) -> dict:
         raise HTTPException(status_code=401, detail="Non loggato")
 
     with sessions_lock:
-        if session_id not in sessions:
+        sess = sessions.get(session_id)
+    if sess is None:
+        sess = _restore_session(session_id)  # dopo un riavvio la sessione è solo su disco
+        if sess is None:
             raise HTTPException(status_code=401, detail="Non loggato")
 
-        sess = sessions[session_id]
+    with sessions_lock:
         if sess["expires"] < time.time():
             sessions.pop(session_id, None)
-            raise HTTPException(status_code=401, detail="Sessione scaduta")
-
-        # rinnova TTL a ogni richiesta
-        sess["expires"] = time.time() + SESSION_TTL
-        sess["last_seen"] = time.time()
-        return sess
+            expired = True
+        else:
+            expired = False
+            # rinnova TTL a ogni richiesta
+            sess["expires"] = time.time() + SESSION_TTL
+            sess["last_seen"] = time.time()
+            needs_touch = time.time() - sess.get("_persisted_at", 0) > SESSION_TOUCH_INTERVAL
+    if expired:
+        _store(session_store.delete_session, session_id)
+        raise HTTPException(status_code=401, detail="Sessione scaduta")
+    if needs_touch and isinstance(sess.get("user"), WebSessionUtente):
+        sess["_persisted_at"] = time.time()
+        _store(session_store.touch_session, session_id, sess["last_seen"], sess["expires"])
+    return sess
 
 
 def get_session_user(session_id: Optional[str]) -> Utente:
@@ -2182,22 +2368,13 @@ def create_session(
         u.uid = username.strip()
     sid = secrets.token_urlsafe(32)
     now = time.time()
+    sess = _new_session_record(
+        u, get_session_username(u), device_id=secrets.token_urlsafe(9), device_label=device_label or "",
+        linked_via=linked_via, created_at=now, last_seen=now, expires=now + SESSION_TTL,
+    )
     with sessions_lock:
-        sessions[sid] = {
-            "user": u,
-            "username": get_session_username(u),
-            "created_at": now,
-            "expires": now + SESSION_TTL,
-            # Identificativo pubblico del dispositivo (mai il session id) per elenco/revoca.
-            "device_id": secrets.token_urlsafe(9),
-            "device_label": device_label or "Dispositivo sconosciuto",
-            "linked_via": linked_via,  # None = login diretto, "pairing" = collegato dal telefono
-            "last_seen": now,
-            "me_lock": Lock(),  # anti-burst: serializza /session/me della stessa sessione
-            "me_cache": None,   # (scadenza_epoch, risposta)
-            "card_lock": Lock(),
-            "card_cache": None,  # (scadenza_epoch, card_json) condivisa con /session/me
-        }
+        sessions[sid] = sess
+    _persist_session(sid, sess)
     return sid
 
 
@@ -2231,9 +2408,16 @@ def session_me(
             if cached:
                 return cached[1]
             raise
-        except HTTPException:
-            # Solo 401/403 reale → sessione scaduta upstream → logout.
+        except HTTPException as exc:
+            if exc.status_code != 401:
+                # Errore di ClasseViva diverso dalla sessione scaduta: niente logout.
+                if cached:
+                    return cached[1]
+                raise
+            # 401/403 reale → sessione ClasseViva scaduta → logout su tutti i dispositivi.
             sess["me_cache"] = None
+            if isinstance(u, WebSessionUtente):
+                end_classeviva_session(u.phpsessid, "scaduta")
             destroy_session(session_id)
             response.delete_cookie(
                 key="session_id",
@@ -2373,11 +2557,23 @@ def login_web_session(
     # rifacendo SPID sul telefono, anche il PC collegato torna a funzionare.
     shared = _find_shared_web_user(username)
     if shared is not None:
+        old_cookie = shared.phpsessid
+        if old_cookie and old_cookie != phpsessid:
+            try:
+                _store(session_store.stats_ended, session_store.cookie_key(old_cookie), time.time(), "sostituita")
+            except RuntimeError:
+                pass
         shared.update_session(phpsessid)
         shared.is_logged_in = True
+        for attr in ("ident", "first_name", "last_name"):
+            if getattr(candidate, attr, None):
+                setattr(shared, attr, getattr(candidate, attr))
         user = shared
     else:
         user = candidate
+    # Anche i dispositivi salvati su disco (non ancora in memoria) usano la nuova sessione.
+    _store(session_store.update_cookie_for_users, username_aliases(username), phpsessid)
+    _store(session_store.stats_started, phpsessid, username, time.time())
 
     sid = create_session(user, username, device_label=describe_device(request))
     background_tasks.add_task(broadcast_admin_login, username)
@@ -2557,6 +2753,20 @@ def list_devices(session_id: Optional[str] = Cookie(default=None)):
                     "current": sid == session_id,
                 }
             )
+    # Dispositivi salvati su disco ma non ancora tornati in memoria dopo un riavvio.
+    known = {item["device_id"] for item in items}
+    current_hash = session_store.sid_key(session_id) if session_id else None
+    for row in _store(session_store.sessions_for_users, aliases, now) or []:
+        if row["device_id"] in known:
+            continue
+        items.append({
+            "device_id": row["device_id"],
+            "label": row.get("device_label") or "Dispositivo sconosciuto",
+            "linked_via": row.get("linked_via"),
+            "created_at": row.get("created_at"),
+            "last_seen": row.get("last_seen"),
+            "current": row["sid_hash"] == current_hash,
+        })
     items.sort(key=lambda item: (not item["current"], -(item.get("last_seen") or 0)))
     return {"ok": True, "devices": items}
 
@@ -2575,11 +2785,13 @@ def revoke_device(body: DeviceRevokeBody, session_id: Optional[str] = Cookie(def
             ),
             None,
         )
-        if target is None:
-            raise HTTPException(status_code=404, detail="Dispositivo non trovato")
-        if target == session_id:
+        if target == session_id or body.device_id == current.get("device_id"):
             raise HTTPException(status_code=400, detail="Per uscire da questo dispositivo usa Esci")
-        sessions.pop(target, None)
+        if target is not None:
+            sessions.pop(target, None)
+    removed = _store(session_store.delete_device, body.device_id, aliases) or 0
+    if target is None and not removed:
+        raise HTTPException(status_code=404, detail="Dispositivo non trovato")
     return {"ok": True}
 
 
@@ -4545,6 +4757,13 @@ def admin_logout(
     clear_admin_session(admin_session_id)
     clear_admin_cookie(response)
     return {"ok": True}
+
+
+@app.get("/admin/session-stats")
+def admin_session_stats(_: Utente = Depends(current_admin)):
+    """Durata reale delle sessioni ClasseViva (dal login all'ultimo controllo riuscito)."""
+    summary = _store(session_store.stats_summary, time.time()) or {"items": []}
+    return {"ok": True, "keepalive_seconds": KEEPALIVE_INTERVAL, "session_ttl_days": SESSION_TTL / 86400, **summary}
 
 
 @app.get("/admin/overview")

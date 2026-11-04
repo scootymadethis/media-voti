@@ -53,6 +53,11 @@ needed. See `README.md` / `scripts/dev-windows.ps1` for the split-server alterna
   import map / CSS links when changing frontend files. Never import shared modules by relative path
   from views (it would create a second module instance). `scripts/dev_fake_server.py` runs the app with
   a fake ClasseViva (login via the dev cookie field with any 16+ char value).
+- Sessions (`session_store.py`) last 30 days and are persisted in SQLite (`auth_sessions`, ClasseViva
+  cookie encrypted with `AULERA_SECRET_KEY` or the generated `aulera-secret.key` next to the DB);
+  a background keep-alive thread pings ClasseViva every `CLASSEVIVA_KEEPALIVE_SECONDS` and records
+  lifetimes in `cvv_session_stats` (admin → "Durata sessioni ClasseViva"). Tests should set
+  `CLASSEVIVA_KEEPALIVE_SECONDS=0`.
 - Username/password login was removed (ClasseViva is SPID/CIE-only); the admin panel relies on the
   SPID session plus optional `ADMIN_PANEL_PASSWORD`.
 - SPID/CIE support (see `docs/spid-cie.md`): `WebSessionUtente` authenticates with the

@@ -26,13 +26,28 @@ con SPID o CIE: username e password non funzionano più. Aulera supporta questi 
 - Endpoint: `GET /auth/options`, `POST /login/web-session`, `POST /pair/start`,
   `POST /pair/status`, `POST /pair/lookup`, `POST /pair/confirm`, `GET /devices`,
   `POST /devices/revoke` (dietro Nginx: prefisso `/api`).
-- Tutto è in memoria, come le sessioni esistenti: un riavvio del backend (anche un deploy)
-  scollega tutti.
+- **Sessioni da 30 giorni** (dall'ultimo utilizzo), salvate su SQLite da `session_store.py`
+  (tabella `auth_sessions`): sopravvivono a riavvii e deploy e vengono ricaricate alla prima
+  richiesta di ogni dispositivo. Il session id del browser è salvato solo come SHA-256; il cookie
+  ClasseViva è cifrato (keystream HMAC-SHA256 + tag HMAC, solo libreria standard). Il segreto
+  arriva da `AULERA_SECRET_KEY` oppure dal file `aulera-secret.key` creato accanto al database
+  (permessi 600): non perderlo, o le sessioni salvate diventano illeggibili (si rifà SPID).
+  I codici di collegamento restano in memoria (durano 5 minuti).
+- **Keep-alive**: ogni `CLASSEVIVA_KEEPALIVE_SECONDS` (10 min) il server chiama `/misc/whoami`
+  per ogni sessione ClasseViva in uso, così non scade per inattività. Se ClasseViva la rifiuta,
+  Aulera chiude tutti i dispositivi che la usano (al prossimo accesso chiede di rifare SPID).
+  Solo un vero 401 chiude la sessione: errori di rete, 429 e 5xx no.
+- **Misura**: `cvv_session_stats` registra nascita, ultimo controllo riuscito e fine di ogni
+  sessione ClasseViva; il pannello admin (Panoramica → "Durata sessioni ClasseViva") mostra durata
+  mediana e massima (`GET /admin/session-stats`).
 
 Variabili d'ambiente (tutte opzionali):
 
 | Variabile | Default | Uso |
 |---|---|---|
+| `SESSION_TTL_DAYS` | `30` | durata della sessione Aulera dall'ultimo utilizzo |
+| `CLASSEVIVA_KEEPALIVE_SECONDS` | `600` | intervallo del keep-alive (0 = disattivato) |
+| `AULERA_SECRET_KEY` | file `aulera-secret.key` | segreto per cifrare i cookie salvati (consigliato in produzione) |
 | `CLASSEVIVA_WEB_BASE_URL` | `https://web.spaggiari.eu/rest/w1` | API web |
 | `CLASSEVIVA_WEB_USER_AGENT` | UA di Chrome Android | User-Agent verso le API web |
 | `PAIRING_TTL` | `300` | durata del codice di collegamento (secondi) |
@@ -110,6 +125,7 @@ cookie di sessione è pericoloso.
 - **iPhone**: il progetto non è mai stato compilato (scritto su Linux, senza Xcode). Il flusso CIE su
   iOS (schema `CIEID://`) segue la documentazione IPZS ma non è verificato.
 - **L'app usa il sito pubblicato**: funziona solo dopo il deploy di queste modifiche.
-- **Durata**: quanto resta valida una sessione ClasseViva non è ancora misurato
-  (`scripts/check_spid_session.py --watch 240`). Quando scade, si rifà SPID dall'app.
-- **Riavvii**: le sessioni sono in memoria, quindi un deploy scollega tutti i dispositivi.
+- **Durata massima di ClasseViva**: il keep-alive evita la scadenza per inattività, ma se
+  ClasseViva impone una durata massima fissa la sessione finisce comunque (lo dirà la statistica nel
+  pannello admin). L'app ufficiale arriva a 30 giorni probabilmente con un rinnovo dedicato
+  (`rest/v1/auth/spidrf`), non documentato.

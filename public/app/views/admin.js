@@ -197,10 +197,32 @@ export default {
       ws = null; wsTries = 0;
     }
 
+    /* ---------------- durata sessioni ClasseViva ---------------- */
+    const hours = (h) => (h === null || h === undefined ? "—" : h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${fmtNum(h, 1)} h` : `${fmtNum(h / 24, 1)} g`);
+    const REASONS = { scaduta: "Scaduta su ClasseViva", sostituita: "Sostituita da un nuovo accesso" };
+    function cvvStats(c) {
+      if (!c) return "";
+      const ended = (c.items || []).filter((i) => i.ended_at).slice(0, 8);
+      return html`<section class="section">
+        <div class="section-head"><p class="overline">Durata sessioni ClasseViva</p><span class="caption">controllo ogni ${Math.round((c.keepalive_seconds || 0) / 60)} min · sessione Aulera ${fmtNum(c.session_ttl_days, 0)} giorni</span></div>
+        <div class="stats-row admin-stats">
+          <div class="stat"><span class="stat-num">${hours(c.median_hours)}</span><span class="stat-label">durata mediana (${c.expired_count || 0} scadute)</span></div>
+          <div class="stat"><span class="stat-num">${hours(c.max_hours)}</span><span class="stat-label">durata massima osservata</span></div>
+          <div class="stat"><span class="stat-num">${hours(c.longest_active_hours)}</span><span class="stat-label">attiva da più tempo (${c.active_count || 0} attive)</span></div>
+        </div>
+        ${ended.length ? html`<ul class="card list" style="margin-top:12px">${ended.map((i) => html`<li class="row">
+            <span class="row-icon">${icon("history")}</span>
+            <div class="row-main"><p class="row-title tnum">${i.username || "—"} · ${hours(i.alive_hours)}</p>
+              <p class="row-sub">${REASONS[i.end_reason] || i.end_reason || ""} · ${ago(i.ended_at)}</p></div></li>`)}</ul>`
+          : html`<p class="caption" style="margin-top:10px">Nessuna sessione scaduta finora: la durata compare qui appena ClasseViva ne chiude una.</p>`}
+      </section>`;
+    }
+
     /* ---------------- panoramica ---------------- */
     async function loadOverview({ quiet = false } = {}) {
       try {
         data.overview = await A.get("/admin/overview");
+        data.cvv = await A.get("/admin/session-stats").catch(() => null);
         if (!ws || wsState !== "on") data.sessions = data.overview.active_session_details || data.sessions;
         if (section === "overview") drawOverview();
       } catch (err) {
@@ -237,7 +259,8 @@ export default {
                 <span class="row-trail caption tnum">${ago(l.timestamp)}</span></li>`)}</ul>`
               : html`<div class="card">${emptyState({ iconName: "history", title: "Nessun accesso recente", text: wsState === "on" ? "Gli accessi compaiono qui appena avvengono." : "Il feed degli accessi richiede la connessione in tempo reale." })}</div>`}
           </section>
-        </div>`);
+        </div>
+        ${cvvStats(data.cvv)}`);
       data.logins.forEach((l) => { l.fresh = false; });
     }
 
