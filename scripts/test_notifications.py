@@ -12,7 +12,8 @@ from datetime import date, timedelta
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-os.environ.setdefault("DATABASE_PATH", os.path.join(tempfile.mkdtemp(), "test.db"))
+# DB sempre isolato: il test conta tutte le sessioni presenti nel DB.
+os.environ["DATABASE_PATH"] = os.path.join(tempfile.mkdtemp(), "test.db")
 os.environ.setdefault("COOKIE_SECURE", "false")
 os.environ["CLASSEVIVA_KEEPALIVE_SECONDS"] = "0"
 os.environ["NOTIF_CALL_PAUSE"] = "0"
