@@ -26,6 +26,7 @@ const EXTRA = {
   copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2.2"/><path d="M15.5 8.5V6.2a1.7 1.7 0 0 0-1.7-1.7H6.2a1.7 1.7 0 0 0-1.7 1.7v7.6a1.7 1.7 0 0 0 1.7 1.7h2.3"/>',
   userPlus: '<circle cx="10" cy="8.5" r="3.6"/><path d="M3.5 19.5c1-3.4 3.4-5 6.5-5s5.5 1.6 6.5 5M18.5 7.5v6M15.5 10.5h6"/>',
   block: '<circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/>',
+  ellipsis: '<circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none"/>',
 };
 const ico = (name) => raw(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${EXTRA[name]}</svg>`);
 
@@ -58,6 +59,13 @@ function updatedText(ts) {
   const rel = relativeDay(d);
   const time = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
   return ["Oggi", "Ieri"].includes(rel) ? `Aggiornato ${rel.toLowerCase()} alle ${time}` : `Aggiornato il ${fmtDate(d)}`;
+}
+function shortUpdated(ts) {
+  if (!ts) return "data sconosciuta";
+  const d = new Date(ts * 1000);
+  const rel = relativeDay(d);
+  if (rel === "Oggi") return `oggi ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+  return rel === "Ieri" ? "ieri" : fmtDate(d);
 }
 function sinceText(ts) {
   if (!ts) return "";
@@ -180,7 +188,7 @@ export default {
                 <div class="row-main"><p class="row-title">${nameOf(r)} ${badgeChips(r.badges)}</p>
                   <p class="row-sub">${[r.class_code ? `Classe ${r.class_code}` : "", agoText(r.created_at)].filter(Boolean).join(" · ")}</p></div>
                 <div class="amici-req-actions">
-                  <button type="button" class="btn btn-icon amici-act" data-req-more aria-label="Altre azioni">${icon("more")}</button>
+                  <button type="button" class="btn btn-icon amici-act" data-req-more aria-label="Altre azioni">${ico("ellipsis")}</button>
                   <button type="button" class="btn btn-icon amici-act" data-decline aria-label="Rifiuta">${icon("close")}</button>
                   <button type="button" class="btn btn-primary btn-icon amici-act" data-accept aria-label="Accetta">${icon("check")}</button>
                 </div>
@@ -191,10 +199,10 @@ export default {
               <div class="section-head"><h2 class="title-2">I tuoi amici</h2>${friends.length ? html`<span class="caption tnum">${friends.length} di ${limits.friends}</span>` : ""}</div>
               ${friends.length ? html`<ul class="card list amici-list stagger">${friends.map((f, i) => {
                 const shares = f.shares !== "none";
-                const sub = !shares ? "Non condivide i voti" : !f.has_data ? "Nessun voto salvato" : updatedText(f.updated_at);
+                const sub = !shares ? "Non condivide i voti" : !f.has_data ? "Nessun voto salvato" : shortUpdated(f.updated_at);
                 return html`<li><button type="button" class="row amici-friend" data-friend="${i}">
                   ${avatar(f)}
-                  <div class="row-main"><p class="row-title">${nameOf(f)} ${badgeChips(f.badges?.slice(0, 2))}</p>
+                  <div class="row-main"><p class="row-title"><span class="amici-name">${nameOf(f)}</span>${badgeChips(f.badges?.slice(0, 2))}</p>
                     <p class="row-sub">${f.class_code ? `${f.class_code} · ` : ""}${sub}</p></div>
                   <span class="row-trail">${shares && f.has_data ? html`${trendChip(f.trend)}${avgPill(f.general_average, "grade-sm")}` : shares ? "" : icon("lock", "amici-lock")}${icon("chevronRight", "chev")}</span>
                 </button></li>`;

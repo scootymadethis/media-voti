@@ -108,7 +108,9 @@
 .amici-list > li { list-style: none; position: relative; }
 .amici-list > li + li::before { content: ""; position: absolute; z-index: 1; top: 0; left: 76px; right: 0; height: 1px; background: var(--hairline); }
 .amici-friend { min-height: 68px; }
-.amici-friend .row-title .amici-badges { margin-left: 4px; }
+.amici-friend .row-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.amici-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.amici-friend .row-title .amici-badges { flex: none; flex-wrap: nowrap; }
 .amici-friend .row-trail { gap: 6px; }
 .amici-lock { width: 16px; height: 16px; color: var(--text-3); }
 .amici-trend { min-height: 24px; padding: 0 8px; gap: 3px; font-variant-numeric: tabular-nums; }
@@ -214,6 +216,7 @@
 .amici-legend .is-friend::before { background: var(--violet); }
 
 @media (max-width: 380px) {
+  .amici-friend .amici-trend { display: none; }
   .amici-summary { gap: 14px; }
   .amici-hero-actions .btn { font-size: 0.875rem; }
 }

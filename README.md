@@ -1,6 +1,6 @@
-# Aulera
+# Skoolio
 
-Client non ufficiale del registro elettronico ClasseViva (repo `media-voti`): un backend FastAPI
+**Skoolio** (prima Aulera): client non ufficiale del registro elettronico ClasseViva (repo `media-voti`): un backend FastAPI
 (`main.py`) e un'app web a pagina singola (`public/`), più le app Android e iPhone (Capacitor) che
 la incapsulano. Dal 2026 l'accesso avviene **solo con SPID o CIE**.
 
@@ -12,7 +12,13 @@ la incapsulano. Dal 2026 l'accesso avviene **solo con SPID o CIE**.
 - **Bacheca** con allegati, **note**, **didattica** (file e link dei docenti), **documenti**, **libri**.
 - **Classifiche** di classe e d'istituto (media e assenze) in tempo reale, con visibilità a scelta.
 - **Dispositivi**: il PC si collega dal telefono con un QR o un codice.
-- Pannello **admin** (sessioni, classifiche, badge, annuncio).
+- **Notifiche**: il server controlla ClasseViva ogni 10 minuti finché sei collegato e ti avvisa di nuovi voti,
+  comunicazioni, note, compiti, assenze e materiali (campanella, centro notifiche, notifiche Android ad app chiusa).
+- **Amici**: aggiungi i compagni con un codice o un QR e condividi (se vuoi) media, medie per materia o voti.
+- **Personalizza**: tema, colore principale, sezioni della barra in basso, ordine delle schede della home, densità.
+  Le scelte valgono su tutti i dispositivi.
+- **Calendario sul telefono**: link `webcal` personale con compiti e verifiche (Calendario di iPhone, Google Calendar).
+- Pannello **admin** (sessioni, durata delle sessioni ClasseViva, classifiche, badge, annuncio).
 
 ## Struttura
 
@@ -26,6 +32,8 @@ la incapsulano. Dal 2026 l'accesso avviene **solo con SPID o CIE**.
 | `android/`, `ios/` | App Capacitor 7 con il plugin nativo `SpaggiariLogin` |
 | `app-shell/` | Pagina offline delle app (le app caricano il sito pubblicato) |
 | `docs/spid-cie.md` | Come funzionano accesso SPID/CIE, collegamento del PC e build delle app |
+| `docs/iphone.md` | Installare l'app su iPhone senza account a pagamento (IPA dal workflow + Sideloadly/AltStore) |
+| `session_store.py`, `notifications.py`, `friends.py` | Sessioni persistenti, novità e notifiche, amici |
 
 ## Variabili ambiente
 
