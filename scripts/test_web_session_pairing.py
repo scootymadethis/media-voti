@@ -319,6 +319,22 @@ def test_expired_code():
         assert pc.post("/pair/status", json={"pair_id": start["pair_id"]}).json()["status"] == "expired"
 
 
+def test_half_login_rejected_until_card_works():
+    """CIE: whoami risponde ma i dati dello studente no (profilo da scegliere) → login rifiutato (401)."""
+    original = cv.requests.get
+    cv.requests.get = lambda url, headers=None, **kw: (
+        FakeResponse(302, None, content_type="text/html") if url.endswith("/card") else original(url, headers, **kw))
+    try:
+        with TestClient(main.app) as phone:
+            r = web_login(phone)
+            assert r.status_code == 401, r.text
+            assert "session_id" not in phone.cookies
+    finally:
+        cv.requests.get = original
+    with TestClient(main.app) as phone:
+        assert web_login(phone).status_code == 200
+
+
 if __name__ == "__main__":
     tests = [v for k, v in globals().items() if k.startswith("test_") and callable(v)]
     for t in tests:
