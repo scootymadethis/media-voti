@@ -6,7 +6,9 @@ Serve per sviluppare e provare l'interfaccia senza un account reale:
     PORT=8011 .venv/bin/python scripts/dev_fake_server.py
 
 Per entrare: pagina di login -> "Sviluppo: accedi con un cookie" -> qualsiasi valore di
-almeno 16 caratteri (es. devsession000000001). Il DB è temporaneo (/tmp).
+almeno 16 caratteri (es. devsession000000001). Un valore che inizia con "devfriend"
+(es. devfriend00000001) entra come un secondo studente della stessa classe, per provare gli amici.
+Il DB è temporaneo (/tmp).
 """
 from __future__ import annotations
 
@@ -33,6 +35,7 @@ import requests  # noqa: E402
 import classeviva_client as cv  # noqa: E402
 
 STUDENT_ID = "7654321"
+OTHER_ID = "1000001"  # secondo studente, stessa classe
 TODAY = date.today()
 rng = random.Random(42)
 
@@ -264,16 +267,19 @@ def fake(method: str, url: str, headers=None, **kw):
         return R(200, None, "application/pdf", PDF, {"Content-Disposition": 'attachment; filename="documento.pdf"'})
     if not (headers or {}).get("Cookie", "").startswith("PHPSESSID="):
         return R(302, None, "text/html")
-    base = f"/rest/w1/students/{STUDENT_ID}"
+    # Secondo studente (per provare gli amici): cookie che iniziano con "devfriend".
+    other = (headers or {}).get("Cookie", "").startswith("PHPSESSID=devfriend")
+    sid, first, last = (OTHER_ID, "Marco", "Bellini") if other else (STUDENT_ID, "Giulia", "Conti")
+    base = f"/rest/w1/students/{sid}"
     path = url.split("web.spaggiari.eu", 1)[-1].split("?", 1)[0]
     if path == "/rest/w1/misc/whoami":
-        return R(200, {"id": f"S{STUDENT_ID}", "nome": "Giulia", "cognome": "Conti", "account_type": "S"})
+        return R(200, {"id": f"S{sid}", "nome": first, "cognome": last, "account_type": "S"})
     if not path.startswith(base):
         return R(404, {"error": "not found"})
     p = path[len(base):]
     if p == "/card":
-        return R(200, {"card": {"ident": f"S{STUDENT_ID}X", "usrId": int(STUDENT_ID), "usrType": "S", "firstName": "GIULIA",
-                                "lastName": "CONTI", "birthDate": "2008-03-14", "fiscalCode": "XXXXXX08C54L781X",
+        return R(200, {"card": {"ident": f"S{sid}X", "usrId": int(sid), "usrType": "S", "firstName": first.upper(),
+                                "lastName": last.upper(), "birthDate": "2008-03-14", "fiscalCode": "XXXXXX08C54L781X",
                                 "schCode": "VRIT0007", "schName": "ISTITUTO TECNICO", "schDedication": "G. MARCONI",
                                 "schCity": "VERONA", "schProv": "VR", "miurSchoolCode": "VRTF03000V", "miurDivisionCode": "VRTF03000V"}})
     if p == "/grades":

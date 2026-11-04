@@ -25,6 +25,8 @@ export const ROUTES = [
   { path: "/documenti", title: "Documenti", icon: "doc", group: "Comunicazioni", load: view("documenti") },
   { path: "/libri", title: "Libri", icon: "books", group: "Comunicazioni", load: view("libri") },
   { path: "/classifica", title: "Classifica", icon: "trophy", group: "Community", load: view("classifica") },
+  { path: "/amici", title: "Amici", icon: "friends", group: "Community", load: view("amici") },
+  { path: "/notifiche", title: "Notifiche", icon: "bell", group: "Account", load: view("notifiche") },
   { path: "/dispositivi", title: "Dispositivi", icon: "devices", group: "Account", load: view("dispositivi") },
   { path: "/profilo", title: "Profilo", icon: "person", group: "Account", load: view("profilo") },
   { path: "/admin", title: "Admin", icon: "shield", group: "Account", admin: true, load: view("admin") },

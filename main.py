@@ -315,6 +315,8 @@ def init_db():
         with get_db_connection() as conn:
             conn.execute("PRAGMA journal_mode=WAL;")
             session_store.init_tables(conn)
+            friends.init_tables(conn)
+            notifications.init_tables(conn)
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS leaderboard_entries (
@@ -1792,7 +1794,7 @@ def keepalive_pass() -> dict:
             user = _shared_user_in_memory(row["username"], phpsessid)
         if user is None:
             user = WebSessionUtente(phpsessid)
-        alive = user.ping()
+        alive = notifications.sync_session(user, row["username"])
         if alive is True:
             _store(session_store.stats_ok, row["cookie_key"], time.time())
             result["ok"] += 1
@@ -4915,6 +4917,14 @@ async def admin_badge_batch(body: BadgeBatchBody, _: Utente = Depends(current_ad
     await broadcast_leaderboard_change("badge", "*")
     await broadcast_average_leaderboard_change("badge", "*")
     return {"ok": True, **result}
+
+
+# ---- moduli: amici e notifiche (importati qui, quando main è già completo) ----
+import friends  # noqa: E402
+import notifications  # noqa: E402
+
+app.include_router(friends.router)
+app.include_router(notifications.router)
 
 
 if DEV_MODE and os.path.isdir(PUBLIC_DIR):
