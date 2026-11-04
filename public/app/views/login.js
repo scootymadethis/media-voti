@@ -16,14 +16,14 @@ const PRIVACY = html`<div class="md">
 </div>`;
 
 function brandMark() {
-  return html`<div class="login-brand"><img src="/assets/skoolio-mark.svg" alt="" /><span>Skoolio</span></div>`;
+  return html`<div class="login-brand"><img class="logo-img logo-on-dark" src="/assets/skoolio-logo.png" alt="Skoolio" width="771" height="160" /><img class="logo-img logo-on-light" src="/assets/skoolio-logo-dark.png" alt="Skoolio" width="771" height="160" /></div>`;
 }
 
 /* ---------------- abbinamento PC/browser ---------------- */
 function pairCard() {
   return html`<section class="pair-card glass" aria-labelledby="pair-title">
     <header class="pair-head">
-      <img class="pair-app-icon" src="/assets/skoolio-mark.svg" alt="" />
+      <img class="pair-app-icon" src="/assets/skoolio-512.png" alt="" />
       <div class="pair-head-text">
         <p class="overline pair-kicker">Accesso da computer</p>
         <h2 id="pair-title" class="pair-title">Inquadra questo QR con l'app <span class="pair-brand">Skoolio</span> sul telefono</h2>
@@ -143,7 +143,7 @@ function startPairing(root, onLoggedIn) {
 function renderApp(root, onLoggedIn) {
   setHTML(root, html`<div class="login-app">
     <div class="login-app-hero">
-      <div class="app-icon glass">${raw('<img src="/assets/skoolio-mark.svg" alt="" />')}</div>
+      <img class="app-icon" src="/assets/skoolio-512.png" alt="Skoolio" width="512" height="512" />
       <h1 class="large-title">La scuola,<br /><span class="gradient-text">finalmente chiara.</span></h1>
       <p class="body-2">Voti, agenda, bacheca e orario del tuo registro, in un'unica app.</p>
     </div>
