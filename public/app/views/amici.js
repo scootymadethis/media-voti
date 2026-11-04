@@ -536,11 +536,12 @@ export default {
       </section>`;
     };
 
+    let openDetail = null; // pannello di un amico aperto: {code, reload}
     const openFriend = async (code) => {
       const body = document.createElement("div");
       setHTML(body, html`<div class="amici-person"><div class="skeleton" style="width:64px;height:64px;border-radius:50%"></div><div class="row-main stack-sm"><div class="skeleton-line" style="width:60%"></div><div class="skeleton-line" style="width:40%"></div></div></div>
         <div class="card card-pad"><div class="skeleton" style="height:112px"></div></div>`);
-      const sheet = openSheet({ title: "Amico", content: body });
+      const sheet = openSheet({ title: "Amico", content: body, onClose: () => { if (openDetail?.code === code) openDetail = null; } });
       const titleEl = $(".sheet-head .title-2", sheet.el);
       let detail;
       const drawDetail = () => {
@@ -603,8 +604,16 @@ export default {
           return refresh();
         }
       });
+      openDetail = { code, reload };
       reload();
     };
+
+    // Tempo reale: richieste, accettazioni, rimozioni e voti condivisi cambiati compaiono subito.
+    ctx?.onLive?.(["friends", "resync"], (ev) => {
+      if (!alive) return;
+      fetchData();
+      if (openDetail && (!ev.code || ev.code === openDetail.code)) openDetail.reload();
+    });
 
     // Delega una sola volta sul contenitore: legge sempre i dati correnti.
     $("[data-body]", root).addEventListener("click", async (e) => {

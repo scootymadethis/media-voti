@@ -802,6 +802,18 @@ button.row:active, a.row:active { background: var(--fill); }
   touch-action: pan-y;
 }
 .sheet.is-open { transform: translateY(0); }
+.sheet { will-change: transform; }
+/* Sui telefoni i pannelli sono pieni, non di vetro: una sfocatura dello sfondo grande quanto il pannello
+   va ricalcolata a ogni frame mentre sale (e mentre scorri dentro), e su schermi ad alta densità
+   come quello del Galaxy S24 Ultra faceva scattare l'apertura di "Altro". Lo sfondo è già oscurato. */
+@media (pointer: coarse) {
+  .sheet.glass, .menu.glass {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--bg-elev);
+  }
+  .sheet.glass::before { display: none; }
+}
 .sheet-grabber { flex: none; display: grid; place-items: center; height: 22px; cursor: grab; }
 .sheet-grabber::before { content: ""; width: 38px; height: 5px; border-radius: 3px; background: var(--fill-3); }
 .sheet-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 20px 12px; }

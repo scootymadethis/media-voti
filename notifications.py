@@ -603,8 +603,18 @@ def run_sync(user, username: str, *, force_all: bool = False) -> tuple[Optional[
         _last_sync[uname] = time.time()
     if changed:
         _invalidate_route_caches(str(username).strip(), changed)
+        _live(username, {"type": "notifiche", "kinds": sorted(changed), "created": created})
     # Una sezione arrivata basta a dire che la sessione è viva (anche se un'altra ha dato 5xx).
     return (True if any_ok else None), created
+
+
+def _live(username: str, event: dict) -> None:
+    """Avvisa subito i dispositivi aperti dello studente (realtime.py)."""
+    try:
+        import realtime
+        realtime.publish_user(username, event)
+    except Exception:
+        pass
 
 
 def sync_session(user, username: str) -> Optional[bool]:
@@ -704,7 +714,9 @@ def mark_read(body: ReadBody, u=Depends(_session_user)):
                 q = ",".join("?" for _ in body.ids)
                 conn.execute(f"UPDATE notifications SET read = 1 WHERE username = ? AND id IN ({q})", (uname, *body.ids))
             conn.commit()
-    return {"ok": True, **counts(uname)}
+    c = counts(uname)
+    _live(uname, {"type": "notifiche", "kinds": [], "read": True, **c})
+    return {"ok": True, **c}
 
 
 class PrefsBody(BaseModel):

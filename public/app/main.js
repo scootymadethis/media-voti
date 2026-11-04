@@ -1,8 +1,9 @@
 // Avvio, router e struttura (sidebar desktop, tab bar mobile, barra compatta).
-import { get, post, onUnauthorized, clearCache, load } from "aulera/api";
+import { get, post, onUnauthorized, clearCache, load, invalidate } from "aulera/api";
 import { state, applyPrefs, loadPrefs, loadYears, emit, on, store, setYear, yearLabel, DEFAULT_TABS } from "aulera/state";
-import { startNotifications, stopNotifications } from "aulera/notify";
-import { html, raw, icon, setHTML, $, $$, openSheet, openMenu, toast, staggerIndex, animateRings, miniMarkdown } from "aulera/ui";
+import { startNotifications, stopNotifications, refreshCount } from "aulera/notify";
+import { startLive, stopLive } from "aulera/live";
+import { html, raw, icon, setHTML, $, $$, openSheet, openMenu, toast, staggerIndex, animateRings, miniMarkdown, personName } from "aulera/ui";
 
 // Le viste si caricano con la stessa versione dell'entry (vedi importmap in index.html).
 const V = new URL(import.meta.url).searchParams.get("v") || "1";
@@ -108,24 +109,40 @@ async function renderRoute() {
   } else swap();
 }
 
-function mountView(route, mod) {
+function mountView(route, mod, { quiet = false } = {}) {
   try { current?.cleanup?.(); } catch { /* vista già smontata */ }
+  current?.liveOff?.forEach((off) => off());
   const main = $("#view");
+  const keepY = quiet ? window.scrollY : 0;
+  // Aggiornamento in tempo reale: niente animazione d'entrata e niente salto di scorrimento.
+  if (quiet) main.style.minHeight = `${main.offsetHeight}px`;
   main.replaceChildren();
   const root = document.createElement("div");
-  root.className = "page view-enter";
+  root.className = quiet ? "page" : "page view-enter";
   main.append(root);
   document.title = `${route.title} · Skoolio`;
-  window.scrollTo({ top: 0 });
+  window.scrollTo({ top: keepY });
+  if (quiet) setTimeout(() => { main.style.minHeight = ""; }, 1500);
+  const liveOff = [];
+  const liveTopics = new Set();
   const ctx = {
     route,
     params: new URLSearchParams(location.search),
     navigate,
-    refresh: () => mountView(route, mod),
+    refresh: (opts) => mountView(route, mod, opts),
+    /** La vista gestisce da sé gli aggiornamenti in tempo reale di questi argomenti. */
+    onLive(topics, fn) {
+      const list = [].concat(topics);
+      list.forEach((t) => liveTopics.add(t));
+      const off = on("live:topic", (ev) => { if (list.includes(ev.topic)) fn(ev); });
+      liveOff.push(off);
+      return off;
+    },
   };
-  current = { route, mod, cleanup: null };
+  current = { route, mod, cleanup: null, liveOff, liveTopics };
   Promise.resolve(mod.render(root, ctx)).then((cleanup) => {
     if (current?.route === route) current.cleanup = typeof cleanup === "function" ? cleanup : null;
+    if (quiet) requestAnimationFrame(() => window.scrollTo({ top: keepY }));
   }).catch((err) => {
     console.error(err);
     setHTML(root, html`<div class="card card-pad error-box"><p class="title-3">Qualcosa è andato storto</p><p class="body-2">${err?.message || ""}</p></div>`);
@@ -247,6 +264,7 @@ async function showLogin() {
 
 export async function logout() {
   stopNotifications();
+  stopLive();
   try { await post("/logout"); } catch { /* sessione già chiusa */ }
   clearCache();
   state.session = null;
@@ -258,6 +276,7 @@ export async function logout() {
 onUnauthorized(() => {
   if (!state.session) return;
   stopNotifications();
+  stopLive();
   state.session = null;
   clearCache();
   toast("Sessione scaduta: accedi di nuovo con SPID o CIE.", { error: true });
@@ -295,6 +314,7 @@ function afterBoot() {
     setTimeout(() => window.Capacitor.Plugins.SpaggiariLogin.requestNotifications().catch(() => {}), 1500);
   }
   try { startNotifications(); } catch (err) { console.warn("[notifiche]", err); }
+  try { startLive(); } catch (err) { console.warn("[live]", err); }
   showAnnouncement();
   syncLeaderboards();
   registerServiceWorker();
@@ -361,6 +381,83 @@ async function syncLeaderboards() {
     ]);
   } catch { /* non bloccante */ }
 }
+
+/* ---------------- tempo reale ---------------- */
+// Argomenti a cui è interessata ogni sezione: quando cambiano, la sezione si aggiorna da sola
+// (in silenzio, mantenendo lo scorrimento). Una vista può gestirli da sé con ctx.onLive().
+const LIVE_TOPICS = {
+  "/oggi": ["voti", "bacheca", "agenda", "assenze", "compiti", "lezioni"],
+  "/voti": ["voti"],
+  "/agenda": ["agenda", "compiti"],
+  "/assenze": ["assenze"],
+  "/bacheca": ["bacheca"],
+  "/note": ["note"],
+  "/didattica": ["didattica"],
+  // /notifiche si aggiorna già da sola con l'evento "notifiche" di notify.js
+  "/amici": ["friends"],
+  "/dispositivi": ["devices"],
+};
+// Cache client da svuotare per ogni argomento.
+const TOPIC_CACHE = { voti: ["voti:"], bacheca: ["bacheca"], agenda: ["agenda:", "compiti"], compiti: ["compiti", "agenda:"],
+  assenze: ["assenze:"], note: ["note"], didattica: ["didattica"], friends: ["amici"], devices: ["devices", "dispositivi"] };
+
+let pendingTopics = new Set();
+let liveTimer = 0;
+function liveTopic(topic, event = {}) {
+  (TOPIC_CACHE[topic] || []).forEach((p) => invalidate(p));
+  emit("live:topic", { ...event, topic });
+  pendingTopics.add(topic);
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(flushLive, 350); // più eventi ravvicinati → un solo aggiornamento
+}
+function flushLive() {
+  const topics = pendingTopics;
+  pendingTopics = new Set();
+  if (!current?.route || !current.mod || document.visibilityState === "hidden" && !topics.has("resync")) return;
+  const wanted = LIVE_TOPICS[current.route.path] || [];
+  const handledByView = current.liveTopics || new Set();
+  const hit = [...topics].some((t) => (wanted.includes(t) || (t === "resync" && wanted.length)) && !handledByView.has(t));
+  if (!hit) return;
+  if (document.querySelector(".sheet.is-open")) { pendingTopics = topics; liveTimer = setTimeout(flushLive, 1500); return; } // non disturbare un pannello aperto
+  mountView(current.route, current.mod, { quiet: true });
+}
+
+on("live", (ev) => {
+  if (!state.session) return;
+  switch (ev.type) {
+    case "notifiche":
+      (ev.kinds || []).forEach((k) => liveTopic(k, ev));
+      liveTopic("notifiche", ev);
+      refreshCount(); // badge, toast e notifiche di sistema
+      if ((ev.kinds || []).includes("bacheca")) emit("unread");
+      break;
+    case "friends":
+      liveTopic("friends", ev);
+      if (ev.action === "request") {
+        toast(`${ev.name ? personName(ev.name).split(" ")[0] : "Qualcuno"} ti ha chiesto l'amicizia`, { duration: 6000, onClick: () => navigate("/amici") });
+      } else if (ev.action === "accepted") {
+        toast(`${ev.name ? personName(ev.name).split(" ")[0] : "Un compagno"} ha accettato la tua richiesta`, { duration: 5000, onClick: () => navigate("/amici") });
+      }
+      break;
+    case "compiti":
+      liveTopic("compiti", ev);
+      break;
+    case "devices":
+      liveTopic("devices", ev);
+      // Se questo dispositivo è stato scollegato, la prossima chiamata risponde 401 → logout.
+      get("/session/me", { quiet401: false }).catch(() => {});
+      break;
+    case "prefs":
+      loadPrefs();
+      break;
+    case "resync":
+      refreshCount();
+      ["friends", "notifiche", "devices"].forEach((t) => liveTopic(t, ev));
+      break;
+    default:
+      break;
+  }
+});
 
 // Cambiate le sezioni della tab bar: ricostruisce la shell mantenendo la vista corrente.
 on("prefs", (p) => {
