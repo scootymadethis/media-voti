@@ -539,3 +539,18 @@
 
 @media (prefers-reduced-motion: reduce) { .lezioni-chip:active { transform: none; } }
 @media (max-width: 379px) { .orario-cell-short { font-size: 0.74rem; } .orario-cell { padding-left: 7px; } }
+
+/* Ore di assenza */
+.assenze-hours-card { display: grid; gap: 12px; }
+.assenze-hours-main { display: flex; align-items: center; gap: 16px; }
+.assenze-hours-main .stat-num { font-size: clamp(2.8rem, 2rem + 2.6vw, 3.6rem); color: var(--text); line-height: 1; }
+.assenze-limit { display: grid; gap: 8px; }
+.assenze-limit .bar span { background: var(--good); transition: width 700ms var(--ease-out); }
+.assenze-hours-card.is-warn .assenze-limit .bar span { background: var(--ok); }
+.assenze-hours-card.is-bad .assenze-limit .bar span { background: var(--bad); }
+.assenze-limit strong { color: var(--text); font-weight: 650; }
+.assenze-pattern { display: flex; align-items: center; gap: 6px; }
+.assenze-pattern svg { width: 14px; height: 14px; flex: none; }
+.assenze-row-hours { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--fill); color: var(--text-2); font-size: 0.78rem; font-weight: 600; vertical-align: 1px; }
+.assenze-evhours { margin-top: 2px; }
+.assenze-evhours strong { font-weight: 650; }

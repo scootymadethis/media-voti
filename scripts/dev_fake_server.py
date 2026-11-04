@@ -132,7 +132,8 @@ def build_lessons(day: date):
     if day.weekday() >= 5:
         return []
     out = []
-    for h in range(1, 6):
+    # Giornate di lunghezza diversa (come un orario vero): lun 6, mar 7, mer 6, gio 5, ven 6 ore.
+    for h in range(1, (6, 7, 6, 5, 6)[day.weekday()] + 1):
         subj, teacher = SUBJECTS[(day.toordinal() + h) % 8]
         out.append({
             "evtId": 9000 + h, "evtDate": day.isoformat(), "evtCode": "LSF0", "evtHPos": h, "evtDuration": 1,
