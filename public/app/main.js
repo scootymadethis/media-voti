@@ -7,6 +7,7 @@ import { html, raw, icon, setHTML, $, $$, openSheet, openMenu, toast, staggerInd
 // Le viste si caricano con la stessa versione dell'entry (vedi importmap in index.html).
 const V = new URL(import.meta.url).searchParams.get("v") || "1";
 const view = (name) => () => import(`./views/${name}.js?v=${V}`);
+const DESKTOP = matchMedia("(hover: hover) and (pointer: fine)");
 
 applyPrefs();
 if (/Chrome\/|Chromium\//.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent)) {
@@ -100,7 +101,9 @@ async function renderRoute() {
   }
   if (token !== renderToken) return;
   const swap = () => mountView(route, mod);
-  if (document.startViewTransition && current && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  // La View Transition fotografa tutta la pagina (vetro sfocato compreso): sui telefoni costa frame,
+  // lì basta l'entrata della vista (.view-enter, solo transform/opacity). Resta sui computer.
+  if (document.startViewTransition && current && DESKTOP.matches && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
     document.startViewTransition(swap);
   } else swap();
 }
@@ -294,6 +297,29 @@ function afterBoot() {
   try { startNotifications(); } catch (err) { console.warn("[notifiche]", err); }
   showAnnouncement();
   syncLeaderboards();
+  registerServiceWorker();
+  prefetchViews();
+}
+
+/** Scarica in sottofondo il codice di tutte le sezioni: al primo tocco si aprono subito. */
+function prefetchViews() {
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(() => fn({ timeRemaining: () => 8 }), 200));
+  const queue = ROUTES.filter((r) => !r.admin || state.session?.is_admin).map((r) => r.load);
+  const next = () => {
+    const load = queue.shift();
+    if (!load) return;
+    load().catch(() => {}).finally(() => idle(next, { timeout: 2000 }));
+  };
+  setTimeout(() => idle(next, { timeout: 2000 }), 600);
+}
+
+/** File statici sul dispositivo (Android e browser; su iPhone il WebView non lo supporta e si salta). */
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator) || location.protocol !== "https:" && location.hostname !== "127.0.0.1") return;
+  navigator.serviceWorker.register("/sw.js").then((reg) => {
+    const post = () => (reg.active || navigator.serviceWorker.controller)?.postMessage({ type: "version", v: V });
+    if (reg.active) post(); else navigator.serviceWorker.ready.then(post);
+  }).catch(() => { /* facoltativo */ });
 }
 
 export async function refreshUnread() {

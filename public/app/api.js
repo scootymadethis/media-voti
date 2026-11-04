@@ -54,26 +54,37 @@ const memory = new Map(); // key -> { value, at }
 const inflight = new Map();
 const STORE_PREFIX = "aulera:c:";
 
+// Nell'app (telefono personale) i dati restano anche chiudendola: alla riapertura ogni sezione mostra
+// subito l'ultimo dato noto e lo aggiorna in sottofondo. Sul sito (magari un PC condiviso) solo per la
+// scheda aperta. Il logout svuota tutto.
+const NATIVE = !!window.Capacitor?.isNativePlatform?.();
+function storage() {
+  try { return NATIVE ? localStorage : sessionStorage; } catch { return null; }
+}
 function readStore(key) {
   try {
-    const raw = sessionStorage.getItem(STORE_PREFIX + key);
+    const raw = storage()?.getItem(STORE_PREFIX + key);
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
 }
 function writeStore(key, entry) {
-  try { sessionStorage.setItem(STORE_PREFIX + key, JSON.stringify(entry)); } catch { /* quota / privata */ }
+  try { storage()?.setItem(STORE_PREFIX + key, JSON.stringify(entry)); } catch { /* quota / privata */ }
+}
+function dropStored(prefix) {
+  for (const s of [() => sessionStorage, () => localStorage]) {
+    try {
+      const st = s();
+      Object.keys(st).filter((k) => k.startsWith(prefix)).forEach((k) => st.removeItem(k));
+    } catch { /* niente */ }
+  }
 }
 export function clearCache() {
   memory.clear();
-  try {
-    Object.keys(sessionStorage).filter((k) => k.startsWith(STORE_PREFIX)).forEach((k) => sessionStorage.removeItem(k));
-  } catch { /* niente */ }
+  dropStored(STORE_PREFIX);
 }
 export function invalidate(prefix) {
   for (const k of [...memory.keys()]) if (k.startsWith(prefix)) memory.delete(k);
-  try {
-    Object.keys(sessionStorage).filter((k) => k.startsWith(STORE_PREFIX + prefix)).forEach((k) => sessionStorage.removeItem(k));
-  } catch { /* niente */ }
+  dropStored(STORE_PREFIX + prefix);
 }
 
 /**
